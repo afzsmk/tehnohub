@@ -97,6 +97,7 @@
         <button onclick="switchTab('nestcut', this)" class="nav-btn"><i data-lucide="scissors" class="w-4 h-4"></i><span>Раскрой</span></button>
         <button onclick="switchTab('primecost', this)" class="nav-btn"><i data-lucide="calculator" class="w-4 h-4"></i><span>Себестоимость</span></button>
         <button onclick="switchTab('configurator', this)" class="nav-btn"><i data-lucide="sliders-horizontal" class="w-4 h-4"></i><span>Конфигуратор</span></button>
+        <button onclick="switchTab('planning', this)" class="nav-btn"><i data-lucide="calendar-clock" class="w-4 h-4"></i><span>Планирование</span></button>
     </div>
 
     <main>
@@ -127,15 +128,18 @@
         <div id="configurator" class="tab-content h-full hidden">
             <iframe src="panel_configurator.html"></iframe>
         </div>
+        <div id="planning" class="tab-content h-full hidden">
+            <iframe src="workforce.html"></iframe>
+        </div>
     </main>
 
     <footer>
         <div class="auth-info">
-            <div class="digital-sig">ЗСМК ТехноХаб v1.5</div>
+            <div class="digital-sig">ЗСМК ТехноХаб v1.7</div>
             <div><span class="font-bold text-slate-400">АВТОР:</span> Фадеев А.Ю.</div>
             <div><span class="font-bold text-slate-400">ДОЛЖНОСТЬ:</span> Главный технолог ООО «ЗСМК»</div>
         </div>
-        <div class="text-[10px] font-mono text-slate-600 uppercase"> System Stable | 21.06.2026 </div>
+        <div class="text-[10px] font-mono text-slate-600 uppercase"> System Stable | 19.08.2026 </div>
     </footer>
 
     <script>
