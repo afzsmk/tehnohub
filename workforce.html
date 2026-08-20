@@ -59,22 +59,29 @@
     .icon-lg { width: 22px; height: 22px; vertical-align: -5px; }
     .icon-sm { width: 14px; height: 14px; stroke-width: 2.5; }
 
-    /* Header */
+    /* Header & Action Bar Layout */
     header {
       background-color: #0f172a;
       color: #ffffff;
       padding: 12px 24px;
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      box-shadow: var(--shadow);
+      border-bottom: 1px solid #1e293b;
+      padding-right: 240px; /* Clearance for index.html floating menu */
     }
 
     .brand { display: flex; align-items: center; gap: 12px; }
     .brand-title { font-size: 17px; font-weight: 700; letter-spacing: -0.02em; }
-    .brand-subtitle { font-size: 12.5px; color: #94a3b8; }
+    .brand-subtitle { font-size: 12px; color: #94a3b8; }
+
+    .control-subbar {
+      background-color: #1e293b;
+      border-bottom: 1px solid #334155;
+      padding: 8px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
 
     .scenario-controls {
       display: flex;
@@ -112,6 +119,9 @@
 
     .btn-dark { background-color: #334155; color: #ffffff; border-color: #475569; }
     .btn-dark:hover { background-color: #475569; }
+
+    .btn-level { background: linear-gradient(135deg, #059669 0%, #047857 100%); color: #ffffff; border: none; }
+    .btn-level:hover { background: linear-gradient(135deg, #047857 0%, #065f46 100%); }
 
     .btn-danger { background-color: var(--danger); color: #ffffff; }
     .btn-danger:hover { background-color: #b91c1c; }
@@ -159,10 +169,7 @@
       border-color: #fca5a5;
     }
 
-    .col-tool-btn:disabled {
-      opacity: 0.25;
-      cursor: not-allowed;
-    }
+    .col-tool-btn:disabled { opacity: 0.25; cursor: not-allowed; }
 
     /* KPI Summary Strip */
     .kpi-strip {
@@ -368,7 +375,7 @@
     .summary-points li { position: relative; padding-left: 18px; font-size: 13.5px; color: #1e293b; }
     .summary-points li::before { content: "■"; position: absolute; left: 0; color: var(--accent); font-size: 10px; top: 4px; }
 
-    /* Collapsible Methodology Accordion */
+    /* Collapsible Help / Methodology Accordions */
     .collapsible-box {
       background-color: #ffffff;
       border: 1px solid var(--border-color);
@@ -403,11 +410,7 @@
     .chevron-icon { transition: transform 0.2s ease; }
     .chevron-icon.rotated { transform: rotate(180deg); }
 
-    .method-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 12px;
-    }
+    .method-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
 
     .method-item {
       background-color: #ffffff;
@@ -434,7 +437,14 @@
       border: 1px solid #bae6fd;
     }
 
-    /* Modal Dialog Overlay (Strict display:none when closed) */
+    /* Shift & Capacity Badges */
+    .badge-shift-1 { background-color: #f1f5f9; color: #334155; font-weight: 600; padding: 3px 6px; border-radius: 4px; border: 1px solid #cbd5e1; }
+    .badge-shift-2 { background-color: #e0e7ff; color: #3730a3; font-weight: 600; padding: 3px 6px; border-radius: 4px; border: 1px solid #c7d2fe; }
+    .badge-shift-12 { background-color: #dbeafe; color: #1e40af; font-weight: 700; padding: 3px 6px; border-radius: 4px; border: 1px solid #bfdbfe; }
+    .badge-shift-3 { background-color: #fef3c7; color: #92400e; font-weight: 700; padding: 3px 6px; border-radius: 4px; border: 1px solid #fde68a; }
+    .badge-shift-overload { background-color: #fee2e2; color: #991b1b; font-weight: 700; padding: 3px 6px; border-radius: 4px; border: 1px solid #fca5a5; }
+
+    /* Modal Dialog Overlay */
     .modal-overlay {
       position: fixed;
       top: 0; left: 0; width: 100%; height: 100%;
@@ -458,7 +468,7 @@
       border-radius: var(--radius);
       box-shadow: var(--shadow-lg);
       width: 100%;
-      max-width: 440px;
+      max-width: 480px;
       border: 1px solid var(--border-color);
       overflow: hidden;
       animation: modalPop 0.18s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -490,7 +500,7 @@
     }
 
     @media print {
-      header, .tab-navigation, .scenario-controls, .btn, .col-header-tools, #fileJsonInput, .collapsible-box, .col-drag { display: none !important; }
+      header, .control-subbar, .tab-navigation, .scenario-controls, .btn, .col-header-tools, #fileJsonInput, .collapsible-box, .col-drag { display: none !important; }
       body { background: #ffffff; color: #000000; }
       main { padding: 0; }
       .tab-content { display: none !important; }
@@ -527,6 +537,8 @@
       <symbol id="icon-arrow-right" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></symbol>
       <symbol id="icon-x" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
       <symbol id="icon-alert-triangle" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></symbol>
+      <symbol id="icon-sliders" viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></symbol>
+      <symbol id="icon-cpu" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></symbol>
     </defs>
   </svg>
 
@@ -537,12 +549,15 @@
       <svg class="icon icon-lg" style="color: #60a5fa;"><use href="#icon-calc"></use></svg>
       <div>
         <div class="brand-title">Планирование производства и нормирование</div>
-        <div class="brand-subtitle">Расчёт трудоёмкости, балансировка участков и потребность в персонале</div>
+        <div class="brand-subtitle">Расчёт трудоёмкости, балансировка мощностей и сменности (8ч / 12ч)</div>
       </div>
     </div>
+  </header>
+
+  <div class="control-subbar">
     <div class="scenario-controls">
       <label style="font-size: 11.5px; color: #94a3b8; font-weight: 600;">СЦЕНАРИЙ:</label>
-      <select id="scenarioSelector" class="input-control" style="width: 200px; padding: 6px 10px; background:#1e293b; color:#fff; border-color:#334155; font-weight: 600;"></select>
+      <select id="scenarioSelector" class="input-control" style="width: 210px; padding: 5px 8px; background:#0f172a; color:#fff; border-color:#334155; font-weight: 600;"></select>
       <button class="btn btn-dark btn-sm" id="btnSaveScenario" title="Сохранить изменения в браузере">
         <svg class="icon"><use href="#icon-save"></use></svg> Сохранить
       </button>
@@ -555,14 +570,20 @@
       <button class="btn btn-dark btn-sm" id="btnNewScenario" title="Создать копию сценария">
         <svg class="icon"><use href="#icon-plus"></use></svg> Новый
       </button>
-      <button class="btn btn-dark btn-sm" id="btnDeleteScenario" title="Удалить выбранный сценарий">
+      <button class="btn btn-dark btn-sm" id="btnDeleteScenario" title="Удалить сценарий">
         <svg class="icon"><use href="#icon-trash"></use></svg>
       </button>
       <button class="btn btn-dark btn-sm" id="btnResetData" title="Сброс к исходным данным">
         <svg class="icon"><use href="#icon-refresh"></use></svg>
       </button>
     </div>
-  </header>
+
+    <div style="display:flex; align-items:center; gap:8px;">
+      <button class="btn btn-level btn-sm" id="btnOpenLevelingModal" title="Автоматически распределить объёмы под фиксированное количество людей">
+        <svg class="icon"><use href="#icon-sliders"></use></svg> Выровнять план под штат
+      </button>
+    </div>
+  </div>
 
   <div class="kpi-strip">
     <div class="kpi-card" style="border-left-color: #2563eb;">
@@ -588,7 +609,7 @@
       <svg class="icon"><use href="#icon-plan"></use></svg> 1. Производственный план
     </button>
     <button class="tab-button" data-tab="tab-dictionaries">
-      <svg class="icon"><use href="#icon-dict"></use></svg> 2. Справочники и нормы
+      <svg class="icon"><use href="#icon-dict"></use></svg> 2. Справочники, нормы и посты
     </button>
     <button class="tab-button" data-tab="tab-norming">
       <svg class="icon"><use href="#icon-timer"></use></svg> 3. Модуль нормирования (Калькулятор н-ч)
@@ -629,6 +650,31 @@
     </section>
 
     <section id="tab-dictionaries" class="tab-content">
+      <div class="collapsible-box">
+        <div class="collapsible-header" id="toggleGuideTab2">
+          <div style="font-size: 13.5px; font-weight: 700; color: #1e3a8a; display: flex; align-items: center; gap: 8px;">
+            <svg class="icon"><use href="#icon-info"></use></svg> Справка: Правила настройки норм, постов и параметров (нажмите, чтобы развернуть)
+          </div>
+          <svg class="icon chevron-icon" id="chevronGuideTab2"><use href="#icon-chevron-down"></use></svg>
+        </div>
+        <div class="collapsible-content" id="contentGuideTab2">
+          <div class="method-grid">
+            <div class="method-item">
+              <div class="method-item-title">1. Нормы времени и технологический маршрут</div>
+              <div class="method-item-desc">В таблице изделий указывается трудоёмкость по операциям в <strong>нормо-часах на 1 единицу</strong> продукции. Если операцию выполняет звено из 2 человек в течение 30 минут, норма равна <code>0.5 ч × 2 чел = 1.0 н-ч</code>. Колонка <strong>«Брак, %»</strong> закладывает технологический запас на доработку.</div>
+            </div>
+            <div class="method-item">
+              <div class="method-item-title">2. Станки, посты и размер звена</div>
+              <div class="method-item-desc"><strong>«Станков»</strong> — физическое количество оборудования или постов в цехе. <strong>«Звено (чел)»</strong> — сколько рабочих одновременно обслуживают 1 станок. Это позволяет алгоритму корректно рассчитывать загрузку оборудования (станко-часы), не путая её с количеством людей.</div>
+            </div>
+            <div class="method-item">
+              <div class="method-item-title">3. Специфика участка (Станочный / Ручной)</div>
+              <div class="method-item-desc"><strong>Станочный</strong> участок при круглосуточной загрузке переводится на <strong>2 смены по 12 ч (график 2/2)</strong>, что экономит время на пересменках. <strong>Ручной</strong> участок (сварка, покраска) переводится на <strong>3 смены по 8 ч</strong>, чтобы избежать брака из-за усталости персонала.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="panel">
         <div class="panel-header">
           <div class="panel-title">
@@ -653,7 +699,7 @@
       <div class="grid-2">
         <div class="panel">
           <div class="panel-header">
-            <div class="panel-title">Технологические участки / Профессии</div>
+            <div class="panel-title">Технологические участки, оборудование и посты</div>
             <button class="btn btn-secondary btn-sm" id="btnAddProfession">
               <svg class="icon"><use href="#icon-plus"></use></svg> Добавить
             </button>
@@ -664,8 +710,11 @@
                 <thead>
                   <tr>
                     <th class="col-drag"></th>
-                    <th>Наименование профессии / участка</th>
-                    <th style="width: 50px; text-align: center;"></th>
+                    <th>Наименование участка</th>
+                    <th style="width: 75px; text-align: right;" title="Количество физических станков или рабочих мест">Станков</th>
+                    <th style="width: 80px; text-align: right;" title="Количество рабочих, одновременно занятых на 1 станке/посту">Звено (чел)</th>
+                    <th style="width: 105px; text-align: center;" title="Тип работы для рекомендации графика 8ч / 12ч">Специфика</th>
+                    <th style="width: 40px; text-align: center;"></th>
                   </tr>
                 </thead>
                 <tbody id="professionsTableBody"></tbody>
@@ -711,6 +760,31 @@
     </section>
 
     <section id="tab-norming" class="tab-content">
+      <div class="collapsible-box">
+        <div class="collapsible-header" id="toggleGuideTab3">
+          <div style="font-size: 13.5px; font-weight: 700; color: #1e3a8a; display: flex; align-items: center; gap: 8px;">
+            <svg class="icon"><use href="#icon-info"></use></svg> Справка: Как выбрать правильный метод расчёта нормо-часов (нажмите, чтобы развернуть)
+          </div>
+          <svg class="icon chevron-icon" id="chevronGuideTab3"><use href="#icon-chevron-down"></use></svg>
+        </div>
+        <div class="collapsible-content" id="contentGuideTab3">
+          <div class="method-grid">
+            <div class="method-item">
+              <div class="method-item-title">1. Сменно-статистический метод (по факту смены)</div>
+              <div class="method-item-desc">Применяется для устоявшихся серийных процессов, когда известна фактическая сдача продукции бригадой за смену. Вы вводите объём выпуска (Q) и количество людей (N<sub>раб</sub>) — система сама вычитает перерывы и находит среднюю норму трудоёмкости на штуку.</div>
+            </div>
+            <div class="method-item">
+              <div class="method-item-title">2. Поэлементный хронометраж (инженерный расчёт по секундомеру)</div>
+              <div class="method-item-desc">Применяется при запуске новых изделий или технологических операций. Вы замеряете время цикла (T<sub>осн</sub> + T<sub>всп</sub>), указываете состав звена, проценты на обслуживание и отдых, а также время наладки на партию (T<sub>пз</sub>).</div>
+            </div>
+            <div class="method-item">
+              <div class="method-item-title">3. Кнопка «Перенести в матрицу норм»</div>
+              <div class="method-item-desc">После расчёта нажмите кнопку сохранения — норма автоматически запишется в справочник по выбранному изделию и участку, сразу обновив весь производственный план.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="grid-2">
         <div class="panel">
           <div class="panel-header">
@@ -845,6 +919,27 @@
           <ul class="summary-points" id="summaryBulletPoints"></ul>
         </div>
 
+        <div class="panel" style="margin-bottom: 18px;">
+          <div class="panel-header">
+            <div class="panel-title">
+              <svg class="icon"><use href="#icon-cpu"></use></svg> Балансировка мощностей оборудования и рекомендации по сменности (8ч / 12ч)
+            </div>
+          </div>
+          <div class="panel-body">
+            <p style="font-size:12.5px; color:var(--text-secondary); margin-bottom:12px;">
+              Алгоритм рассчитывает станко-часы с учётом количества оборудования и размера звеньев на постах, рекомендуя оптимальный график: 1 смену (8ч), 2 смены (8ч), 2 смены по 12ч (для автоматов) или 3 смены по 8ч (для ручного труда).
+            </p>
+            <div class="table-container">
+              <table class="data-table" id="shiftScheduleTable">
+                <thead>
+                  <tr id="shiftScheduleTableHeader"></tr>
+                </thead>
+                <tbody id="shiftScheduleTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
         <div class="collapsible-box">
           <div class="collapsible-header" id="toggleMethodologyBtn">
             <div style="font-size: 13.5px; font-weight: 700; color: #1e3a8a; display: flex; align-items: center; gap: 8px;">
@@ -927,7 +1022,7 @@
       return isNaN(num) ? 0 : num;
     }
 
-    // --- Modal System with zero click-blocking when inactive ---
+    // --- Modal System ---
     const modalSystem = {
       overlay: null, titleEl: null, bodyEl: null, inputWrap: null, inputEl: null, footerEl: null, onConfirmCb: null,
       init() {
@@ -1000,16 +1095,16 @@
       }
     };
 
-    // --- EXACT PRELOADED ERP DATASET ---
+    // --- PRELOADED DATASET ---
     const PRELOADED_STATE = {
       professions: [
-        { id: "p1", name: "Оператор станков и оборудования" },
-        { id: "p2", name: "Подсобный рабочий" },
-        { id: "p3", name: "Оператор гидрорезки" },
-        { id: "p4", name: "Оператор лазерной резки" },
-        { id: "p5", name: "Штамповщик" },
-        { id: "p6", name: "Маляр" },
-        { id: "p7", name: "Сварщик" }
+        { id: "p1", name: "Оператор станков и оборудования", machines: 12, crew: 1, type: "machine" },
+        { id: "p2", name: "Подсобный рабочий", machines: 10, crew: 1, type: "manual" },
+        { id: "p3", name: "Оператор гидрорезки", machines: 1, crew: 1, type: "machine" },
+        { id: "p4", name: "Оператор лазерной резки", machines: 1, crew: 1, type: "machine" },
+        { id: "p5", name: "Штамповщик", machines: 2, crew: 1, type: "machine" },
+        { id: "p6", name: "Маляр", machines: 1, crew: 1, type: "manual" },
+        { id: "p7", name: "Сварщик", machines: 4, crew: 1, type: "manual" }
       ],
       products: [
         { id: "pr1", name: "Обработка и сборка Уникор", unit: "м²", scrap: 2, norms: { "p1": 0.621, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0 } },
@@ -1049,7 +1144,7 @@
       settings: { fNom: 168, fEff: 144, kVn: 1.05, auxOtkPercent: 8, auxSetupPercent: 5, auxFixedPosts: 2 }
     };
 
-    const STORAGE_KEY = "prod_workforce_master_v9";
+    const STORAGE_KEY = "prod_workforce_master_v13";
 
     let state = {
       currentScenario: "На основе ERP",
@@ -1197,7 +1292,7 @@
       document.getElementById("kpiAvgStaff").textContent = avgStaff + " чел.";
     }
 
-    // --- Render Plan Matrix with Reorder & Delete Month Tools ---
+    // --- Render Plan Matrix with Month Tools ---
     function renderPlanTable() {
       const data = getActiveData();
       const headerRow = document.getElementById("planTableHeader");
@@ -1269,10 +1364,11 @@
       document.getElementById("inputAuxSetup").value = data.settings.auxSetupPercent;
       document.getElementById("inputAuxFixed").value = data.settings.auxFixedPosts;
 
-      // Professions Table
+      // Professions Table with Machines count, Crew size and Type
       const profTbody = document.getElementById("professionsTableBody");
       profTbody.innerHTML = "";
       data.professions.forEach((prof, idx) => {
+        const isMachine = (prof.type === "machine");
         const tr = document.createElement("tr");
         tr.setAttribute("data-index", idx);
         tr.innerHTML = `
@@ -1283,6 +1379,18 @@
           </td>
           <td>
             <input type="text" class="input-control prof-name-input" data-prof-id="${prof.id}" value="${prof.name}">
+          </td>
+          <td>
+            <input type="number" min="1" step="1" class="input-control input-num prof-machines-input" data-prof-id="${prof.id}" value="${prof.machines || 1}">
+          </td>
+          <td>
+            <input type="number" min="1" step="1" class="input-control input-num prof-crew-input" data-prof-id="${prof.id}" value="${prof.crew || 1}">
+          </td>
+          <td style="text-align:center;">
+            <select class="input-control prof-type-select" data-prof-id="${prof.id}" style="font-size:12px; font-weight:600;">
+              <option value="machine" ${isMachine ? 'selected' : ''}>Станочный</option>
+              <option value="manual" ${!isMachine ? 'selected' : ''}>Ручной</option>
+            </select>
           </td>
           <td style="text-align: center;">
             <button class="btn btn-secondary btn-sm btn-del-prof" data-prof-id="${prof.id}" title="Удалить профессию">
@@ -1465,11 +1573,12 @@
       `;
     }
 
-    // --- Render Analytics & Charts ---
+    // --- Render Analytics, Shift Recommendations & Charts ---
     function renderAnalytics() {
       const data = getActiveData();
       const calc = calculate();
 
+      // 1. Bullet summary
       const summaryList = document.getElementById("summaryBulletPoints");
       summaryList.innerHTML = "";
 
@@ -1504,7 +1613,10 @@
         summaryList.appendChild(li);
       });
 
-      // Master Results Table
+      // 2. Shift Balancing & Schedule Recommendations Table
+      renderShiftScheduleTable(calc, data);
+
+      // 3. Master Results Table
       const resultsThead = document.getElementById("resultsTableHeader");
       resultsThead.innerHTML = `
         <th class="col-sticky-name" style="min-width: 250px;">Показатель / Профессия</th>
@@ -1561,6 +1673,69 @@
       renderCharts(calc, data);
     }
 
+    // --- Capacity Balancing & Shift Recommendation Engine ---
+    function renderShiftScheduleTable(calc, data) {
+      const thead = document.getElementById("shiftScheduleTableHeader");
+      const tbody = document.getElementById("shiftScheduleTableBody");
+      if (!thead || !tbody) return;
+
+      thead.innerHTML = `
+        <th class="col-sticky-name" style="min-width: 220px;">Участок / Оборудование</th>
+        <th style="width: 65px; text-align: center;">Станков</th>
+        <th style="width: 75px; text-align: center;">Звено</th>
+        ${data.months.map(m => `<th style="text-align: center; min-width: 110px;">${m}</th>`).join("")}
+      `;
+
+      tbody.innerHTML = "";
+      data.professions.forEach(prof => {
+        const machines = Math.max(1, prof.machines || 1);
+        const crew = Math.max(1, prof.crew || 1);
+        const isMachine = (prof.type === "machine");
+        const tr = document.createElement("tr");
+
+        let html = `
+          <td class="col-sticky-name">
+            <strong>${prof.name}</strong>
+            <div style="font-size:11px; color:var(--text-muted);">${isMachine ? 'Станочный участок' : 'Ручной труд'}</div>
+          </td>
+          <td style="text-align: center; font-weight:600;">${machines}</td>
+          <td style="text-align: center; font-weight:600; color:var(--text-secondary);">${crew} чел</td>
+        `;
+
+        data.months.forEach((_, mIdx) => {
+          const laborHours = calc.hoursByProf[prof.id][mIdx];
+          const machineHours = laborHours / crew;
+          const hoursPerMachine = machineHours / machines;
+
+          let badge = '';
+          if (hoursPerMachine <= 0) {
+            badge = `<span style="color:var(--text-muted); font-size:12px;">Простой</span>`;
+          } else if (hoursPerMachine <= 168) {
+            const load = Math.round((hoursPerMachine / 168) * 100);
+            badge = `<span class="badge-shift-1" title="Загрузка 1 смены: ${load}%">1 см. (8ч) · ${load}%</span>`;
+          } else if (hoursPerMachine <= 336) {
+            const load = Math.round((hoursPerMachine / 336) * 100);
+            badge = `<span class="badge-shift-2" title="Загрузка 2 смен: ${load}%">2 см. (8ч) · ${load}%</span>`;
+          } else if (hoursPerMachine <= 520) {
+            const load = Math.round((hoursPerMachine / 504) * 100);
+            if (isMachine) {
+              badge = `<span class="badge-shift-12" title="Круглосуточно: рекомендовано 2 смены по 12ч (график 2/2)">2 см. × 12ч (2/2)</span>`;
+            } else {
+              badge = `<span class="badge-shift-3" title="Круглосуточно: рекомендовано 3 смены по 8ч">3 см. × 8ч</span>`;
+            }
+          } else {
+            const load = Math.round((hoursPerMachine / 504) * 100);
+            badge = `<span class="badge-shift-overload" title="Дефицит мощности даже при круглосуточной работе!">24/7 Перегруз (${load}%)</span>`;
+          }
+
+          html += `<td style="text-align: center;">${badge}</td>`;
+        });
+
+        tr.innerHTML = html;
+        tbody.appendChild(tr);
+      });
+    }
+
     function renderCharts(calc, data) {
       const palette = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#dc2626', '#0891b2', '#4b5563', '#ea580c', '#8b5cf6'];
 
@@ -1607,6 +1782,113 @@
           plugins: { legend: { position: 'right', labels: { boxWidth: 11, font: { size: 11 } } } }
         }
       });
+    }
+
+    // --- Helper: Calculate Recommended Headcount ---
+    function getRecommendedHeadcount() {
+      const data = getActiveData();
+      const calc = calculate();
+      const totalHours = calc.totalHoursByMonth.reduce((a, b) => a + b, 0);
+      const numMonths = data.months.length || 1;
+      const avgMonthlyHours = totalHours / numMonths;
+      const fEff = data.settings.fEff || 144;
+      const kVn = data.settings.kVn || 1.05;
+      const auxPercent = (data.settings.auxOtkPercent + data.settings.auxSetupPercent) / 100;
+      const auxFixed = data.settings.auxFixedPosts || 2;
+
+      const neededMain = avgMonthlyHours / (fEff * kVn);
+      const recommendedTotal = Math.ceil(neededMain * (1 + auxPercent) + auxFixed);
+      return Math.max(recommendedTotal, 1);
+    }
+
+    // --- Two-Pass Forward/Backward Level Loading Algorithm ---
+    function executeLevelLoading(targetHeadcount) {
+      const data = getActiveData();
+      const fEff = data.settings.fEff || 144;
+      const kVn = data.settings.kVn || 1.05;
+      const auxPercent = (data.settings.auxOtkPercent + data.settings.auxSetupPercent) / 100;
+      const auxFixed = data.settings.auxFixedPosts || 2;
+
+      const targetMainWorkers = Math.max(1, targetHeadcount - auxFixed) / (1 + auxPercent);
+      const maxMonthlyHours = targetMainWorkers * fEff * kVn;
+
+      const numMonths = data.months.length;
+      let totalShiftedHours = 0;
+
+      function getMonthLabor(mIdx) {
+        let hrs = 0;
+        data.products.forEach(p => {
+          const qty = data.plan[p.id][mIdx] || 0;
+          const scrap = 1 + (p.scrap / 100);
+          let pNorm = 0;
+          data.professions.forEach(prof => { pNorm += parseNum(p.norms[prof.id]); });
+          hrs += qty * pNorm * scrap;
+        });
+        return hrs;
+      }
+
+      // Pass 1: Forward distribution of excess volume to future months with available capacity
+      for (let m = 0; m < numMonths - 1; m++) {
+        let currentLabor = getMonthLabor(m);
+        if (currentLabor > maxMonthlyHours) {
+          let excess = currentLabor - maxMonthlyHours;
+          for (let targetM = m + 1; targetM < numMonths && excess > 0.1; targetM++) {
+            let targetLabor = getMonthLabor(targetM);
+            let available = Math.max(0, maxMonthlyHours - targetLabor);
+            if (available > 0.1) {
+              let shiftHrs = Math.min(excess, available);
+              let ratio = shiftHrs / currentLabor;
+              data.products.forEach(p => {
+                const q = data.plan[p.id][m] || 0;
+                if (q > 0) {
+                  const qShift = q * ratio;
+                  data.plan[p.id][m] = Math.round((q - qShift) * 10) / 10;
+                  data.plan[p.id][targetM] = Math.round(((data.plan[p.id][targetM] || 0) + qShift) * 10) / 10;
+                }
+              });
+              excess -= shiftHrs;
+              totalShiftedHours += shiftHrs;
+              currentLabor = getMonthLabor(m);
+            }
+          }
+        }
+      }
+
+      // Pass 2: Backward distribution for any trailing excess
+      for (let m = numMonths - 1; m >= 1; m--) {
+        let currentLabor = getMonthLabor(m);
+        if (currentLabor > maxMonthlyHours) {
+          let excess = currentLabor - maxMonthlyHours;
+          for (let targetM = m - 1; targetM >= 0 && excess > 0.1; targetM--) {
+            let targetLabor = getMonthLabor(targetM);
+            let available = Math.max(0, maxMonthlyHours - targetLabor);
+            if (available > 0.1) {
+              let shiftHrs = Math.min(excess, available);
+              let ratio = shiftHrs / currentLabor;
+              data.products.forEach(p => {
+                const q = data.plan[p.id][m] || 0;
+                if (q > 0) {
+                  const qShift = q * ratio;
+                  data.plan[p.id][m] = Math.round((q - qShift) * 10) / 10;
+                  data.plan[p.id][targetM] = Math.round(((data.plan[p.id][targetM] || 0) + qShift) * 10) / 10;
+                }
+              });
+              excess -= shiftHrs;
+              totalShiftedHours += shiftHrs;
+              currentLabor = getMonthLabor(m);
+            }
+          }
+        }
+      }
+
+      saveToStorage();
+      renderAll();
+      modalSystem.alert("План выровнен", `
+        Производственная программа успешно перераспределена под целевой штат <strong>${targetHeadcount} чел.</strong><br><br>
+        • Допустимая ёмкость месяца: <strong>${Math.round(maxMonthlyHours).toLocaleString()} н-ч</strong><br>
+        • Перераспределено объёмов: <strong>${Math.round(totalShiftedHours).toLocaleString()} н-ч</strong><br><br>
+        Все пики сглажены и равномерно распределены по периодам программы.
+      `);
     }
 
     // --- Tab 3 Norming Engine ---
@@ -1676,17 +1958,25 @@
       });
     }
 
-    // --- Event Listeners & Interactive Handlers ---
+    // --- Event Listeners & Handlers ---
     function attachEvents() {
       setupTabs();
 
-      const toggleBtn = document.getElementById("toggleMethodologyBtn");
-      if (toggleBtn) {
-        toggleBtn.addEventListener("click", () => {
-          document.getElementById("methodologyContent").classList.toggle("expanded");
-          document.getElementById("methodChevron").classList.toggle("rotated");
-        });
-      }
+      const toggles = [
+        { btn: "toggleMethodologyBtn", content: "methodologyContent", chevron: "methodChevron" },
+        { btn: "toggleGuideTab2", content: "contentGuideTab2", chevron: "chevronGuideTab2" },
+        { btn: "toggleGuideTab3", content: "contentGuideTab3", chevron: "chevronGuideTab3" }
+      ];
+
+      toggles.forEach(t => {
+        const elBtn = document.getElementById(t.btn);
+        if (elBtn) {
+          elBtn.addEventListener("click", () => {
+            document.getElementById(t.content).classList.toggle("expanded");
+            document.getElementById(t.chevron).classList.toggle("rotated");
+          });
+        }
+      });
 
       document.getElementById("scenarioSelector").addEventListener("change", (e) => {
         state.currentScenario = e.target.value;
@@ -1727,6 +2017,22 @@
           populateNormSelects();
           renderAll();
         });
+      });
+
+      // Level Loading Modal Trigger with dynamic recommended headcount
+      document.getElementById("btnOpenLevelingModal").addEventListener("click", () => {
+        const rec = getRecommendedHeadcount();
+        modalSystem.prompt(
+          "Выравнивание плана под штат",
+          `Для равномерного выполнения всей программы без дефицита рекомендуемый штат: <strong>${rec} чел.</strong><br><br>Укажите целевую численность персонала цеха (чел.):`,
+          String(rec),
+          (targetVal) => {
+            const headcount = parseInt(targetVal);
+            if (headcount > 0) {
+              executeLevelLoading(headcount);
+            }
+          }
+        );
       });
 
       document.getElementById("btnExportJson").addEventListener("click", () => {
@@ -1988,18 +2294,37 @@
 
       // Professions Table Handlers
       document.getElementById("professionsTable").addEventListener("input", (e) => {
+        const profId = e.target.getAttribute("data-prof-id");
+        const data = getActiveData();
+        const p = data.professions.find(x => x.id === profId);
+        if (!p) return;
+
         if (e.target.classList.contains("prof-name-input")) {
-          const profId = e.target.getAttribute("data-prof-id");
-          const data = getActiveData();
-          const p = data.professions.find(x => x.id === profId);
-          if (p) {
-            p.name = e.target.value;
-            saveToStorage();
-            populateNormSelects();
-            const idx = data.professions.findIndex(x => x.id === profId);
-            const ths = document.querySelectorAll("#productsTableHeader th");
-            if (ths && ths[4 + idx]) ths[4 + idx].textContent = e.target.value;
-          }
+          p.name = e.target.value;
+          populateNormSelects();
+          const idx = data.professions.findIndex(x => x.id === profId);
+          const ths = document.querySelectorAll("#productsTableHeader th");
+          if (ths && ths[4 + idx]) ths[4 + idx].textContent = e.target.value;
+        } else if (e.target.classList.contains("prof-machines-input")) {
+          p.machines = Math.max(1, parseInt(e.target.value) || 1);
+        } else if (e.target.classList.contains("prof-crew-input")) {
+          p.crew = Math.max(1, parseInt(e.target.value) || 1);
+        }
+        saveToStorage();
+      });
+
+      document.getElementById("professionsTable").addEventListener("change", (e) => {
+        const profId = e.target.getAttribute("data-prof-id");
+        const data = getActiveData();
+        const p = data.professions.find(x => x.id === profId);
+        if (!p) return;
+
+        if (e.target.classList.contains("prof-type-select")) {
+          p.type = e.target.value;
+          saveToStorage();
+          renderAnalytics();
+        } else if (e.target.classList.contains("prof-machines-input") || e.target.classList.contains("prof-crew-input")) {
+          renderAnalytics();
         }
       });
 
@@ -2008,7 +2333,7 @@
           if (name && name.trim()) {
             const data = getActiveData();
             const newId = "p" + Date.now();
-            data.professions.push({ id: newId, name: name.trim() });
+            data.professions.push({ id: newId, name: name.trim(), machines: 1, crew: 1, type: "machine" });
             data.products.forEach(p => { p.norms[newId] = 0; });
             saveToStorage();
             populateNormSelects();
