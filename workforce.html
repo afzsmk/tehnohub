@@ -65,7 +65,7 @@
       color: #ffffff;
       padding: 12px 24px;
       border-bottom: 1px solid #1e293b;
-      padding-right: 240px; /* Clearance for index.html floating menu */
+      padding-right: 240px;
     }
 
     .brand { display: flex; align-items: center; gap: 12px; }
@@ -122,6 +122,9 @@
 
     .btn-level { background: linear-gradient(135deg, #059669 0%, #047857 100%); color: #ffffff; border: none; }
     .btn-level:hover { background: linear-gradient(135deg, #047857 0%, #065f46 100%); }
+
+    .btn-warning { background: linear-gradient(135deg, #d97706 0%, #b45309 100%); color: #ffffff; border: none; }
+    .btn-warning:hover { background: linear-gradient(135deg, #b45309 0%, #78350f 100%); }
 
     .btn-danger { background-color: var(--danger); color: #ffffff; }
     .btn-danger:hover { background-color: #b91c1c; }
@@ -375,7 +378,7 @@
     .summary-points li { position: relative; padding-left: 18px; font-size: 13.5px; color: #1e293b; }
     .summary-points li::before { content: "■"; position: absolute; left: 0; color: var(--accent); font-size: 10px; top: 4px; }
 
-    /* Collapsible Help / Methodology Accordions */
+    /* Collapsible Help & Registry Accordions */
     .collapsible-box {
       background-color: #ffffff;
       border: 1px solid var(--border-color);
@@ -435,6 +438,32 @@
       background-color: #e0f2fe;
       color: #0369a1;
       border: 1px solid #bae6fd;
+    }
+
+    /* Comparison Status Badges */
+    .badge-sync-ok {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 6px;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 4px;
+      background-color: var(--success-light);
+      color: var(--success);
+      border: 1px solid #a7f3d0;
+    }
+    .badge-sync-diff {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 6px;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 4px;
+      background-color: var(--warning-light);
+      color: var(--warning);
+      border: 1px solid #fde68a;
     }
 
     /* Shift & Capacity Badges */
@@ -539,6 +568,7 @@
       <symbol id="icon-alert-triangle" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></symbol>
       <symbol id="icon-sliders" viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></symbol>
       <symbol id="icon-cpu" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></symbol>
+      <symbol id="icon-external" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></symbol>
     </defs>
   </svg>
 
@@ -557,7 +587,7 @@
   <div class="control-subbar">
     <div class="scenario-controls">
       <label style="font-size: 11.5px; color: #94a3b8; font-weight: 600;">СЦЕНАРИЙ:</label>
-      <select id="scenarioSelector" class="input-control" style="width: 210px; padding: 5px 8px; background:#0f172a; color:#fff; border-color:#334155; font-weight: 600;"></select>
+      <select id="scenarioSelector" class="input-control" style="width: 260px; padding: 5px 8px; background:#0f172a; color:#fff; border-color:#334155; font-weight: 600;"></select>
       <button class="btn btn-dark btn-sm" id="btnSaveScenario" title="Сохранить изменения в браузере">
         <svg class="icon"><use href="#icon-save"></use></svg> Сохранить
       </button>
@@ -573,13 +603,14 @@
       <button class="btn btn-dark btn-sm" id="btnDeleteScenario" title="Удалить сценарий">
         <svg class="icon"><use href="#icon-trash"></use></svg>
       </button>
-      <button class="btn btn-dark btn-sm" id="btnResetData" title="Сброс к исходным данным">
+      <button class="btn btn-dark btn-sm" id="btnResetData" title="Сброс к двум эталонным планам">
         <svg class="icon"><use href="#icon-refresh"></use></svg>
       </button>
     </div>
 
     <div style="display:flex; align-items:center; gap:8px;">
-      <button class="btn btn-level btn-sm" id="btnOpenLevelingModal" title="Автоматически распределить объёмы под фиксированное количество людей">
+      <!-- ЕДИНАЯ КНОПКА: ВЫРАВНЯТЬ ПОД ШТАТ / ОТКАТИТЬ -->
+      <button class="btn btn-level btn-sm" id="btnLevelToggle" title="Автоматически распределить объёмы под фиксированное количество людей">
         <svg class="icon"><use href="#icon-sliders"></use></svg> Выровнять план под штат
       </button>
     </div>
@@ -669,7 +700,7 @@
             </div>
             <div class="method-item">
               <div class="method-item-title">3. Специфика участка (Станочный / Ручной)</div>
-              <div class="method-item-desc"><strong>Станочный</strong> участок при круглосуточной загрузке переводится на <strong>2 смены по 12 ч (график 2/2)</strong>, что экономит время на пересменках. <strong>Ручной</strong> участок (сварка, покраска) переводится на <strong>3 смены по 8 ч</strong>, чтобы избежать брака из-за усталости персонала.</div>
+              <div class="method-item-desc"><strong>Станочный</strong> участок при высокой загрузке переводится на <strong>2 смены по 12 ч (график 2/2)</strong>, что исключает лишние пересменки. <strong>Ручной</strong> участок переводится на <strong>3 смены по 8 ч</strong> для соблюдения эргономики и стабильного качества.</div>
             </div>
           </div>
         </div>
@@ -763,44 +794,46 @@
       <div class="collapsible-box">
         <div class="collapsible-header" id="toggleGuideTab3">
           <div style="font-size: 13.5px; font-weight: 700; color: #1e3a8a; display: flex; align-items: center; gap: 8px;">
-            <svg class="icon"><use href="#icon-info"></use></svg> Справка: Как выбрать правильный метод расчёта нормо-часов (нажмите, чтобы развернуть)
+            <svg class="icon"><use href="#icon-info"></use></svg> Справка: Контекстное сохранение параметров и обоснование норм (нажмите, чтобы развернуть)
           </div>
           <svg class="icon chevron-icon" id="chevronGuideTab3"><use href="#icon-chevron-down"></use></svg>
         </div>
         <div class="collapsible-content" id="contentGuideTab3">
           <div class="method-grid">
             <div class="method-item">
-              <div class="method-item-title">1. Сменно-статистический метод (по факту смены)</div>
-              <div class="method-item-desc">Применяется для устоявшихся серийных процессов, когда известна фактическая сдача продукции бригадой за смену. Вы вводите объём выпуска (Q) и количество людей (N<sub>раб</sub>) — система сама вычитает перерывы и находит среднюю норму трудоёмкости на штуку.</div>
+              <div class="method-item-title">1. Автоматическая память параметров связки «Изделие + Участок»</div>
+              <div class="method-item-desc">Когда вы вносите параметры (хронометраж или статистику смены) и нажимаете <strong>«Перенести в матрицу норм»</strong>, система навсегда привязывает эти значения к связке конкретного изделия и профессии. При повторном выборе этой пары из списков все секунды, минуты и коэффициенты восстановятся автоматически.</div>
             </div>
             <div class="method-item">
-              <div class="method-item-title">2. Поэлементный хронометраж (инженерный расчёт по секундомеру)</div>
-              <div class="method-item-desc">Применяется при запуске новых изделий или технологических операций. Вы замеряете время цикла (T<sub>осн</sub> + T<sub>всп</sub>), указываете состав звена, проценты на обслуживание и отдых, а также время наладки на партию (T<sub>пз</sub>).</div>
+              <div class="method-item-title">2. Индикатор синхронизации с планом</div>
+              <div class="method-item-desc">В строке расчёта отображается текущая норма из матрицы плана и расчёт калькулятора. Если вы меняли параметры, появится предупреждающий статус о необходимости переноса.</div>
             </div>
             <div class="method-item">
-              <div class="method-item-title">3. Кнопка «Перенести в матрицу норм»</div>
-              <div class="method-item-desc">После расчёта нажмите кнопку сохранения — норма автоматически запишется в справочник по выбранному изделию и участку, сразу обновив весь производственный план.</div>
+              <div class="method-item-title">3. Сводный реестр обоснованных норм</div>
+              <div class="method-item-desc">Внизу вкладки формируется детализированный реестр всех зафиксированных технологических расчетов с возможностью мгновенно загрузить любой хронометраж обратно в калькулятор.</div>
             </div>
           </div>
         </div>
       </div>
 
       <div class="grid-2">
+        <!-- БЛОК 1: СМЕННО-СТАТИСТИЧЕСКИЙ МЕТОД -->
         <div class="panel">
           <div class="panel-header">
             <div class="panel-title">
               <svg class="icon"><use href="#icon-calc"></use></svg> 1. Сменно-статистический расчёт нормы
             </div>
+            <span id="normStatSyncBadge" class="badge-sync-ok">Синхронизировано</span>
           </div>
           <div class="panel-body">
             <div class="grid-2">
               <div style="margin-bottom:10px;">
                 <label style="font-size:11.5px; font-weight:600; color:var(--text-muted);">ИЗДЕЛИЕ ИЗ СПРАВОЧНИКА:</label>
-                <select id="normStatProdSelect" class="input-control"></select>
+                <select id="normStatProdSelect" class="input-control" onchange="onNormContextChange('stat')"></select>
               </div>
               <div style="margin-bottom:10px;">
                 <label style="font-size:11.5px; font-weight:600; color:var(--text-muted);">ТЕХНОЛОГИЧЕСКИЙ УЧАСТОК:</label>
-                <select id="normStatProfSelect" class="input-control"></select>
+                <select id="normStatProfSelect" class="input-control" onchange="onNormContextChange('stat')"></select>
               </div>
             </div>
             <div class="grid-3">
@@ -827,10 +860,13 @@
                 <input type="text" id="normStatKEff" class="input-control input-num" value="0.95">
               </div>
             </div>
-            <div style="margin-top: 14px; padding: 12px; background: #f8fafc; border-radius: 6px; border: 1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
+            <div style="margin-top: 14px; padding: 12px; background: #f8fafc; border-radius: 6px; border: 1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
               <div>
-                <span style="font-size: 11.5px; color:var(--text-muted); font-weight:600;">РАСЧЁТНАЯ НОРМА:</span>
-                <div style="font-size: 22px; font-weight: 800; color: var(--accent);" id="normStatResult">0.418 н-ч / ед</div>
+                <span style="font-size: 11px; color:var(--text-muted); font-weight:600;">РАСЧЁТНАЯ НОРМА / В МАТРИЦЕ:</span>
+                <div style="display:flex; align-items:baseline; gap:8px;">
+                  <div style="font-size: 20px; font-weight: 800; color: var(--accent);" id="normStatResult">0.418 н-ч / ед</div>
+                  <div style="font-size: 12px; color: var(--text-muted);" id="normStatMatrixVal">(в матрице: 0.000)</div>
+                </div>
               </div>
               <button class="btn btn-primary btn-sm" id="btnPushStatNormToRouting">
                 <svg class="icon"><use href="#icon-save"></use></svg> Перенести в матрицу норм
@@ -839,21 +875,23 @@
           </div>
         </div>
 
+        <!-- БЛОК 2: ПОЭЛЕМЕНТНЫЙ ХРОНОМЕТРАЖ -->
         <div class="panel">
           <div class="panel-header">
             <div class="panel-title">
               <svg class="icon"><use href="#icon-timer"></use></svg> 2. Поэлементный хронометраж операции
             </div>
+            <span id="normChronoSyncBadge" class="badge-sync-ok">Синхронизировано</span>
           </div>
           <div class="panel-body">
             <div class="grid-2">
               <div style="margin-bottom:10px;">
                 <label style="font-size:11.5px; font-weight:600; color:var(--text-muted);">ИЗДЕЛИЕ ИЗ СПРАВОЧНИКА:</label>
-                <select id="normChronoProdSelect" class="input-control"></select>
+                <select id="normChronoProdSelect" class="input-control" onchange="onNormContextChange('chrono')"></select>
               </div>
               <div style="margin-bottom:10px;">
                 <label style="font-size:11.5px; font-weight:600; color:var(--text-muted);">ТЕХНОЛОГИЧЕСКИЙ УЧАСТОК:</label>
-                <select id="normChronoProfSelect" class="input-control"></select>
+                <select id="normChronoProfSelect" class="input-control" onchange="onNormContextChange('chrono')"></select>
               </div>
             </div>
             <div class="grid-3">
@@ -884,15 +922,46 @@
                 <input type="text" id="normChronoTPz" class="input-control input-num" value="30">
               </div>
             </div>
-            <div style="margin-top: 14px; padding: 12px; background: #f8fafc; border-radius: 6px; border: 1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
+            <div style="margin-top: 14px; padding: 12px; background: #f8fafc; border-radius: 6px; border: 1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
               <div>
-                <span style="font-size: 11.5px; color:var(--text-muted); font-weight:600;">ШТУЧНАЯ НОРМА:</span>
-                <div style="font-size: 22px; font-weight: 800; color: var(--accent);" id="normChronoResult">0.602 н-ч / ед</div>
+                <span style="font-size: 11px; color:var(--text-muted); font-weight:600;">ШТУЧНАЯ НОРМА / В МАТРИЦЕ:</span>
+                <div style="display:flex; align-items:baseline; gap:8px;">
+                  <div style="font-size: 20px; font-weight: 800; color: var(--accent);" id="normChronoResult">0.602 н-ч / ед</div>
+                  <div style="font-size: 12px; color: var(--text-muted);" id="normChronoMatrixVal">(в матрице: 0.000)</div>
+                </div>
               </div>
               <button class="btn btn-primary btn-sm" id="btnPushChronoNormToRouting">
                 <svg class="icon"><use href="#icon-save"></use></svg> Перенести в матрицу норм
               </button>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- СВОРАЧИВАЕМЫЙ РЕЕСТР СОХРАНЕННЫХ НОРМ И ХРОНОМЕТРАЖЕЙ -->
+      <div class="collapsible-box" style="margin-top: 6px;">
+        <div class="collapsible-header" id="toggleSavedNormsRegistry">
+          <div style="font-size: 13.5px; font-weight: 700; color: #1e3a8a; display: flex; align-items: center; gap: 8px;">
+            <svg class="icon"><use href="#icon-dict"></use></svg> Реестр обоснованных технологических норм и хронометражей (<span id="savedNormsCount">0</span> записей)
+          </div>
+          <svg class="icon chevron-icon rotated" id="chevronSavedNorms"><use href="#icon-chevron-down"></use></svg>
+        </div>
+        <div class="collapsible-content expanded" id="contentSavedNorms">
+          <div class="table-container">
+            <table class="data-table" id="savedNormsTable">
+              <thead>
+                <tr>
+                  <th style="min-width: 200px;">Изделие</th>
+                  <th style="min-width: 180px;">Технологический участок</th>
+                  <th style="width: 140px; text-align: center;">Метод</th>
+                  <th>Обоснование / Исходные параметры</th>
+                  <th style="width: 120px; text-align: right;">Норма (н-ч/ед)</th>
+                  <th style="width: 140px; text-align: center;">Дата фиксации</th>
+                  <th style="width: 110px; text-align: center;">Действия</th>
+                </tr>
+              </thead>
+              <tbody id="savedNormsTableBody"></tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -1095,59 +1164,127 @@
       }
     };
 
-    // --- PRELOADED DATASET ---
+    // --- ПРЕДЗАГРУЖЕННЫЕ ЭТАЛОННЫЕ СЦЕНАРИИ (СТРОГО 2 АКТУАЛЬНЫХ ПЛАНА) ---
     const PRELOADED_STATE = {
-      professions: [
-        { id: "p1", name: "Оператор станков и оборудования", machines: 12, crew: 1, type: "machine" },
-        { id: "p2", name: "Подсобный рабочий", machines: 10, crew: 1, type: "manual" },
-        { id: "p3", name: "Оператор гидрорезки", machines: 1, crew: 1, type: "machine" },
-        { id: "p4", name: "Оператор лазерной резки", machines: 1, crew: 1, type: "machine" },
-        { id: "p5", name: "Штамповщик", machines: 2, crew: 1, type: "machine" },
-        { id: "p6", name: "Маляр", machines: 1, crew: 1, type: "manual" },
-        { id: "p7", name: "Сварщик", machines: 4, crew: 1, type: "manual" }
-      ],
-      products: [
-        { id: "pr1", name: "Обработка и сборка Уникор", unit: "м²", scrap: 2, norms: { "p1": 0.621, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0 } },
-        { id: "pr2", name: "Склеивание Уникор", unit: "м²", scrap: 4, norms: { "p1": 0.317, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0 } },
-        { id: "pr3", name: "Брикеты для Уникор", unit: "м²", scrap: 10, norms: { "p1": 0.19, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0 } },
-        { id: "pr4", name: "Уникор сложная (Севастополь)", unit: "м²", scrap: 10, norms: { "p1": 3.18, "p2": 0.347, "p3": 0.05, "p4": 0.25, "p5": 0, "p6": 0.347, "p7": 0.25 } },
-        { id: "pr5", name: "Уникор Керамик", unit: "м²", scrap: 2, norms: { "p1": 1.45, "p2": 0, "p3": 0.2, "p4": 0, "p5": 0, "p6": 0, "p7": 0 } },
-        { id: "pr6", name: "Алюминиевые кассеты", unit: "м²", scrap: 2, norms: { "p1": 0.6, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0 } },
-        { id: "pr7", name: "Сотовые ламели", unit: "м²", scrap: 3, norms: { "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0 } },
-        { id: "pr8", name: "МКП Хардволл", unit: "м²", scrap: 2, norms: { "p1": 0.172, "p2": 0.11, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0 } },
-        { id: "pr9", name: "Металлокерамические зонты", unit: "м²", scrap: 4, norms: { "p1": 0.314, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0 } },
-        { id: "pr10", name: "Фальцевые картины", unit: "м²", scrap: 2, norms: { "p1": 0.04, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0 } },
-        { id: "pr11", name: "Светопрозрачные конструкции", unit: "м²", scrap: 2, norms: { "p1": 1.65, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0 } },
-        { id: "pr12", name: "Фронтон перемаркировка", unit: "м²", scrap: 0, norms: { "p1": 0, "p2": 0.06, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0 } },
-        { id: "pr13", name: "Алюмокомпозит", unit: "м²", scrap: 2, norms: { "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0 } },
-        { id: "pr14", name: "Фальц-опора", unit: "шт", scrap: 2, norms: { "p1": 0.004, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0 } },
-        { id: "pr15", name: "Элементы страховочной системы", unit: "шт", scrap: 2, norms: { "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0 } }
-      ],
-      months: ["09/26", "10/26", "11/26", "12/26", "01/27", "02/27", "03/27", "04/27", "05/27", "06/27", "07/27"],
-      plan: {
-        "pr1": [0, 1465.2, 2965.2, 2965.2, 2965.2, 2965.2, 2965.2, 2965.2, 2965.2, 2965.2, 2965.2],
-        "pr2": [0, 1465.2, 2965.2, 2965.2, 2965.2, 2965.2, 2965.2, 2965.2, 2965.2, 2965.2, 2965.2],
-        "pr3": [0, 1465.2, 2965.2, 2965.2, 2965.2, 2965.2, 2965.2, 2965.2, 2965.2, 2965.2, 2965.2],
-        "pr4": [0, 1206, 1206, 1206, 0, 0, 0, 0, 0, 0, 0],
-        "pr5": [1000, 1900, 400, 400, 400, 400, 0, 0, 0, 0, 0],
-        "pr6": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        "pr7": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        "pr8": [3550, 4193, 7619, 5330, 594, 0, 0, 0, 0, 0, 0],
-        "pr9": [0, 500, 500, 500, 150, 0, 0, 0, 0, 0, 0],
-        "pr10": [0, 0, 3417, 3417, 6834, 0, 0, 0, 0, 0, 0],
-        "pr11": [650, 600, 550, 500, 0, 0, 0, 0, 0, 0, 0],
-        "pr12": [0, 2889, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        "pr13": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        "pr14": [0, 3657, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        "pr15": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-      },
-      settings: { fNom: 168, fEff: 144, kVn: 1.05, auxOtkPercent: 8, auxSetupPercent: 5, auxFixedPosts: 2 }
+      currentScenario: "План 21.08.2026 без Ливадии",
+      scenarios: {
+        "План 21.08.2026 без Ливадии": {
+          "professions": [
+            { "id": "p1", "name": "AluRanger", "type": "machine", "crew": 1, "machines": 3 },
+            { "id": "p2", "name": "Холодная склейка", "machines": 1, "crew": 5, "type": "machine" },
+            { "id": "p3", "name": "Брикеты", "type": "machine", "crew": 3 },
+            { "id": "p4", "name": "Горячая склейка", "type": "machine", "crew": 6 },
+            { "id": "p5", "name": "Участок обработки алюминия", "crew": 6, "type": "machine" },
+            { "id": "p6", "name": "Сборочный пост", "machines": 4, "crew": 4 },
+            { "id": "p7", "name": "Подсобный рабочий", "machines": 2, "crew": 4 },
+            { "id": "p1787298927652", "name": "Ламинатор", "machines": 1, "crew": 5, "type": "machine" },
+            { "id": "p1787298939301", "name": "Гидрорезка", "machines": 1, "crew": 1, "type": "machine" },
+            { "id": "p1787298947495", "name": "Лазерная резка", "machines": 1, "crew": 1, "type": "machine" },
+            { "id": "p1787298952912", "name": "Штамповка", "machines": 1, "crew": 1, "type": "manual" },
+            { "id": "p1787298961438", "name": "Покраска", "machines": 1, "crew": 1, "type": "manual" },
+            { "id": "p1787298966902", "name": "Сварочный пост", "machines": 2, "crew": 1, "type": "manual" },
+            { "id": "p1787298978055", "name": "Ролльформер", "machines": 1, "crew": 4, "type": "machine" }
+          ],
+          "products": [
+            { "id": "pr1", "name": "Обработка и сборка Уникор", "unit": "м²", "scrap": 2, "norms": { "p1": 0.186, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0.372, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
+            { "id": "pr2", "name": "Склеивание Уникор", "unit": "м²", "scrap": 2, "norms": { "p1": 0, "p2": 0.399, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
+            { "id": "pr3", "name": "Сотовые брикеты", "unit": "м²", "scrap": 10, "norms": { "p1": 0, "p2": 0, "p3": 0.289, "p4": 0, "p5": 0, "p6": 0, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
+            { "id": "pr4", "name": "Уникор сложная (Севастополь)", "unit": "м²", "scrap": 10, "norms": { "p1": 0.215, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 1.938, "p7": 0.269, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0.269, "p1787298952912": 0, "p1787298961438": 0.269, "p1787298966902": 0.269, "p1787298978055": 0 } },
+            { "id": "pr5", "name": "Уникор Керамик", "unit": "м²", "scrap": 2, "norms": { "p1": 0, "p2": 1.196, "p3": 0, "p4": 0, "p5": 0, "p6": 0.239, "p7": 0, "p1787298927652": 0, "p1787298939301": 0.12, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
+            { "id": "pr6", "name": "Алюминиевые кассеты", "unit": "м²", "scrap": 2, "norms": { "p1": 0.108, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0.215, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
+            { "id": "pr7", "name": "Сотовые ламели", "unit": "м²", "scrap": 2, "norms": { "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0.054, "p6": 1.5, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0.054, "p1787298966902": 0, "p1787298978055": 0 } },
+            { "id": "pr8", "name": "МКП Хардволл", "unit": "м²", "scrap": 2, "norms": { "p1": 0, "p2": 0, "p3": 0, "p4": 0.174, "p5": 0, "p6": 0, "p7": 0.174, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0.007, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
+            { "id": "pr9", "name": "Металлокерамические зонты", "unit": "м²", "scrap": 4, "norms": { "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0, "p1787298927652": 0.359, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
+            { "id": "pr10", "name": "Фальцевые картины", "unit": "м²", "scrap": 2, "norms": { "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0.036 } },
+            { "id": "pr11", "name": "Светопрозрачные конструкции", "unit": "м²", "scrap": 2, "norms": { "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 1.175, "p6": 0, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
+            { "id": "pr12", "name": "Фронтон перемаркировка", "unit": "м²", "scrap": 0, "norms": { "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0.06, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
+            { "id": "pr13", "name": "Алюмокомпозит", "unit": "м²", "scrap": 2, "norms": { "p1": 0.108, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0.215, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
+            { "id": "pr14", "name": "Фальц-опора + УЗЭ", "unit": "шт", "scrap": 2, "norms": { "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0.007, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
+            { "id": "pr15", "name": "Пластина снегозадержания", "unit": "шт", "scrap": 2, "norms": { "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0.013, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0.006, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } }
+          ],
+          "months": ["08/26","09/26","10/26","11/26","12/26","01/27","02/27","03/27","04/27","05/27","06/27","07/27","08/27","09/27","10/27","11/27","12/27"],
+          "plan": {
+            "pr1": [1917,1300,2992,5377,5378,5378,5378,1628,1628,2162,2162,783,250,3825,3825,3825,3825],
+            "pr2": [0,0,1627,5377,5378,5378,5378,1628,1628,2162,2162,783,250,3825,3825,3825,3825],
+            "pr3": [0,0,2127,6377,6212,6212,6212,1628,1628,2162,2162,783,250,3825,3825,3825,3825],
+            "pr4": [0,809,1000,1809,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            "pr5": [0,0,500,1000,833,833,833,0,0,0,0,0,0,0,0,0,0],
+            "pr6": [0,0,0,0,0,0,0,0,0,0,0,0,0,2125,2125,2125,2125],
+            "pr7": [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            "pr8": [584,263,4119,5424,3330,0,0,0,0,0,0,0,0,0,0,0,0],
+            "pr9": [0,500,500,500,150,300,300,150,280,300,370,300,70,0,0,0,0],
+            "pr10": [3311,0,0,0,4717,10167,10167,10167,10167,10167,10500,3750,11254,11254,7504,7504,0],
+            "pr11": [500,600,550,650,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            "pr12": [0,2889,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            "pr13": [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            "pr14": [4865,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            "pr15": [314,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+          },
+          "settings": { "fNom": 168, "fEff": 144, "kVn": 1.05, "auxOtkPercent": 8, "auxSetupPercent": 5, "auxFixedPosts": 2 },
+          "normConfigs": {}
+        },
+        "План 21.08.2026": {
+          "professions": [
+            { "id": "p1", "name": "AluRanger", "type": "machine", "crew": 3, "machines": 3 },
+            { "id": "p2", "name": "Холодная склейка", "machines": 1, "crew": 5, "type": "machine" },
+            { "id": "p3", "name": "Брикеты", "type": "machine", "crew": 3 },
+            { "id": "p4", "name": "Горячая склейка", "type": "machine", "crew": 6 },
+            { "id": "p5", "name": "Участок обработки алюминия", "crew": 6, "type": "machine" },
+            { "id": "p6", "name": "Сборочный пост", "machines": 4, "crew": 3 },
+            { "id": "p7", "name": "Подсобный рабочий", "machines": 2, "crew": 4 },
+            { "id": "p1787298927652", "name": "Ламинатор", "machines": 1, "crew": 5, "type": "machine" },
+            { "id": "p1787298939301", "name": "Гидрорезка", "machines": 1, "crew": 1, "type": "machine" },
+            { "id": "p1787298947495", "name": "Лазерная резка", "machines": 1, "crew": 1, "type": "machine" },
+            { "id": "p1787298952912", "name": "Штамповка", "machines": 1, "crew": 1, "type": "manual" },
+            { "id": "p1787298961438", "name": "Покраска", "machines": 1, "crew": 1, "type": "manual" },
+            { "id": "p1787298966902", "name": "Сварочный пост", "machines": 2, "crew": 1, "type": "manual" },
+            { "id": "p1787298978055", "name": "Ролльформер", "machines": 1, "crew": 4, "type": "machine" }
+          ],
+          "products": [
+            { "id": "pr1", "name": "Обработка и сборка Уникор", "unit": "м²", "scrap": 2, "norms": { "p1": 1.615, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0.372, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
+            { "id": "pr2", "name": "Склеивание Уникор", "unit": "м²", "scrap": 2, "norms": { "p1": 0, "p2": 0.399, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
+            { "id": "pr3", "name": "Сотовые брикеты", "unit": "м²", "scrap": 10, "norms": { "p1": 0, "p2": 0, "p3": 0.289, "p4": 0, "p5": 0, "p6": 0, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
+            { "id": "pr4", "name": "Уникор сложная (Севастополь)", "unit": "м²", "scrap": 10, "norms": { "p1": 0.215, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 1.938, "p7": 0.269, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0.269, "p1787298952912": 0, "p1787298961438": 0.269, "p1787298966902": 0.269, "p1787298978055": 0 } },
+            { "id": "pr5", "name": "Уникор Керамик", "unit": "м²", "scrap": 2, "norms": { "p1": 0, "p2": 1.196, "p3": 0, "p4": 0, "p5": 0, "p6": 0.239, "p7": 0, "p1787298927652": 0, "p1787298939301": 0.12, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
+            { "id": "pr6", "name": "Алюминиевые кассеты", "unit": "м²", "scrap": 2, "norms": { "p1": 0.108, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0.215, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
+            { "id": "pr7", "name": "Сотовые ламели", "unit": "м²", "scrap": 2, "norms": { "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0.054, "p6": 2.153, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0.054, "p1787298966902": 0, "p1787298978055": 0 } },
+            { "id": "pr8", "name": "МКП Хардволл", "unit": "м²", "scrap": 2, "norms": { "p1": 0, "p2": 0, "p3": 0, "p4": 0.174, "p5": 0, "p6": 0, "p7": 0.174, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0.007, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
+            { "id": "pr9", "name": "Металлокерамические зонты", "unit": "м²", "scrap": 4, "norms": { "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0, "p1787298927652": 0.359, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
+            { "id": "pr10", "name": "Фальцевые картины", "unit": "м²", "scrap": 2, "norms": { "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0.036 } },
+            { "id": "pr11", "name": "Светопрозрачные конструкции", "unit": "м²", "scrap": 2, "norms": { "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 1.175, "p6": 0, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
+            { "id": "pr12", "name": "Фронтон перемаркировка", "unit": "м²", "scrap": 0, "norms": { "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0.06, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
+            { "id": "pr13", "name": "Алюмокомпозит", "unit": "м²", "scrap": 2, "norms": { "p1": 0.108, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0.215, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
+            { "id": "pr14", "name": "Фальц-опора + УЗЭ", "unit": "шт", "scrap": 2, "norms": { "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0.007, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
+            { "id": "pr15", "name": "Пластина снегозадержания", "unit": "шт", "scrap": 2, "norms": { "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0.013, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0.006, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } }
+          ],
+          "months": ["08/26","09/26","10/26","11/26","12/26","01/27","02/27","03/27","04/27","05/27","06/27","07/27","08/27","09/27","10/27","11/27","12/27"],
+          "plan": {
+            "pr1": [1917,1300,2992,5377,5378,5378,5378,1628,1628,2162,2162,783,250,3825,3825,3825,3825],
+            "pr2": [0,0,1627,5377,5378,5378,5378,1628,1628,2162,2162,783,250,3825,3825,3825,3825],
+            "pr3": [0,0,2127,6377,6212,6212,6212,1628,1628,2162,2162,783,250,3825,3825,3825,3825],
+            "pr4": [0,809,1000,1809,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            "pr5": [0,0,500,1000,833,833,833,0,0,0,0,0,0,0,0,0,0],
+            "pr6": [0,0,0,0,0,0,0,0,0,0,0,0,0,2125,2125,2125,2125],
+            "pr7": [0,388,388,388,388,0,0,0,0,0,0,0,0,0,0,0,0],
+            "pr8": [584,263,4119,5424,3330,0,0,0,0,0,0,0,0,0,0,0,0],
+            "pr9": [0,500,500,500,150,300,300,150,280,300,370,300,70,0,0,0,0],
+            "pr10": [3311,0,0,0,4717,10167,10167,10167,10167,10167,10500,3750,11254,11254,7504,7504,0],
+            "pr11": [500,2513,2463,2563,1913,0,0,0,0,0,0,0,0,0,0,0,0],
+            "pr12": [0,2889,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            "pr13": [0,4750,4750,4750,4750,0,0,0,0,0,0,0,0,0,0,0,0],
+            "pr14": [4865,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            "pr15": [314,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+          },
+          "settings": { "fNom": 168, "fEff": 144, "kVn": 1.05, "auxOtkPercent": 8, "auxSetupPercent": 5, "auxFixedPosts": 2 },
+          "normConfigs": {}
+        }
+      }
     };
 
-    const STORAGE_KEY = "prod_workforce_master_v13";
+    const STORAGE_KEY = "prod_workforce_master_v15";
 
     let state = {
-      currentScenario: "На основе ERP",
+      currentScenario: "План 21.08.2026 без Ливадии",
       scenarios: {}
     };
 
@@ -1162,17 +1299,23 @@
       } else {
         loadDefaultScenario();
       }
+
+      // Гарантируем структуру normConfigs
+      Object.keys(state.scenarios).forEach(scKey => {
+        if (!state.scenarios[scKey].normConfigs) state.scenarios[scKey].normConfigs = {};
+      });
+
       renderScenarioSelector();
+      updateLevelToggleButton();
       populateNormSelects();
+      loadNormContextValues('stat');
+      loadNormContextValues('chrono');
       renderAll();
       attachEvents();
     }
 
     function loadDefaultScenario() {
-      state.currentScenario = "На основе ERP";
-      state.scenarios = {
-        "На основе ERP": JSON.parse(JSON.stringify(PRELOADED_STATE))
-      };
+      state = JSON.parse(JSON.stringify(PRELOADED_STATE));
       saveToStorage();
     }
 
@@ -1182,6 +1325,22 @@
 
     function getActiveData() {
       return state.scenarios[state.currentScenario];
+    }
+
+    // --- Управление единой кнопкой Выравнивания / Отката ---
+    function updateLevelToggleButton() {
+      const btn = document.getElementById("btnLevelToggle");
+      if (!btn) return;
+      const data = getActiveData();
+      if (data && data._planSnapshot) {
+        btn.className = "btn btn-warning btn-sm";
+        btn.innerHTML = `<svg class="icon"><use href="#icon-refresh"></use></svg> ↩ Откатить к исходному плану`;
+        btn.title = "Вернуть объёмы плана к состоянию до автоматического выравнивания";
+      } else {
+        btn.className = "btn btn-level btn-sm";
+        btn.innerHTML = `<svg class="icon"><use href="#icon-sliders"></use></svg> Выровнять план под штат`;
+        btn.title = "Автоматически распределить объёмы под фиксированное количество людей";
+      }
     }
 
     // --- Tab Switching ---
@@ -1197,8 +1356,9 @@
           if (target === "tab-analytics") renderAnalytics();
           if (target === "tab-norming") {
             populateNormSelects();
-            calculateStatNorm();
-            calculateChronoNorm();
+            loadNormContextValues('stat');
+            loadNormContextValues('chrono');
+            renderSavedNormsRegistry();
           }
         });
       });
@@ -1277,6 +1437,8 @@
       populateNormSelects();
       renderAnalytics();
       renderMethodologyCards();
+      renderSavedNormsRegistry();
+      updateLevelToggleButton();
     }
 
     function renderKPIs() {
@@ -1364,7 +1526,7 @@
       document.getElementById("inputAuxSetup").value = data.settings.auxSetupPercent;
       document.getElementById("inputAuxFixed").value = data.settings.auxFixedPosts;
 
-      // Professions Table with Machines count, Crew size and Type
+      // Таблица профессий
       const profTbody = document.getElementById("professionsTableBody");
       profTbody.innerHTML = "";
       data.professions.forEach((prof, idx) => {
@@ -1401,7 +1563,7 @@
         profTbody.appendChild(tr);
       });
 
-      // Products Routing Table
+      // Таблица изделий и маршрутов
       const prodHeader = document.getElementById("productsTableHeader");
       prodHeader.innerHTML = `
         <th class="col-drag"></th>
@@ -1578,7 +1740,6 @@
       const data = getActiveData();
       const calc = calculate();
 
-      // 1. Bullet summary
       const summaryList = document.getElementById("summaryBulletPoints");
       summaryList.innerHTML = "";
 
@@ -1613,10 +1774,8 @@
         summaryList.appendChild(li);
       });
 
-      // 2. Shift Balancing & Schedule Recommendations Table
       renderShiftScheduleTable(calc, data);
 
-      // 3. Master Results Table
       const resultsThead = document.getElementById("resultsTableHeader");
       resultsThead.innerHTML = `
         <th class="col-sticky-name" style="min-width: 250px;">Показатель / Профессия</th>
@@ -1827,7 +1986,7 @@
         return hrs;
       }
 
-      // Pass 1: Forward distribution of excess volume to future months with available capacity
+      // Pass 1: Forward distribution
       for (let m = 0; m < numMonths - 1; m++) {
         let currentLabor = getMonthLabor(m);
         if (currentLabor > maxMonthlyHours) {
@@ -1854,7 +2013,7 @@
         }
       }
 
-      // Pass 2: Backward distribution for any trailing excess
+      // Pass 2: Backward distribution
       for (let m = numMonths - 1; m >= 1; m--) {
         let currentLabor = getMonthLabor(m);
         if (currentLabor > maxMonthlyHours) {
@@ -1887,34 +2046,92 @@
         Производственная программа успешно перераспределена под целевой штат <strong>${targetHeadcount} чел.</strong><br><br>
         • Допустимая ёмкость месяца: <strong>${Math.round(maxMonthlyHours).toLocaleString()} н-ч</strong><br>
         • Перераспределено объёмов: <strong>${Math.round(totalShiftedHours).toLocaleString()} н-ч</strong><br><br>
-        Все пики сглажены и равномерно распределены по периодам программы.
+        Все пики сглажены. Кнопка вверху переключена на «Откатить к исходному плану».
       `);
     }
 
-    // --- Tab 3 Norming Engine ---
+    // --- TAB 3: МОДУЛЬ НОРМИРОВАНИЯ С ПРИВЯЗКОЙ КОНТЕКСТА К СВЯЗКЕ «ИЗДЕЛИЕ + УЧАСТОК» ---
     function populateNormSelects() {
       const data = getActiveData();
       
-      const prodSelect1 = document.getElementById("normStatProdSelect");
-      const prodSelect2 = document.getElementById("normChronoProdSelect");
-      if (prodSelect1 && prodSelect2) {
-        prodSelect1.innerHTML = ""; prodSelect2.innerHTML = "";
-        data.products.forEach(p => {
-          const opt1 = document.createElement("option"); opt1.value = p.id; opt1.textContent = `${p.name} (${p.unit || 'м²'})`;
-          const opt2 = document.createElement("option"); opt2.value = p.id; opt2.textContent = `${p.name} (${p.unit || 'м²'})`;
-          prodSelect1.appendChild(opt1); prodSelect2.appendChild(opt2);
-        });
-      }
+      const pairs = [
+        { prod: "normStatProdSelect", prof: "normStatProfSelect" },
+        { prod: "normChronoProdSelect", prof: "normChronoProfSelect" }
+      ];
 
-      const profSelect1 = document.getElementById("normStatProfSelect");
-      const profSelect2 = document.getElementById("normChronoProfSelect");
-      if (profSelect1 && profSelect2) {
-        profSelect1.innerHTML = ""; profSelect2.innerHTML = "";
-        data.professions.forEach(p => {
-          const opt1 = document.createElement("option"); opt1.value = p.id; opt1.textContent = p.name;
-          const opt2 = document.createElement("option"); opt2.value = p.id; opt2.textContent = p.name;
-          profSelect1.appendChild(opt1); profSelect2.appendChild(opt2);
-        });
+      pairs.forEach(pair => {
+        const prodEl = document.getElementById(pair.prod);
+        const profEl = document.getElementById(pair.prof);
+
+        if (prodEl) {
+          const currentVal = prodEl.value;
+          prodEl.innerHTML = "";
+          data.products.forEach(p => {
+            const opt = document.createElement("option");
+            opt.value = p.id;
+            opt.textContent = `${p.name} (${p.unit || 'м²'})`;
+            if (p.id === currentVal) opt.selected = true;
+            prodEl.appendChild(opt);
+          });
+          if (!prodEl.value && data.products.length > 0) {
+            prodEl.value = data.products[0].id;
+          }
+        }
+
+        if (profEl) {
+          const currentVal = profEl.value;
+          profEl.innerHTML = "";
+          data.professions.forEach(p => {
+            const opt = document.createElement("option");
+            opt.value = p.id;
+            opt.textContent = p.name;
+            if (p.id === currentVal) opt.selected = true;
+            profEl.appendChild(opt);
+          });
+          if (!profEl.value && data.professions.length > 0) {
+            profEl.value = data.professions[0].id;
+          }
+        }
+      });
+    }
+
+    function onNormContextChange(type) {
+      loadNormContextValues(type);
+    }
+
+    function loadNormContextValues(type) {
+      const data = getActiveData();
+      if (!data.normConfigs) data.normConfigs = {};
+
+      if (type === 'stat') {
+        const pId = document.getElementById("normStatProdSelect").value;
+        const profId = document.getElementById("normStatProfSelect").value;
+        const key = `${pId}___${profId}`;
+        const config = data.normConfigs[key];
+
+        if (config && config.stat) {
+          document.getElementById("normStatOutput").value = config.stat.output !== undefined ? config.stat.output : 50;
+          document.getElementById("normStatWorkers").value = config.stat.workers !== undefined ? config.stat.workers : 3;
+          document.getElementById("normStatShiftHours").value = config.stat.shiftHours !== undefined ? config.stat.shiftHours : 8.0;
+          document.getElementById("normStatBreaks").value = config.stat.breaks !== undefined ? config.stat.breaks : 40;
+          document.getElementById("normStatKEff").value = config.stat.kEff !== undefined ? config.stat.kEff : 0.95;
+        }
+        calculateStatNorm();
+      } else if (type === 'chrono') {
+        const pId = document.getElementById("normChronoProdSelect").value;
+        const profId = document.getElementById("normChronoProfSelect").value;
+        const key = `${pId}___${profId}`;
+        const config = data.normConfigs[key];
+
+        if (config && config.chrono) {
+          document.getElementById("normChronoTOsn").value = config.chrono.tOsn !== undefined ? config.chrono.tOsn : 12.0;
+          document.getElementById("normChronoTVsp").value = config.chrono.tVsp !== undefined ? config.chrono.tVsp : 4.0;
+          document.getElementById("normChronoCrew").value = config.chrono.crew !== undefined ? config.chrono.crew : 2;
+          document.getElementById("normChronoKObs").value = config.chrono.kObs !== undefined ? config.chrono.kObs : 5;
+          document.getElementById("normChronoKOtl").value = config.chrono.kOtl !== undefined ? config.chrono.kOtl : 6;
+          document.getElementById("normChronoTPz").value = config.chrono.tPz !== undefined ? config.chrono.tPz : 30;
+        }
+        calculateChronoNorm();
       }
     }
 
@@ -1929,6 +2146,24 @@
       const totalLabor = w * netHours * kEff;
       const norm = totalLabor / q;
       document.getElementById("normStatResult").textContent = norm.toFixed(3) + " н-ч / ед";
+
+      // Сверка с матрицей
+      const data = getActiveData();
+      const pId = document.getElementById("normStatProdSelect").value;
+      const profId = document.getElementById("normStatProfSelect").value;
+      const prod = data.products.find(p => p.id === pId);
+      const matrixVal = prod && prod.norms && prod.norms[profId] !== undefined ? parseNum(prod.norms[profId]) : 0;
+
+      document.getElementById("normStatMatrixVal").textContent = `(в матрице: ${matrixVal.toFixed(3)})`;
+      const badge = document.getElementById("normStatSyncBadge");
+      if (Math.abs(matrixVal - norm) < 0.001) {
+        badge.className = "badge-sync-ok";
+        badge.textContent = "Синхронизировано";
+      } else {
+        badge.className = "badge-sync-diff";
+        badge.textContent = "Требуется перенос";
+      }
+
       return norm;
     }
 
@@ -1944,7 +2179,101 @@
       const pieceCycle = (tOp * (1 + (kObs + kOtl)/100)) + (tPz / 50);
       const norm = (pieceCycle * crew) / 60;
       document.getElementById("normChronoResult").textContent = norm.toFixed(3) + " н-ч / ед";
+
+      // Сверка с матрицей
+      const data = getActiveData();
+      const pId = document.getElementById("normChronoProdSelect").value;
+      const profId = document.getElementById("normChronoProfSelect").value;
+      const prod = data.products.find(p => p.id === pId);
+      const matrixVal = prod && prod.norms && prod.norms[profId] !== undefined ? parseNum(prod.norms[profId]) : 0;
+
+      document.getElementById("normChronoMatrixVal").textContent = `(в матрице: ${matrixVal.toFixed(3)})`;
+      const badge = document.getElementById("normChronoSyncBadge");
+      if (Math.abs(matrixVal - norm) < 0.001) {
+        badge.className = "badge-sync-ok";
+        badge.textContent = "Синхронизировано";
+      } else {
+        badge.className = "badge-sync-diff";
+        badge.textContent = "Требуется перенос";
+      }
+
       return norm;
+    }
+
+    // --- РЕНДЕР РЕЕСТРА СОХРАНЕННЫХ НОРМ ---
+    function renderSavedNormsRegistry() {
+      const data = getActiveData();
+      if (!data.normConfigs) data.normConfigs = {};
+
+      const tbody = document.getElementById("savedNormsTableBody");
+      const countEl = document.getElementById("savedNormsCount");
+      if (!tbody) return;
+
+      const keys = Object.keys(data.normConfigs);
+      countEl.textContent = keys.length;
+
+      if (keys.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:16px;">В реестре пока нет зафиксированных технологических расчетов. Рассчитайте норму и нажмите «Перенести в матрицу норм».</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = keys.map(key => {
+        const item = data.normConfigs[key];
+        const prod = data.products.find(p => p.id === item.prodId) || { name: item.prodName || item.prodId, unit: "м²" };
+        const prof = data.professions.find(pr => pr.id === item.profId) || { name: item.profName || item.profId };
+
+        let methodBadge = item.method === 'chrono' 
+          ? `<span class="badge-shift-12" style="font-size:11px;">Хронометраж</span>` 
+          : `<span class="badge-shift-2" style="font-size:11px;">Статистика смены</span>`;
+
+        let paramDesc = "";
+        if (item.method === 'chrono' && item.chrono) {
+          paramDesc = `T<sub>осн</sub>=${item.chrono.tOsn}м, T<sub>всп</sub>=${item.chrono.tVsp}м, Звено=${item.chrono.crew} чел, ПЗ=${item.chrono.tPz}м (обсл: ${item.chrono.kObs}%, отд: ${item.chrono.kOtl}%)`;
+        } else if (item.stat) {
+          paramDesc = `Q=${item.stat.output} ${prod.unit || 'ед'}, N<sub>раб</sub>=${item.stat.workers} чел, Смена=${item.stat.shiftHours}ч, Перерывы=${item.stat.breaks}м, K<sub>эф</sub>=${item.stat.kEff}`;
+        }
+
+        return `
+          <tr>
+            <td><strong>${prod.name}</strong> <span class="badge-unit">${prod.unit || 'м²'}</span></td>
+            <td>${prof.name}</td>
+            <td style="text-align:center;">${methodBadge}</td>
+            <td style="font-size:12px; color:var(--text-secondary);">${paramDesc}</td>
+            <td style="text-align:right; font-weight:700; color:var(--accent);">${item.norm.toFixed(3)}</td>
+            <td style="text-align:center; font-size:11.5px; color:var(--text-muted);">${item.updatedAt || '—'}</td>
+            <td style="text-align:center;">
+              <button class="btn btn-secondary btn-sm" onclick="loadConfigIntoCalculator('${item.prodId}', '${item.profId}', '${item.method}')" title="Загрузить параметры в калькулятор">
+                <svg class="icon"><use href="#icon-external"></use></svg>
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="deleteNormConfig('${key}')" title="Удалить обоснование">
+                <svg class="icon"><use href="#icon-trash"></use></svg>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    function loadConfigIntoCalculator(prodId, profId, method) {
+      if (method === 'stat') {
+        document.getElementById("normStatProdSelect").value = prodId;
+        document.getElementById("normStatProfSelect").value = profId;
+        loadNormContextValues('stat');
+      } else {
+        document.getElementById("normChronoProdSelect").value = prodId;
+        document.getElementById("normChronoProfSelect").value = profId;
+        loadNormContextValues('chrono');
+      }
+      modalSystem.alert("Загружено", "Параметры успешно восстановлены в окне калькулятора!");
+    }
+
+    function deleteNormConfig(key) {
+      const data = getActiveData();
+      modalSystem.confirm("Удаление обоснования", "Удалить запись из реестра технологических расчетов?", () => {
+        delete data.normConfigs[key];
+        saveToStorage();
+        renderSavedNormsRegistry();
+      });
     }
 
     function renderScenarioSelector() {
@@ -1965,7 +2294,8 @@
       const toggles = [
         { btn: "toggleMethodologyBtn", content: "methodologyContent", chevron: "methodChevron" },
         { btn: "toggleGuideTab2", content: "contentGuideTab2", chevron: "chevronGuideTab2" },
-        { btn: "toggleGuideTab3", content: "contentGuideTab3", chevron: "chevronGuideTab3" }
+        { btn: "toggleGuideTab3", content: "contentGuideTab3", chevron: "chevronGuideTab3" },
+        { btn: "toggleSavedNormsRegistry", content: "contentSavedNorms", chevron: "chevronSavedNorms" }
       ];
 
       toggles.forEach(t => {
@@ -1982,6 +2312,8 @@
         state.currentScenario = e.target.value;
         saveToStorage();
         populateNormSelects();
+        loadNormContextValues('stat');
+        loadNormContextValues('chrono');
         renderAll();
       });
 
@@ -2019,20 +2351,36 @@
         });
       });
 
-      // Level Loading Modal Trigger with dynamic recommended headcount
-      document.getElementById("btnOpenLevelingModal").addEventListener("click", () => {
-        const rec = getRecommendedHeadcount();
-        modalSystem.prompt(
-          "Выравнивание плана под штат",
-          `Для равномерного выполнения всей программы без дефицита рекомендуемый штат: <strong>${rec} чел.</strong><br><br>Укажите целевую численность персонала цеха (чел.):`,
-          String(rec),
-          (targetVal) => {
-            const headcount = parseInt(targetVal);
-            if (headcount > 0) {
-              executeLevelLoading(headcount);
+      // ЕДИНАЯ КНОПКА: ВЫРАВНИВАНИЕ / ОТКАТ К ИСХОДНОМУ ПЛАНУ
+      document.getElementById("btnLevelToggle").addEventListener("click", () => {
+        const data = getActiveData();
+        if (data._planSnapshot) {
+          // Действие: Откатить
+          modalSystem.confirm("Откат плана", "Вернуть производственный план к исходным объемам до выравнивания?", () => {
+            data.plan = JSON.parse(JSON.stringify(data._planSnapshot));
+            delete data._planSnapshot;
+            saveToStorage();
+            updateLevelToggleButton();
+            renderAll();
+            modalSystem.alert("Откат выполнен", "Производственный план возвращён к исходным значениям.");
+          });
+        } else {
+          // Действие: Выровнять под штат
+          const rec = getRecommendedHeadcount();
+          modalSystem.prompt(
+            "Выравнивание плана под штат",
+            `Для равномерного выполнения всей программы без дефицита рекомендуемый штат: <strong>${rec} чел.</strong><br><br>Укажите целевую численность персонала цеха (чел.):`,
+            String(rec),
+            (targetVal) => {
+              const headcount = parseInt(targetVal);
+              if (headcount > 0) {
+                data._planSnapshot = JSON.parse(JSON.stringify(data.plan));
+                executeLevelLoading(headcount);
+                updateLevelToggleButton();
+              }
             }
-          }
-        );
+          );
+        }
       });
 
       document.getElementById("btnExportJson").addEventListener("click", () => {
@@ -2057,9 +2405,14 @@
             const imported = JSON.parse(event.target.result);
             if (imported.scenarios && imported.currentScenario) {
               state = imported;
+              Object.keys(state.scenarios).forEach(k => {
+                if (!state.scenarios[k].normConfigs) state.scenarios[k].normConfigs = {};
+              });
               saveToStorage();
               renderScenarioSelector();
               populateNormSelects();
+              loadNormContextValues('stat');
+              loadNormContextValues('chrono');
               renderAll();
               modalSystem.alert("Успешно", "Данные производственной программы загружены из файла!");
             } else {
@@ -2103,6 +2456,7 @@
         link.click();
       });
 
+      // Перенос норм с фиксацией в реестре normConfigs
       document.getElementById("btnPushStatNormToRouting").addEventListener("click", () => {
         const norm = calculateStatNorm();
         const prodId = document.getElementById("normStatProdSelect").value;
@@ -2110,11 +2464,35 @@
         const data = getActiveData();
         const product = data.products.find(p => p.id === prodId);
         const prof = data.professions.find(p => p.id === profId);
+
         if (product && prof) {
           product.norms[profId] = parseFloat(norm.toFixed(3));
+          if (!data.normConfigs) data.normConfigs = {};
+
+          const key = `${prodId}___${profId}`;
+          data.normConfigs[key] = {
+            prodId, profId,
+            prodName: product.name, profName: prof.name,
+            method: "stat",
+            stat: {
+              output: parseNum(document.getElementById("normStatOutput").value),
+              workers: parseNum(document.getElementById("normStatWorkers").value),
+              shiftHours: parseNum(document.getElementById("normStatShiftHours").value),
+              breaks: parseNum(document.getElementById("normStatBreaks").value),
+              kEff: parseNum(document.getElementById("normStatKEff").value)
+            },
+            norm: parseFloat(norm.toFixed(3)),
+            updatedAt: new Date().toLocaleString("ru-RU", { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+          };
+
           saveToStorage();
-          renderAll();
-          modalSystem.alert("Норма обновлена", `Норма <strong>${norm.toFixed(3)} н-ч</strong> для изделия «${product.name}» успешно записана в матрицу.`);
+          renderPlanTable();
+          renderDictionaries();
+          renderKPIs();
+          renderAnalytics();
+          renderSavedNormsRegistry();
+          calculateStatNorm();
+          modalSystem.alert("Норма сохранена", `Норма <strong>${norm.toFixed(3)} н-ч</strong> для «${product.name}» (участок: ${prof.name}) записана в матрицу норм и зафиксирована в реестре.`);
         }
       });
 
@@ -2125,11 +2503,36 @@
         const data = getActiveData();
         const product = data.products.find(p => p.id === prodId);
         const prof = data.professions.find(p => p.id === profId);
+
         if (product && prof) {
           product.norms[profId] = parseFloat(norm.toFixed(3));
+          if (!data.normConfigs) data.normConfigs = {};
+
+          const key = `${prodId}___${profId}`;
+          data.normConfigs[key] = {
+            prodId, profId,
+            prodName: product.name, profName: prof.name,
+            method: "chrono",
+            chrono: {
+              tOsn: parseNum(document.getElementById("normChronoTOsn").value),
+              tVsp: parseNum(document.getElementById("normChronoTVsp").value),
+              crew: parseNum(document.getElementById("normChronoCrew").value),
+              kObs: parseNum(document.getElementById("normChronoKObs").value),
+              kOtl: parseNum(document.getElementById("normChronoKOtl").value),
+              tPz: parseNum(document.getElementById("normChronoTPz").value)
+            },
+            norm: parseFloat(norm.toFixed(3)),
+            updatedAt: new Date().toLocaleString("ru-RU", { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+          };
+
           saveToStorage();
-          renderAll();
-          modalSystem.alert("Норма обновлена", `Норма <strong>${norm.toFixed(3)} н-ч</strong> для изделия «${product.name}» успешно записана в матрицу.`);
+          renderPlanTable();
+          renderDictionaries();
+          renderKPIs();
+          renderAnalytics();
+          renderSavedNormsRegistry();
+          calculateChronoNorm();
+          modalSystem.alert("Норма сохранена", `Норма <strong>${norm.toFixed(3)} н-ч</strong> для «${product.name}» (участок: ${prof.name}) записана в матрицу норм и зафиксирована в реестре.`);
         }
       });
 
@@ -2374,11 +2777,15 @@
 
       // Reset Scenario Handler
       document.getElementById("btnResetData").addEventListener("click", () => {
-        modalSystem.confirm("Сброс данных", "Сбросить текущий сценарий к базовым демонстрационным данным?", () => {
-          state.scenarios[state.currentScenario] = JSON.parse(JSON.stringify(PRELOADED_STATE));
-          saveToStorage();
+        modalSystem.confirm("Сброс данных", "Сбросить данные к двум эталонным планам от 21.08.2026 (с Ливадией и без Ливадии)?", () => {
+          loadDefaultScenario();
+          renderScenarioSelector();
+          updateLevelToggleButton();
           populateNormSelects();
+          loadNormContextValues('stat');
+          loadNormContextValues('chrono');
           renderAll();
+          modalSystem.alert("Сброс выполнен", "Загружены 2 эталонных плана от 21.08.2026.");
         });
       });
     }
