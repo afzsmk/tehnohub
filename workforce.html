@@ -44,7 +44,6 @@
       flex-direction: column;
     }
 
-    /* Modern Outline SVG Icons */
     .icon {
       display: inline-block;
       width: 18px;
@@ -59,7 +58,6 @@
     .icon-lg { width: 22px; height: 22px; vertical-align: -5px; }
     .icon-sm { width: 14px; height: 14px; stroke-width: 2.5; }
 
-    /* Header & Action Bar Layout */
     header {
       background-color: #0f172a;
       color: #ffffff;
@@ -90,7 +88,6 @@
       flex-wrap: wrap;
     }
 
-    /* Buttons */
     .btn {
       display: inline-flex;
       align-items: center;
@@ -131,7 +128,6 @@
 
     .btn-sm { padding: 4px 8px; font-size: 12px; }
 
-    /* Column Header Toolbar */
     .col-header-tools {
       display: flex;
       align-items: center;
@@ -174,7 +170,6 @@
 
     .col-tool-btn:disabled { opacity: 0.25; cursor: not-allowed; }
 
-    /* KPI Summary Strip */
     .kpi-strip {
       background-color: #ffffff;
       border-bottom: 1px solid var(--border-color);
@@ -206,7 +201,6 @@
       margin-top: 2px;
     }
 
-    /* Tabs Navigation */
     .tab-navigation {
       display: flex;
       background-color: #ffffff;
@@ -238,13 +232,11 @@
       background-color: var(--accent-light);
     }
 
-    /* Main Container */
     main { flex: 1; padding: 20px 24px; width: 100%; }
 
     .tab-content { display: none; }
     .tab-content.active { display: block; }
 
-    /* Panels */
     .panel {
       background-color: var(--bg-card);
       border: 1px solid var(--border-color);
@@ -276,7 +268,6 @@
 
     .panel-body { padding: 16px 18px; }
 
-    /* Tables */
     .table-container {
       width: 100%;
       overflow-x: auto;
@@ -305,7 +296,6 @@
       z-index: 2;
     }
 
-    /* Sticky Columns */
     table.data-table th.col-sticky-name,
     table.data-table td.col-sticky-name {
       position: sticky;
@@ -320,7 +310,6 @@
     table.data-table tr:hover td.col-sticky-name { background-color: #f8fafc; }
     table.data-table tfoot tr { font-weight: 700; background-color: #f8fafc; }
 
-    /* Drag Handle */
     .col-drag { width: 32px; min-width: 32px; text-align: center; padding: 4px !important; }
     .drag-handle { cursor: grab; color: var(--text-muted); display: inline-flex; align-items: center; justify-content: center; padding: 4px; border-radius: 4px; }
     .drag-handle:hover { background-color: #e2e8f0; color: var(--text-primary); }
@@ -329,7 +318,6 @@
     tr.row-drag-over-top td { border-top: 2px solid var(--accent) !important; }
     tr.row-drag-over-bottom td { border-bottom: 2px solid var(--accent) !important; }
 
-    /* Form Controls */
     .input-control, select.input-control {
       font-family: inherit;
       font-size: 13px;
@@ -350,12 +338,10 @@
 
     .input-num { text-align: right; font-variant-numeric: tabular-nums; }
 
-    /* Grid Layouts */
     .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
     .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
     @media (max-width: 1100px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
 
-    /* Executive Summary */
     .summary-card {
       background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%);
       border: 1px solid #bfdbfe;
@@ -378,7 +364,39 @@
     .summary-points li { position: relative; padding-left: 18px; font-size: 13.5px; color: #1e293b; }
     .summary-points li::before { content: "■"; position: absolute; left: 0; color: var(--accent); font-size: 10px; top: 4px; }
 
-    /* Collapsible Help & Registry Accordions */
+    /* Smart Advisor Banner */
+    .advisor-box {
+      background: #ffffff;
+      border: 1px solid #bfdbfe;
+      border-left: 5px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      margin-bottom: 18px;
+      box-shadow: var(--shadow-sm);
+    }
+    .advisor-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 700;
+      color: #1e3a8a;
+      margin-bottom: 8px;
+    }
+    .advisor-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      margin-top: 6px;
+      border-radius: 6px;
+      font-size: 13px;
+      gap: 12px;
+    }
+    .advisor-item.alert-overload { background: #fee2e2; border: 1px solid #fca5a5; color: #991b1b; }
+    .advisor-item.alert-overtime { background: #fef3c7; border: 1px solid #fde68a; color: #92400e; }
+    .advisor-item.alert-underload { background: #e0f2fe; border: 1px solid #bae6fd; color: #0369a1; }
+    .advisor-item.alert-optimal { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+
     .collapsible-box {
       background-color: #ffffff;
       border: 1px solid var(--border-color);
@@ -440,7 +458,27 @@
       border: 1px solid #bae6fd;
     }
 
-    /* Comparison Status Badges */
+    .badge-pool-universal {
+      display: inline-block;
+      padding: 3px 7px;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 4px;
+      background-color: #e0f2fe;
+      color: #0369a1;
+      border: 1px solid #bae6fd;
+    }
+    .badge-pool-dedicated {
+      display: inline-block;
+      padding: 3px 7px;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 4px;
+      background-color: #fef3c7;
+      color: #92400e;
+      border: 1px solid #fde68a;
+    }
+
     .badge-sync-ok {
       display: inline-flex;
       align-items: center;
@@ -466,14 +504,28 @@
       border: 1px solid #fde68a;
     }
 
-    /* Shift & Capacity Badges */
     .badge-shift-1 { background-color: #f1f5f9; color: #334155; font-weight: 600; padding: 3px 6px; border-radius: 4px; border: 1px solid #cbd5e1; }
     .badge-shift-2 { background-color: #e0e7ff; color: #3730a3; font-weight: 600; padding: 3px 6px; border-radius: 4px; border: 1px solid #c7d2fe; }
     .badge-shift-12 { background-color: #dbeafe; color: #1e40af; font-weight: 700; padding: 3px 6px; border-radius: 4px; border: 1px solid #bfdbfe; }
-    .badge-shift-3 { background-color: #fef3c7; color: #92400e; font-weight: 700; padding: 3px 6px; border-radius: 4px; border: 1px solid #fde68a; }
     .badge-shift-overload { background-color: #fee2e2; color: #991b1b; font-weight: 700; padding: 3px 6px; border-radius: 4px; border: 1px solid #fca5a5; }
 
-    /* Modal Dialog Overlay */
+    .schedule-box {
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      margin-bottom: 14px;
+    }
+    .schedule-header {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
     .modal-overlay {
       position: fixed;
       top: 0; left: 0; width: 100%; height: 100%;
@@ -529,7 +581,7 @@
     }
 
     @media print {
-      header, .control-subbar, .tab-navigation, .scenario-controls, .btn, .col-header-tools, #fileJsonInput, .collapsible-box, .col-drag { display: none !important; }
+      header, .control-subbar, .tab-navigation, .scenario-controls, .btn, .col-header-tools, #fileJsonInput, .collapsible-box, .col-drag, .advisor-box { display: none !important; }
       body { background: #ffffff; color: #000000; }
       main { padding: 0; }
       .tab-content { display: none !important; }
@@ -569,6 +621,7 @@
       <symbol id="icon-sliders" viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></symbol>
       <symbol id="icon-cpu" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></symbol>
       <symbol id="icon-external" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></symbol>
+      <symbol id="icon-zap" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></symbol>
     </defs>
   </svg>
 
@@ -579,7 +632,7 @@
       <svg class="icon icon-lg" style="color: #60a5fa;"><use href="#icon-calc"></use></svg>
       <div>
         <div class="brand-title">Планирование производства и нормирование</div>
-        <div class="brand-subtitle">Расчёт трудоёмкости, балансировка мощностей и сменности (8ч / 12ч)</div>
+        <div class="brand-subtitle">Параметрический баланс бригад, лимиты сверхурочных и сменность (8ч / 12ч)</div>
       </div>
     </div>
   </header>
@@ -603,13 +656,13 @@
       <button class="btn btn-dark btn-sm" id="btnDeleteScenario" title="Удалить сценарий">
         <svg class="icon"><use href="#icon-trash"></use></svg>
       </button>
-      <button class="btn btn-dark btn-sm" id="btnResetData" title="Сброс к двум эталонным планам">
+      <button class="btn btn-dark btn-sm" id="btnResetData" title="Сброс к эталонным планам">
         <svg class="icon"><use href="#icon-refresh"></use></svg>
       </button>
     </div>
 
     <div style="display:flex; align-items:center; gap:8px;">
-      <!-- ЕДИНАЯ КНОПКА: ВЫРАВНЯТЬ ПОД ШТАТ / ОТКАТИТЬ -->
+      <!-- ЕДИНАЯ КНОПКА БЕЗ ДУБЛИРОВАНИЯ ИКОНОК -->
       <button class="btn btn-level btn-sm" id="btnLevelToggle" title="Автоматически распределить объёмы под фиксированное количество людей">
         <svg class="icon"><use href="#icon-sliders"></use></svg> Выровнять план под штат
       </button>
@@ -651,7 +704,20 @@
   </nav>
 
   <main>
+    <!-- ВКЛАДКА 1: ПРОИЗВОДСТВЕННЫЙ ПЛАН -->
     <section id="tab-plan" class="tab-content active">
+      <div class="collapsible-box">
+        <div class="collapsible-header" id="toggleGuideTab1">
+          <div style="font-size: 13.5px; font-weight: 700; color: #1e3a8a; display: flex; align-items: center; gap: 8px;">
+            <svg class="icon"><use href="#icon-info"></use></svg> Справка: Руководство по работе с производственным планом (нажмите, чтобы развернуть)
+          </div>
+          <svg class="icon chevron-icon" id="chevronGuideTab1"><use href="#icon-chevron-down"></use></svg>
+        </div>
+        <div class="collapsible-content" id="contentGuideTab1">
+          <div class="method-grid" id="guideTab1Dynamic"></div>
+        </div>
+      </div>
+
       <div class="panel">
         <div class="panel-header">
           <div class="panel-title">
@@ -680,29 +746,17 @@
       </div>
     </section>
 
+    <!-- ВКЛАДКА 2: СПРАВОЧНИКИ, НОРМЫ И ПОСТЫ -->
     <section id="tab-dictionaries" class="tab-content">
       <div class="collapsible-box">
         <div class="collapsible-header" id="toggleGuideTab2">
           <div style="font-size: 13.5px; font-weight: 700; color: #1e3a8a; display: flex; align-items: center; gap: 8px;">
-            <svg class="icon"><use href="#icon-info"></use></svg> Справка: Правила настройки норм, постов и параметров (нажмите, чтобы развернуть)
+            <svg class="icon"><use href="#icon-info"></use></svg> Справка: Настройка норм, постов и параметров бригад (нажмите, чтобы развернуть)
           </div>
           <svg class="icon chevron-icon" id="chevronGuideTab2"><use href="#icon-chevron-down"></use></svg>
         </div>
         <div class="collapsible-content" id="contentGuideTab2">
-          <div class="method-grid">
-            <div class="method-item">
-              <div class="method-item-title">1. Нормы времени и технологический маршрут</div>
-              <div class="method-item-desc">В таблице изделий указывается трудоёмкость по операциям в <strong>нормо-часах на 1 единицу</strong> продукции. Если операцию выполняет звено из 2 человек в течение 30 минут, норма равна <code>0.5 ч × 2 чел = 1.0 н-ч</code>. Колонка <strong>«Брак, %»</strong> закладывает технологический запас на доработку.</div>
-            </div>
-            <div class="method-item">
-              <div class="method-item-title">2. Станки, посты и размер звена</div>
-              <div class="method-item-desc"><strong>«Станков»</strong> — физическое количество оборудования или постов в цехе. <strong>«Звено (чел)»</strong> — сколько рабочих одновременно обслуживают 1 станок. Это позволяет алгоритму корректно рассчитывать загрузку оборудования (станко-часы), не путая её с количеством людей.</div>
-            </div>
-            <div class="method-item">
-              <div class="method-item-title">3. Специфика участка (Станочный / Ручной)</div>
-              <div class="method-item-desc"><strong>Станочный</strong> участок при высокой загрузке переводится на <strong>2 смены по 12 ч (график 2/2)</strong>, что исключает лишние пересменки. <strong>Ручной</strong> участок переводится на <strong>3 смены по 8 ч</strong> для соблюдения эргономики и стабильного качества.</div>
-            </div>
-          </div>
+          <div class="method-grid" id="guideTab2Dynamic"></div>
         </div>
       </div>
 
@@ -730,7 +784,7 @@
       <div class="grid-2">
         <div class="panel">
           <div class="panel-header">
-            <div class="panel-title">Технологические участки, оборудование и посты</div>
+            <div class="panel-title">Технологические участки, оборудование и пулы квалификации</div>
             <button class="btn btn-secondary btn-sm" id="btnAddProfession">
               <svg class="icon"><use href="#icon-plus"></use></svg> Добавить
             </button>
@@ -742,9 +796,10 @@
                   <tr>
                     <th class="col-drag"></th>
                     <th>Наименование участка</th>
-                    <th style="width: 75px; text-align: right;" title="Количество физических станков или рабочих мест">Станков</th>
-                    <th style="width: 80px; text-align: right;" title="Количество рабочих, одновременно занятых на 1 станке/посту">Звено (чел)</th>
-                    <th style="width: 105px; text-align: center;" title="Тип работы для рекомендации графика 8ч / 12ч">Специфика</th>
+                    <th style="width: 140px; text-align: center;" title="Группа взаимозаменяемости персонала">Пул квалификации</th>
+                    <th style="width: 65px; text-align: right;" title="Количество физических станков или рабочих мест">Станков</th>
+                    <th style="width: 75px; text-align: right;" title="Количество рабочих, одновременно занятых на 1 станке/посту">Звено</th>
+                    <th style="width: 95px; text-align: center;" title="Тип работы для рекомендации графика 8ч / 12ч">Специфика</th>
                     <th style="width: 40px; text-align: center;"></th>
                   </tr>
                 </thead>
@@ -756,10 +811,26 @@
 
         <div class="panel">
           <div class="panel-header">
-            <div class="panel-title">Параметры рабочего времени и вспомогательного персонала</div>
+            <div class="panel-title">Параметры бригад, сверхурочных и рабочего времени</div>
           </div>
           <div class="panel-body">
             <div class="grid-2" style="gap: 12px;">
+              <div>
+                <label style="font-size: 11.5px; font-weight:700; color:var(--accent);">КОЛ-ВО БРИГАД УНИВЕРСАЛОВ (Nбриг):</label>
+                <input type="number" min="1" max="10" id="inputBrigadesCount" class="input-control input-num" value="3" style="font-weight:700; color:var(--accent);">
+              </div>
+              <div>
+                <label style="font-size: 11.5px; font-weight:700; color:var(--accent);">ЧЕЛОВЕК В БРИГАДЕ (Nчел):</label>
+                <input type="number" min="1" max="25" id="inputBrigadeSize" class="input-control input-num" value="6" style="font-weight:700; color:var(--accent);">
+              </div>
+              <div>
+                <label style="font-size: 11.5px; font-weight:700; color:#b45309;">ЛИМИТ СВЕРХУРОЧНЫХ (% к фонду):</label>
+                <input type="number" min="0" max="30" step="1" id="inputMaxOvertime" class="input-control input-num" value="15" style="font-weight:700; color:#b45309;">
+              </div>
+              <div>
+                <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);">ШТАТ УНИВЕРСАЛОВ (расчетно):</label>
+                <div style="font-size:15px; font-weight:800; color:var(--accent); padding:4px 0;" id="calcUniversalHeadcount">18 чел.</div>
+              </div>
               <div>
                 <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);">НОМИНАЛЬНЫЙ ФОНД (Fном, ч/мес):</label>
                 <input type="text" id="inputFNom" class="input-control input-num" value="168">
@@ -773,7 +844,7 @@
                 <input type="text" id="inputKVn" class="input-control input-num" value="1.05">
               </div>
               <div>
-                <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);">ОТК И ЛОГИСТИКА (% от осн. рабочих):</label>
+                <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);">ОТК И ЛОГИСТИКА (% от осн.):</label>
                 <input type="text" id="inputAuxOtk" class="input-control input-num" value="8">
               </div>
               <div>
@@ -782,7 +853,7 @@
               </div>
               <div>
                 <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);">ДЕЖУРНЫЕ СЛУЖБЫ (фикс. чел/мес):</label>
-                <input type="text" id="inputAuxFixed" class="input-control input-num" value="2">
+                <input type="text" id="inputAuxFixed" class="input-control input-num" value="3">
               </div>
             </div>
           </div>
@@ -790,34 +861,21 @@
       </div>
     </section>
 
+    <!-- ВКЛАДКА 3: МОДУЛЬ НОРМИРОВАНИЯ -->
     <section id="tab-norming" class="tab-content">
       <div class="collapsible-box">
         <div class="collapsible-header" id="toggleGuideTab3">
           <div style="font-size: 13.5px; font-weight: 700; color: #1e3a8a; display: flex; align-items: center; gap: 8px;">
-            <svg class="icon"><use href="#icon-info"></use></svg> Справка: Контекстное сохранение параметров и обоснование норм (нажмите, чтобы развернуть)
+            <svg class="icon"><use href="#icon-info"></use></svg> Справка: Инженерный расчет норм времени и обоснование (нажмите, чтобы развернуть)
           </div>
           <svg class="icon chevron-icon" id="chevronGuideTab3"><use href="#icon-chevron-down"></use></svg>
         </div>
         <div class="collapsible-content" id="contentGuideTab3">
-          <div class="method-grid">
-            <div class="method-item">
-              <div class="method-item-title">1. Автоматическая память параметров связки «Изделие + Участок»</div>
-              <div class="method-item-desc">Когда вы вносите параметры (хронометраж или статистику смены) и нажимаете <strong>«Перенести в матрицу норм»</strong>, система навсегда привязывает эти значения к связке конкретного изделия и профессии. При повторном выборе этой пары из списков все секунды, минуты и коэффициенты восстановятся автоматически.</div>
-            </div>
-            <div class="method-item">
-              <div class="method-item-title">2. Индикатор синхронизации с планом</div>
-              <div class="method-item-desc">В строке расчёта отображается текущая норма из матрицы плана и расчёт калькулятора. Если вы меняли параметры, появится предупреждающий статус о необходимости переноса.</div>
-            </div>
-            <div class="method-item">
-              <div class="method-item-title">3. Сводный реестр обоснованных норм</div>
-              <div class="method-item-desc">Внизу вкладки формируется детализированный реестр всех зафиксированных технологических расчетов с возможностью мгновенно загрузить любой хронометраж обратно в калькулятор.</div>
-            </div>
-          </div>
+          <div class="method-grid" id="guideTab3Dynamic"></div>
         </div>
       </div>
 
       <div class="grid-2">
-        <!-- БЛОК 1: СМЕННО-СТАТИСТИЧЕСКИЙ МЕТОД -->
         <div class="panel">
           <div class="panel-header">
             <div class="panel-title">
@@ -875,7 +933,6 @@
           </div>
         </div>
 
-        <!-- БЛОК 2: ПОЭЛЕМЕНТНЫЙ ХРОНОМЕТРАЖ -->
         <div class="panel">
           <div class="panel-header">
             <div class="panel-title">
@@ -938,7 +995,6 @@
         </div>
       </div>
 
-      <!-- СВОРАЧИВАЕМЫЙ РЕЕСТР СОХРАНЕННЫХ НОРМ И ХРОНОМЕТРАЖЕЙ -->
       <div class="collapsible-box" style="margin-top: 6px;">
         <div class="collapsible-header" id="toggleSavedNormsRegistry">
           <div style="font-size: 13.5px; font-weight: 700; color: #1e3a8a; display: flex; align-items: center; gap: 8px;">
@@ -967,6 +1023,7 @@
       </div>
     </section>
 
+    <!-- ВКЛАДКА 4: АНАЛИТИКА И РЕЗУЛЬТАТЫ -->
     <section id="tab-analytics" class="tab-content">
       <div style="display:flex; justify-content:flex-end; gap:8px; margin-bottom: 14px;">
         <button class="btn btn-primary" id="btnDownloadAnalyticsImage">
@@ -981,6 +1038,19 @@
       </div>
 
       <div id="analyticsCaptureArea" style="background:#ffffff; padding: 10px; border-radius: var(--radius);">
+        
+        <!-- SMART ADVISOR: ИНТЕЛЛЕКТУАЛЬНЫЙ АССИСТЕНТ БАЛАНСИРОВКИ -->
+        <div class="advisor-box" id="advisorBox">
+          <div class="advisor-header">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <svg class="icon" style="color:var(--accent);"><use href="#icon-zap"></use></svg>
+              <span>Анализ баланса мощностей и рекомендации по переработкам</span>
+            </div>
+            <span style="font-size:11.5px; font-weight:600; color:var(--text-muted);" id="advisorStatusBadge">Статус программы</span>
+          </div>
+          <div id="advisorList"></div>
+        </div>
+
         <div class="summary-card">
           <div class="summary-title">
             <svg class="icon"><use href="#icon-analytics"></use></svg> Аналитическое резюме производственной программы
@@ -988,15 +1058,23 @@
           <ul class="summary-points" id="summaryBulletPoints"></ul>
         </div>
 
+        <!-- БРИГАДНЫЙ ГРАФИК И СМЕННОСТЬ УНИВЕРСАЛОВ -->
+        <div class="schedule-box" id="brigadeScheduleBox">
+          <div class="schedule-header">
+            <svg class="icon"><use href="#icon-sliders"></use></svg> Бригадный баланс универсалов (<span id="txtBrigadesCount">3</span> бригады по <span id="txtBrigadeSize">6</span> чел) и режим работы завода
+          </div>
+          <div id="brigadeScheduleDetails" style="font-size:12.5px; color:var(--text-secondary); line-height:1.6;"></div>
+        </div>
+
         <div class="panel" style="margin-bottom: 18px;">
           <div class="panel-header">
             <div class="panel-title">
-              <svg class="icon"><use href="#icon-cpu"></use></svg> Балансировка мощностей оборудования и рекомендации по сменности (8ч / 12ч)
+              <svg class="icon"><use href="#icon-cpu"></use></svg> Загрузка оборудования и постов внутри графика (Станко-часы / сут)
             </div>
           </div>
           <div class="panel-body">
             <p style="font-size:12.5px; color:var(--text-secondary); margin-bottom:12px;">
-              Алгоритм рассчитывает станко-часы с учётом количества оборудования и размера звеньев на постах, рекомендуя оптимальный график: 1 смену (8ч), 2 смены (8ч), 2 смены по 12ч (для автоматов) или 3 смены по 8ч (для ручного труда).
+              Показывает физическое машинное время работы каждого станка в сутки и рекомендуемую продолжительность включения линии: 1 смена (до 7.5ч), 2 смены (до 15ч) или 2 смены по 12ч (до 22ч/сут).
             </p>
             <div class="table-container">
               <table class="data-table" id="shiftScheduleTable">
@@ -1012,19 +1090,19 @@
         <div class="collapsible-box">
           <div class="collapsible-header" id="toggleMethodologyBtn">
             <div style="font-size: 13.5px; font-weight: 700; color: #1e3a8a; display: flex; align-items: center; gap: 8px;">
-              <svg class="icon"><use href="#icon-info"></use></svg> Как рассчитываются показатели: пошаговое пояснение
+              <svg class="icon"><use href="#icon-info"></use></svg> Справка: Формулы расчёта, нормативы штата и лимиты переработок (нажмите, чтобы развернуть)
             </div>
             <svg class="icon chevron-icon" id="methodChevron"><use href="#icon-chevron-down"></use></svg>
           </div>
           <div class="collapsible-content" id="methodologyContent">
-            <div class="method-grid" id="methodologyGrid"></div>
+            <div class="method-grid" id="guideTab4Dynamic"></div>
           </div>
         </div>
 
         <div class="grid-2" style="margin-bottom: 18px;">
           <div class="panel">
             <div class="panel-header">
-              <div class="panel-title">Динамика штатной численности по профессиям (чел.)</div>
+              <div class="panel-title">Динамика штатной численности по пулам квалификации (чел.)</div>
             </div>
             <div class="panel-body">
               <div class="chart-box">
@@ -1047,14 +1125,14 @@
 
         <div class="panel" style="margin-bottom: 0;">
           <div class="panel-header">
-            <div class="panel-title">Сводная ведомость потребности в персонале (помесячно)</div>
+            <div class="panel-title">Сводная ведомость потребности в персонале по пулам квалификации (помесячно)</div>
           </div>
           <div class="panel-body">
             <div class="table-container">
               <table class="data-table" id="resultsTable">
                 <thead>
                   <tr id="resultsTableHeader">
-                    <th class="col-sticky-name" style="min-width: 250px;">Показатель / Профессия</th>
+                    <th class="col-sticky-name" style="min-width: 260px;">Показатель / Пул квалификации</th>
                     <th style="text-align: right; min-width: 105px;">Итого / Среднее</th>
                   </tr>
                 </thead>
@@ -1091,7 +1169,6 @@
       return isNaN(num) ? 0 : num;
     }
 
-    // --- Modal System ---
     const modalSystem = {
       overlay: null, titleEl: null, bodyEl: null, inputWrap: null, inputEl: null, footerEl: null, onConfirmCb: null,
       init() {
@@ -1164,43 +1241,105 @@
       }
     };
 
-    // --- ПРЕДЗАГРУЖЕННЫЕ ЭТАЛОННЫЕ СЦЕНАРИИ (СТРОГО 2 АКТУАЛЬНЫХ ПЛАНА) ---
+    // --- ПРЕДЗАГРУЖЕННЫЕ ЭТАЛОННЫЕ СЦЕНАРИИ (3 СЦЕНАРИЯ С ПАРАМЕТРИЧЕСКИМИ БРИГАДАМИ) ---
     const PRELOADED_STATE = {
-      currentScenario: "План 21.08.2026 без Ливадии",
+      currentScenario: "План сент-окт 2026",
       scenarios: {
-        "План 21.08.2026 без Ливадии": {
+        "План сент-окт 2026": {
           "professions": [
-            { "id": "p1", "name": "AluRanger", "type": "machine", "crew": 1, "machines": 3 },
-            { "id": "p2", "name": "Холодная склейка", "machines": 1, "crew": 5, "type": "machine" },
-            { "id": "p3", "name": "Брикеты", "type": "machine", "crew": 3 },
-            { "id": "p4", "name": "Горячая склейка", "type": "machine", "crew": 6 },
-            { "id": "p5", "name": "Участок обработки алюминия", "crew": 6, "type": "machine" },
-            { "id": "p6", "name": "Сборочный пост", "machines": 4, "crew": 4 },
-            { "id": "p7", "name": "Подсобный рабочий", "machines": 2, "crew": 4 },
-            { "id": "p1787298927652", "name": "Ламинатор", "machines": 1, "crew": 5, "type": "machine" },
-            { "id": "p1787298939301", "name": "Гидрорезка", "machines": 1, "crew": 1, "type": "machine" },
-            { "id": "p1787298947495", "name": "Лазерная резка", "machines": 1, "crew": 1, "type": "machine" },
-            { "id": "p1787298952912", "name": "Штамповка", "machines": 1, "crew": 1, "type": "manual" },
-            { "id": "p1787298961438", "name": "Покраска", "machines": 1, "crew": 1, "type": "manual" },
-            { "id": "p1787298966902", "name": "Сварочный пост", "machines": 2, "crew": 1, "type": "manual" },
-            { "id": "p1787298978055", "name": "Ролльформер", "machines": 1, "crew": 4, "type": "machine" }
+            { "id": "p1", "name": "AluRanger", "pool": "universal", "type": "machine", "crew": 3, "machines": 3 },
+            { "id": "p2", "name": "Холодная склейка", "pool": "universal", "machines": 1, "crew": 5, "type": "machine" },
+            { "id": "p3", "name": "Брикеты", "pool": "universal", "type": "machine", "crew": 3 },
+            { "id": "p4", "name": "Горячая склейка", "pool": "universal", "type": "machine", "crew": 6 },
+            { "id": "p5", "name": "Участок обработки алюминия", "pool": "universal", "crew": 6, "type": "machine" },
+            { "id": "p6", "name": "Сборочный пост", "pool": "universal", "machines": 4, "crew": 4, "type": "manual" },
+            { "id": "p7", "name": "Подсобный рабочий", "pool": "universal", "machines": 2, "crew": 4, "type": "manual" },
+            { "id": "p1787298927652", "name": "Ламинатор", "pool": "universal", "machines": 1, "crew": 5, "type": "machine" },
+            { "id": "p1787298939301", "name": "Гидрорезка", "pool": "dedicated", "machines": 1, "crew": 1, "type": "machine" },
+            { "id": "p1787298947495", "name": "Лазерная резка", "pool": "dedicated", "machines": 1, "crew": 1, "type": "machine" },
+            { "id": "p1787921989265", "name": "Гибочник", "pool": "universal", "machines": 1, "crew": 1, "type": "manual" },
+            { "id": "p1787298978055", "name": "Ролльформер", "pool": "universal", "machines": 1, "crew": 4, "type": "machine" },
+            { "id": "p1787298952912", "name": "Штамповка", "pool": "dedicated", "machines": 1, "crew": 1, "type": "manual" },
+            { "id": "p1787298966902", "name": "Сварочный пост", "pool": "dedicated", "machines": 2, "crew": 1, "type": "manual" },
+            { "id": "p1787298961438", "name": "Покраска", "pool": "dedicated", "machines": 1, "crew": 1, "type": "manual" }
           ],
           "products": [
-            { "id": "pr1", "name": "Обработка и сборка Уникор", "unit": "м²", "scrap": 2, "norms": { "p1": 0.186, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0.372, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
-            { "id": "pr2", "name": "Склеивание Уникор", "unit": "м²", "scrap": 2, "norms": { "p1": 0, "p2": 0.399, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
-            { "id": "pr3", "name": "Сотовые брикеты", "unit": "м²", "scrap": 10, "norms": { "p1": 0, "p2": 0, "p3": 0.289, "p4": 0, "p5": 0, "p6": 0, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
-            { "id": "pr4", "name": "Уникор сложная (Севастополь)", "unit": "м²", "scrap": 10, "norms": { "p1": 0.215, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 1.938, "p7": 0.269, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0.269, "p1787298952912": 0, "p1787298961438": 0.269, "p1787298966902": 0.269, "p1787298978055": 0 } },
-            { "id": "pr5", "name": "Уникор Керамик", "unit": "м²", "scrap": 2, "norms": { "p1": 0, "p2": 1.196, "p3": 0, "p4": 0, "p5": 0, "p6": 0.239, "p7": 0, "p1787298927652": 0, "p1787298939301": 0.12, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
-            { "id": "pr6", "name": "Алюминиевые кассеты", "unit": "м²", "scrap": 2, "norms": { "p1": 0.108, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0.215, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
-            { "id": "pr7", "name": "Сотовые ламели", "unit": "м²", "scrap": 2, "norms": { "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0.054, "p6": 1.5, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0.054, "p1787298966902": 0, "p1787298978055": 0 } },
-            { "id": "pr8", "name": "МКП Хардволл", "unit": "м²", "scrap": 2, "norms": { "p1": 0, "p2": 0, "p3": 0, "p4": 0.174, "p5": 0, "p6": 0, "p7": 0.174, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0.007, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
-            { "id": "pr9", "name": "Металлокерамические зонты", "unit": "м²", "scrap": 4, "norms": { "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0, "p1787298927652": 0.359, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
-            { "id": "pr10", "name": "Фальцевые картины", "unit": "м²", "scrap": 2, "norms": { "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0.036 } },
-            { "id": "pr11", "name": "Светопрозрачные конструкции", "unit": "м²", "scrap": 2, "norms": { "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 1.175, "p6": 0, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
-            { "id": "pr12", "name": "Фронтон перемаркировка", "unit": "м²", "scrap": 0, "norms": { "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0.06, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
-            { "id": "pr13", "name": "Алюмокомпозит", "unit": "м²", "scrap": 2, "norms": { "p1": 0.108, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0.215, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
-            { "id": "pr14", "name": "Фальц-опора + УЗЭ", "unit": "шт", "scrap": 2, "norms": { "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0.007, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
-            { "id": "pr15", "name": "Пластина снегозадержания", "unit": "шт", "scrap": 2, "norms": { "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0.013, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0.006, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } }
+            { "id": "pr1", "name": "Сотовые панели Кемерово", "unit": "м²", "scrap": 2, "norms": { "p1": 0.646, "p5": 0.1 } },
+            { "id": "pr1787921270673", "name": "Сэндвичи Кемерово", "unit": "м²", "scrap": 2, "norms": { "p2": 0.718, "p1787298947495": 0.036 } },
+            { "id": "pr1787921272754", "name": "Накрывные элементы", "unit": "м²", "scrap": 2, "norms": { "p1787298947495": 0.036, "p1787921989265": 0.769 } },
+            { "id": "pr1787921285805", "name": "Фальцевые картины", "unit": "м²", "scrap": 2, "norms": { "p1787298978055": 0.131 } },
+            { "id": "pr1787921287514", "name": "Фронтон перемаркировка", "unit": "м²", "scrap": 2, "norms": { "p7": 0.08 } },
+            { "id": "pr1787921289146", "name": "Кронштейны НКТ, ПКТ", "unit": "шт", "scrap": 2, "norms": { "p1787298952912": 0.003 } },
+            { "id": "pr1787921291139", "name": "Инкерман белые панели", "unit": "м²", "scrap": 2, "norms": { "p1": 0.308, "p6": 4.307, "p1787298947495": 0.05, "p1787298961438": 0.05, "p1787921989265": 0.05 } },
+            { "id": "pr1787921297082", "name": "Инкерман медные панели", "unit": "м²", "scrap": 2, "norms": { "p1": 0.269, "p6": 2.165 } },
+            { "id": "pr1787921301923", "name": "Стоечно-риг. система", "unit": "м²", "scrap": 2, "norms": { "p5": 2.153 } }
+          ],
+          "months": ["09/26", "10/26"],
+          "plan": {
+            "pr1": [2014.65, 2014.65],
+            "pr1787921270673": [148.6, 148.6],
+            "pr1787921272754": [152.8, 152.8],
+            "pr1787921285805": [1150.75, 1150.75],
+            "pr1787921287514": [5373.54, 5373.54],
+            "pr1787921289146": [50466, 50466],
+            "pr1787921291139": [151.55, 151.55],
+            "pr1787921297082": [155.24, 155.24],
+            "pr1787921301923": [75, 75]
+          },
+          "settings": {
+            "fNom": 168, "fEff": 144, "kVn": 1.05,
+            "brigadesCount": 3, "brigadeSize": 6, "maxOvertimePercent": 15,
+            "auxOtkPercent": 8, "auxSetupPercent": 5, "auxFixedPosts": 3
+          },
+          "normConfigs": {
+            "pr1___p1": { "prodId": "pr1", "profId": "p1", "prodName": "Сотовые панели Кемерово", "profName": "AluRanger", "method": "stat", "stat": { "output": 50, "workers": 3, "shiftHours": 12, "breaks": 40, "kEff": 0.95 }, "norm": 0.646, "updatedAt": "28.08.2026, 15:56" },
+            "pr1787921270673___p1787298947495": { "prodId": "pr1787921270673", "profId": "p1787298947495", "prodName": "Сэндвичи Кемерово", "profName": "Лазерная резка", "method": "stat", "stat": { "output": 300, "workers": 1, "shiftHours": 12, "breaks": 40, "kEff": 0.95 }, "norm": 0.036, "updatedAt": "28.08.2026, 16:03" },
+            "pr1787921270673___p2": { "prodId": "pr1787921270673", "profId": "p2", "prodName": "Сэндвичи Кемерово", "profName": "Холодная склейка", "method": "stat", "stat": { "output": 75, "workers": 5, "shiftHours": 12, "breaks": 40, "kEff": 0.95 }, "norm": 0.718, "updatedAt": "28.08.2026, 16:04" },
+            "pr1787921285805___p1787298978055": { "prodId": "pr1787921285805", "profId": "p1787298978055", "prodName": "Фальцевые картины", "profName": "Ролльформер", "method": "stat", "stat": { "output": 330, "workers": 4, "shiftHours": 12, "breaks": 40, "kEff": 0.95 }, "norm": 0.131, "updatedAt": "28.08.2026, 16:05" },
+            "pr1787921272754___p1787298947495": { "prodId": "pr1787921272754", "profId": "p1787298947495", "prodName": "Накрывные элементы", "profName": "Лазерная резка", "method": "stat", "stat": { "output": 300, "workers": 1, "shiftHours": 12, "breaks": 40, "kEff": 0.95 }, "norm": 0.036, "updatedAt": "28.08.2026, 16:05" },
+            "pr1787921272754___p1787921989265": { "prodId": "pr1787921272754", "profId": "p1787921989265", "prodName": "Накрывные элементы", "profName": "Гибочник", "method": "stat", "stat": { "output": 28, "workers": 2, "shiftHours": 12, "breaks": 40, "kEff": 0.95 }, "norm": 0.769, "updatedAt": "28.08.2026, 16:06" },
+            "pr1787921301923___p5": { "prodId": "pr1787921301923", "profId": "p5", "prodName": "Стоечно-риг. система", "profName": "Участок обработки алюминия", "method": "stat", "stat": { "output": 30, "workers": 6, "shiftHours": 12, "breaks": 40, "kEff": 0.95 }, "norm": 2.153, "updatedAt": "28.08.2026, 16:08" },
+            "pr1787921291139___p1": { "prodId": "pr1787921291139", "profId": "p1", "prodName": "Инкерман белые панели", "profName": "AluRanger", "method": "stat", "stat": { "output": 70, "workers": 2, "shiftHours": 12, "breaks": 40, "kEff": 0.95 }, "norm": 0.308, "updatedAt": "28.08.2026, 16:09" },
+            "pr1787921291139___p6": { "prodId": "pr1787921291139", "profId": "p6", "prodName": "Инкерман белые панели", "profName": "Сборочный пост", "method": "stat", "stat": { "output": 10, "workers": 4, "shiftHours": 12, "breaks": 40, "kEff": 0.95 }, "norm": 4.307, "updatedAt": "28.08.2026, 16:10" },
+            "pr1787921297082___p1": { "prodId": "pr1787921297082", "profId": "p1", "prodName": "Инкерман медные панели", "profName": "AluRanger", "method": "stat", "stat": { "output": 80, "workers": 2, "shiftHours": 12, "breaks": 40, "kEff": 0.95 }, "norm": 0.269, "updatedAt": "28.08.2026, 16:12" },
+            "pr1787921297082___p6": { "prodId": "pr1787921297082", "profId": "p6", "prodName": "Инкерман медные панели", "profName": "Сборочный пост", "method": "stat", "stat": { "output": 11.7, "workers": 5, "shiftHours": 6, "breaks": 40, "kEff": 0.95 }, "norm": 2.165, "updatedAt": "28.08.2026, 16:13" },
+            "pr1787921287514___p7": { "prodId": "pr1787921287514", "profId": "p7", "prodName": "Фронтон перемаркировка", "profName": "Подсобный рабочий", "method": "stat", "stat": { "output": 537.5, "workers": 4, "shiftHours": 12, "breaks": 40, "kEff": 0.95 }, "norm": 0.08, "updatedAt": "28.08.2026, 16:19" },
+            "pr1787921289146___p1787298952912": { "prodId": "pr1787921289146", "profId": "p1787298952912", "prodName": "Кронштейны НКТ, ПКТ", "profName": "Штамповка", "method": "stat", "stat": { "output": 2000, "workers": 1, "shiftHours": 8, "breaks": 40, "kEff": 0.95 }, "norm": 0.003, "updatedAt": "28.08.2026, 16:21" }
+          }
+        },
+        "План 21.08.2026 без Ливадии": {
+          "professions": [
+            { "id": "p1", "name": "AluRanger", "pool": "universal", "type": "machine", "crew": 1, "machines": 3 },
+            { "id": "p2", "name": "Холодная склейка", "pool": "universal", "machines": 1, "crew": 5, "type": "machine" },
+            { "id": "p3", "name": "Брикеты", "pool": "universal", "type": "machine", "crew": 3 },
+            { "id": "p4", "name": "Горячая склейка", "pool": "universal", "type": "machine", "crew": 6 },
+            { "id": "p5", "name": "Участок обработки алюминия", "pool": "universal", "crew": 6, "type": "machine" },
+            { "id": "p6", "name": "Сборочный пост", "pool": "universal", "machines": 4, "crew": 4, "type": "manual" },
+            { "id": "p7", "name": "Подсобный рабочий", "pool": "universal", "machines": 2, "crew": 4, "type": "manual" },
+            { "id": "p1787298927652", "name": "Ламинатор", "pool": "universal", "machines": 1, "crew": 5, "type": "machine" },
+            { "id": "p1787298939301", "name": "Гидрорезка", "pool": "dedicated", "machines": 1, "crew": 1, "type": "machine" },
+            { "id": "p1787298947495", "name": "Лазерная резка", "pool": "dedicated", "machines": 1, "crew": 1, "type": "machine" },
+            { "id": "p1787298952912", "name": "Штамповка", "pool": "dedicated", "machines": 1, "crew": 1, "type": "manual" },
+            { "id": "p1787298961438", "name": "Покраска", "pool": "dedicated", "machines": 1, "crew": 1, "type": "manual" },
+            { "id": "p1787298966902", "name": "Сварочный пост", "pool": "dedicated", "machines": 2, "crew": 1, "type": "manual" },
+            { "id": "p1787298978055", "name": "Ролльформер", "pool": "universal", "machines": 1, "crew": 4, "type": "machine" }
+          ],
+          "products": [
+            { "id": "pr1", "name": "Обработка и сборка Уникор", "unit": "м²", "scrap": 2, "norms": { "p1": 0.186, "p6": 0.372 } },
+            { "id": "pr2", "name": "Склеивание Уникор", "unit": "м²", "scrap": 2, "norms": { "p2": 0.399 } },
+            { "id": "pr3", "name": "Сотовые брикеты", "unit": "м²", "scrap": 10, "norms": { "p3": 0.289 } },
+            { "id": "pr4", "name": "Уникор сложная (Севастополь)", "unit": "м²", "scrap": 10, "norms": { "p1": 0.215, "p6": 1.938, "p7": 0.269, "p1787298947495": 0.269, "p1787298961438": 0.269, "p1787298966902": 0.269 } },
+            { "id": "pr5", "name": "Уникор Керамик", "unit": "м²", "scrap": 2, "norms": { "p2": 1.196, "p6": 0.239, "p1787298939301": 0.12 } },
+            { "id": "pr6", "name": "Алюминиевые кассеты", "unit": "м²", "scrap": 2, "norms": { "p1": 0.108, "p6": 0.215 } },
+            { "id": "pr7", "name": "Сотовые ламели", "unit": "м²", "scrap": 2, "norms": { "p5": 0.054, "p6": 1.5, "p1787298961438": 0.054 } },
+            { "id": "pr8", "name": "МКП Хардволл", "unit": "м²", "scrap": 2, "norms": { "p4": 0.174, "p7": 0.174, "p1787298952912": 0.007 } },
+            { "id": "pr9", "name": "Металлокерамические зонты", "unit": "м²", "scrap": 4, "norms": { "p1787298927652": 0.359 } },
+            { "id": "pr10", "name": "Фальцевые картины", "unit": "м²", "scrap": 2, "norms": { "p1787298978055": 0.036 } },
+            { "id": "pr11", "name": "Светопрозрачные конструкции", "unit": "м²", "scrap": 2, "norms": { "p5": 1.175 } },
+            { "id": "pr12", "name": "Фронтон перемаркировка", "unit": "м²", "scrap": 0, "norms": { "p7": 0.06 } },
+            { "id": "pr13", "name": "Алюмокомпозит", "unit": "м²", "scrap": 2, "norms": { "p1": 0.108, "p6": 0.215 } },
+            { "id": "pr14", "name": "Фальц-опора + УЗЭ", "unit": "шт", "scrap": 2, "norms": { "p1787298952912": 0.007 } },
+            { "id": "pr15", "name": "Пластина снегозадержания", "unit": "шт", "scrap": 2, "norms": { "p6": 0.013, "p1787298947495": 0.006 } }
           ],
           "months": ["08/26","09/26","10/26","11/26","12/26","01/27","02/27","03/27","04/27","05/27","06/27","07/27","08/27","09/27","10/27","11/27","12/27"],
           "plan": {
@@ -1220,42 +1359,46 @@
             "pr14": [4865,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
             "pr15": [314,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
           },
-          "settings": { "fNom": 168, "fEff": 144, "kVn": 1.05, "auxOtkPercent": 8, "auxSetupPercent": 5, "auxFixedPosts": 2 },
+          "settings": {
+            "fNom": 168, "fEff": 144, "kVn": 1.05,
+            "brigadesCount": 3, "brigadeSize": 6, "maxOvertimePercent": 15,
+            "auxOtkPercent": 8, "auxSetupPercent": 5, "auxFixedPosts": 2
+          },
           "normConfigs": {}
         },
         "План 21.08.2026": {
           "professions": [
-            { "id": "p1", "name": "AluRanger", "type": "machine", "crew": 3, "machines": 3 },
-            { "id": "p2", "name": "Холодная склейка", "machines": 1, "crew": 5, "type": "machine" },
-            { "id": "p3", "name": "Брикеты", "type": "machine", "crew": 3 },
-            { "id": "p4", "name": "Горячая склейка", "type": "machine", "crew": 6 },
-            { "id": "p5", "name": "Участок обработки алюминия", "crew": 6, "type": "machine" },
-            { "id": "p6", "name": "Сборочный пост", "machines": 4, "crew": 3 },
-            { "id": "p7", "name": "Подсобный рабочий", "machines": 2, "crew": 4 },
-            { "id": "p1787298927652", "name": "Ламинатор", "machines": 1, "crew": 5, "type": "machine" },
-            { "id": "p1787298939301", "name": "Гидрорезка", "machines": 1, "crew": 1, "type": "machine" },
-            { "id": "p1787298947495", "name": "Лазерная резка", "machines": 1, "crew": 1, "type": "machine" },
-            { "id": "p1787298952912", "name": "Штамповка", "machines": 1, "crew": 1, "type": "manual" },
-            { "id": "p1787298961438", "name": "Покраска", "machines": 1, "crew": 1, "type": "manual" },
-            { "id": "p1787298966902", "name": "Сварочный пост", "machines": 2, "crew": 1, "type": "manual" },
-            { "id": "p1787298978055", "name": "Ролльформер", "machines": 1, "crew": 4, "type": "machine" }
+            { "id": "p1", "name": "AluRanger", "pool": "universal", "type": "machine", "crew": 3, "machines": 3 },
+            { "id": "p2", "name": "Холодная склейка", "pool": "universal", "machines": 1, "crew": 5, "type": "machine" },
+            { "id": "p3", "name": "Брикеты", "pool": "universal", "type": "machine", "crew": 3 },
+            { "id": "p4", "name": "Горячая склейка", "pool": "universal", "type": "machine", "crew": 6 },
+            { "id": "p5", "name": "Участок обработки алюминия", "pool": "universal", "crew": 6, "type": "machine" },
+            { "id": "p6", "name": "Сборочный пост", "pool": "universal", "machines": 4, "crew": 3, "type": "manual" },
+            { "id": "p7", "name": "Подсобный рабочий", "pool": "universal", "machines": 2, "crew": 4, "type": "manual" },
+            { "id": "p1787298927652", "name": "Ламинатор", "pool": "universal", "machines": 1, "crew": 5, "type": "machine" },
+            { "id": "p1787298939301", "name": "Гидрорезка", "pool": "dedicated", "machines": 1, "crew": 1, "type": "machine" },
+            { "id": "p1787298947495", "name": "Лазерная резка", "pool": "dedicated", "machines": 1, "crew": 1, "type": "machine" },
+            { "id": "p1787298952912", "name": "Штамповка", "pool": "dedicated", "machines": 1, "crew": 1, "type": "manual" },
+            { "id": "p1787298961438", "name": "Покраска", "pool": "dedicated", "machines": 1, "crew": 1, "type": "manual" },
+            { "id": "p1787298966902", "name": "Сварочный пост", "pool": "dedicated", "machines": 2, "crew": 1, "type": "manual" },
+            { "id": "p1787298978055", "name": "Ролльформер", "pool": "universal", "machines": 1, "crew": 4, "type": "machine" }
           ],
           "products": [
-            { "id": "pr1", "name": "Обработка и сборка Уникор", "unit": "м²", "scrap": 2, "norms": { "p1": 1.615, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0.372, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
-            { "id": "pr2", "name": "Склеивание Уникор", "unit": "м²", "scrap": 2, "norms": { "p1": 0, "p2": 0.399, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
-            { "id": "pr3", "name": "Сотовые брикеты", "unit": "м²", "scrap": 10, "norms": { "p1": 0, "p2": 0, "p3": 0.289, "p4": 0, "p5": 0, "p6": 0, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
-            { "id": "pr4", "name": "Уникор сложная (Севастополь)", "unit": "м²", "scrap": 10, "norms": { "p1": 0.215, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 1.938, "p7": 0.269, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0.269, "p1787298952912": 0, "p1787298961438": 0.269, "p1787298966902": 0.269, "p1787298978055": 0 } },
-            { "id": "pr5", "name": "Уникор Керамик", "unit": "м²", "scrap": 2, "norms": { "p1": 0, "p2": 1.196, "p3": 0, "p4": 0, "p5": 0, "p6": 0.239, "p7": 0, "p1787298927652": 0, "p1787298939301": 0.12, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
-            { "id": "pr6", "name": "Алюминиевые кассеты", "unit": "м²", "scrap": 2, "norms": { "p1": 0.108, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0.215, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
-            { "id": "pr7", "name": "Сотовые ламели", "unit": "м²", "scrap": 2, "norms": { "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0.054, "p6": 2.153, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0.054, "p1787298966902": 0, "p1787298978055": 0 } },
-            { "id": "pr8", "name": "МКП Хардволл", "unit": "м²", "scrap": 2, "norms": { "p1": 0, "p2": 0, "p3": 0, "p4": 0.174, "p5": 0, "p6": 0, "p7": 0.174, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0.007, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
-            { "id": "pr9", "name": "Металлокерамические зонты", "unit": "м²", "scrap": 4, "norms": { "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0, "p1787298927652": 0.359, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
-            { "id": "pr10", "name": "Фальцевые картины", "unit": "м²", "scrap": 2, "norms": { "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0.036 } },
-            { "id": "pr11", "name": "Светопрозрачные конструкции", "unit": "м²", "scrap": 2, "norms": { "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 1.175, "p6": 0, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
-            { "id": "pr12", "name": "Фронтон перемаркировка", "unit": "м²", "scrap": 0, "norms": { "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0.06, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
-            { "id": "pr13", "name": "Алюмокомпозит", "unit": "м²", "scrap": 2, "norms": { "p1": 0.108, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0.215, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
-            { "id": "pr14", "name": "Фальц-опора + УЗЭ", "unit": "шт", "scrap": 2, "norms": { "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0, "p1787298952912": 0.007, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } },
-            { "id": "pr15", "name": "Пластина снегозадержания", "unit": "шт", "scrap": 2, "norms": { "p1": 0, "p2": 0, "p3": 0, "p4": 0, "p5": 0, "p6": 0.013, "p7": 0, "p1787298927652": 0, "p1787298939301": 0, "p1787298947495": 0.006, "p1787298952912": 0, "p1787298961438": 0, "p1787298966902": 0, "p1787298978055": 0 } }
+            { "id": "pr1", "name": "Обработка и сборка Уникор", "unit": "м²", "scrap": 2, "norms": { "p1": 1.615, "p6": 0.372 } },
+            { "id": "pr2", "name": "Склеивание Уникор", "unit": "м²", "scrap": 2, "norms": { "p2": 0.399 } },
+            { "id": "pr3", "name": "Сотовые брикеты", "unit": "м²", "scrap": 10, "norms": { "p3": 0.289 } },
+            { "id": "pr4", "name": "Уникор сложная (Севастополь)", "unit": "м²", "scrap": 10, "norms": { "p1": 0.215, "p6": 1.938, "p7": 0.269, "p1787298947495": 0.269, "p1787298961438": 0.269, "p1787298966902": 0.269 } },
+            { "id": "pr5", "name": "Уникор Керамик", "unit": "м²", "scrap": 2, "norms": { "p2": 1.196, "p6": 0.239, "p1787298939301": 0.12 } },
+            { "id": "pr6", "name": "Алюминиевые кассеты", "unit": "м²", "scrap": 2, "norms": { "p1": 0.108, "p6": 0.215 } },
+            { "id": "pr7", "name": "Сотовые ламели", "unit": "м²", "scrap": 2, "norms": { "p5": 0.054, "p6": 2.153, "p1787298961438": 0.054 } },
+            { "id": "pr8", "name": "МКП Хардволл", "unit": "м²", "scrap": 2, "norms": { "p4": 0.174, "p7": 0.174, "p1787298952912": 0.007 } },
+            { "id": "pr9", "name": "Металлокерамические зонты", "unit": "м²", "scrap": 4, "norms": { "p1787298927652": 0.359 } },
+            { "id": "pr10", "name": "Фальцевые картины", "unit": "м²", "scrap": 2, "norms": { "p1787298978055": 0.036 } },
+            { "id": "pr11", "name": "Светопрозрачные конструкции", "unit": "м²", "scrap": 2, "norms": { "p5": 1.175 } },
+            { "id": "pr12", "name": "Фронтон перемаркировка", "unit": "м²", "scrap": 0, "norms": { "p7": 0.06 } },
+            { "id": "pr13", "name": "Алюмокомпозит", "unit": "м²", "scrap": 2, "norms": { "p1": 0.108, "p6": 0.215 } },
+            { "id": "pr14", "name": "Фальц-опора + УЗЭ", "unit": "шт", "scrap": 2, "norms": { "p1787298952912": 0.007 } },
+            { "id": "pr15", "name": "Пластина снегозадержания", "unit": "шт", "scrap": 2, "norms": { "p6": 0.013, "p1787298947495": 0.006 } }
           ],
           "months": ["08/26","09/26","10/26","11/26","12/26","01/27","02/27","03/27","04/27","05/27","06/27","07/27","08/27","09/27","10/27","11/27","12/27"],
           "plan": {
@@ -1275,16 +1418,20 @@
             "pr14": [4865,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
             "pr15": [314,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
           },
-          "settings": { "fNom": 168, "fEff": 144, "kVn": 1.05, "auxOtkPercent": 8, "auxSetupPercent": 5, "auxFixedPosts": 2 },
+          "settings": {
+            "fNom": 168, "fEff": 144, "kVn": 1.05,
+            "brigadesCount": 3, "brigadeSize": 6, "maxOvertimePercent": 15,
+            "auxOtkPercent": 8, "auxSetupPercent": 5, "auxFixedPosts": 2
+          },
           "normConfigs": {}
         }
       }
     };
 
-    const STORAGE_KEY = "prod_workforce_master_v15";
+    const STORAGE_KEY = "prod_workforce_master_v18";
 
     let state = {
-      currentScenario: "План 21.08.2026 без Ливадии",
+      currentScenario: "План сент-окт 2026",
       scenarios: {}
     };
 
@@ -1300,9 +1447,17 @@
         loadDefaultScenario();
       }
 
-      // Гарантируем структуру normConfigs
       Object.keys(state.scenarios).forEach(scKey => {
-        if (!state.scenarios[scKey].normConfigs) state.scenarios[scKey].normConfigs = {};
+        const sc = state.scenarios[scKey];
+        if (!sc.normConfigs) sc.normConfigs = {};
+        if (sc.settings.brigadesCount === undefined) sc.settings.brigadesCount = 3;
+        if (sc.settings.brigadeSize === undefined) sc.settings.brigadeSize = 6;
+        if (sc.settings.maxOvertimePercent === undefined) sc.settings.maxOvertimePercent = 15;
+        sc.professions.forEach(pr => {
+          if (!pr.pool) {
+            pr.pool = (["p1787298939301", "p1787298947495", "p1787298952912", "p1787298961438", "p1787298966902"].includes(pr.id) ? "dedicated" : "universal");
+          }
+        });
       });
 
       renderScenarioSelector();
@@ -1327,14 +1482,13 @@
       return state.scenarios[state.currentScenario];
     }
 
-    // --- Управление единой кнопкой Выравнивания / Отката ---
     function updateLevelToggleButton() {
       const btn = document.getElementById("btnLevelToggle");
       if (!btn) return;
       const data = getActiveData();
       if (data && data._planSnapshot) {
         btn.className = "btn btn-warning btn-sm";
-        btn.innerHTML = `<svg class="icon"><use href="#icon-refresh"></use></svg> ↩ Откатить к исходному плану`;
+        btn.innerHTML = `<svg class="icon"><use href="#icon-refresh"></use></svg> Откатить к исходному плану`;
         btn.title = "Вернуть объёмы плана к состоянию до автоматического выравнивания";
       } else {
         btn.className = "btn btn-level btn-sm";
@@ -1343,7 +1497,6 @@
       }
     }
 
-    // --- Tab Switching ---
     function setupTabs() {
       const tabButtons = document.querySelectorAll(".tab-button");
       tabButtons.forEach(btn => {
@@ -1364,13 +1517,18 @@
       });
     }
 
-    // --- Core Calculation Engine ---
+    // --- Core Calculation Engine: Параметрический расчет бригад и сверхурочных ---
     function calculate() {
       const data = getActiveData();
       const numMonths = data.months.length;
       const fNom = parseNum(data.settings.fNom) || 168;
       const fEff = parseNum(data.settings.fEff) || 144;
       const kVn = parseNum(data.settings.kVn) || 1.0;
+
+      const brigadesCount = Math.max(1, parseInt(data.settings.brigadesCount) || 3);
+      const brigadeSize = Math.max(1, parseInt(data.settings.brigadeSize) || 6);
+      const maxOvertimePct = Math.max(0, Math.min(30, parseNum(data.settings.maxOvertimePercent) || 15));
+      const totalUniversalHeadcount = brigadesCount * brigadeSize;
 
       const productTotals = {};
       data.products.forEach(p => {
@@ -1410,22 +1568,104 @@
         staffByProfYav[prof.id] = hoursByProf[prof.id].map(h => h / (fNom * kVn));
       });
 
+      const universalProfs = data.professions.filter(p => p.pool === "universal");
+      const dedicatedProfs = data.professions.filter(p => p.pool !== "universal");
+
+      const universalHoursTotal = new Array(numMonths).fill(0);
+      const universalStaffSpTotal = new Array(numMonths).fill(0);
+      const universalBrigadesNeeded = new Array(numMonths).fill(0);
+      const universalSchedules = [];
+
+      // Емкость 1 бригады и всего пула универсалов
+      const oneBrigadeCapacity = brigadeSize * fEff * kVn;
+      const totalPoolNominalCapacity = brigadesCount * oneBrigadeCapacity;
+      const totalPoolMaxWithOvertime = totalPoolNominalCapacity * (1 + maxOvertimePct / 100);
+
+      for (let m = 0; m < numMonths; m++) {
+        universalProfs.forEach(p => {
+          universalHoursTotal[m] += hoursByProf[p.id][m];
+        });
+        universalStaffSpTotal[m] = universalHoursTotal[m] / (fEff * kVn);
+        universalBrigadesNeeded[m] = universalHoursTotal[m] / oneBrigadeCapacity;
+
+        const uHours = universalHoursTotal[m];
+        let sched = {
+          mode: "1 смена (8ч, 5/2)",
+          brigadesActive: 1,
+          badgeClass: "badge-shift-1",
+          overtimeHours: 0,
+          statusZone: "green",
+          note: ""
+        };
+
+        if (uHours <= oneBrigadeCapacity * 1.05) {
+          sched.mode = "1 смена (8ч, 5/2)";
+          sched.brigadesActive = 1;
+          sched.badgeClass = "badge-shift-1";
+          sched.statusZone = "green";
+          sched.note = `Задействована 1 бригада (${brigadeSize} чел), ${brigadesCount - 1} бриг. в резерве`;
+        } else if (uHours <= oneBrigadeCapacity * 2 * 1.05) {
+          sched.mode = "2 смены (8ч, 5/2)";
+          sched.brigadesActive = Math.min(brigadesCount, 2);
+          sched.badgeClass = "badge-shift-2";
+          sched.statusZone = "green";
+          sched.note = `Задействовано 2 бригады (${brigadeSize * 2} чел) в 2 смены`;
+        } else if (uHours <= totalPoolNominalCapacity * 1.05) {
+          sched.mode = "2 смены по 12ч (2/2)";
+          sched.brigadesActive = brigadesCount;
+          sched.badgeClass = "badge-shift-12";
+          sched.statusZone = "green";
+          sched.note = `Все ${brigadesCount} бригады (${totalUniversalHeadcount} чел) в графике 2/2`;
+        } else if (uHours <= totalPoolMaxWithOvertime) {
+          sched.mode = "2 смены по 12ч + Сверхурочные";
+          sched.brigadesActive = brigadesCount;
+          sched.badgeClass = "badge-shift-overload";
+          sched.statusZone = "yellow";
+          sched.overtimeHours = Math.round(uHours - totalPoolNominalCapacity);
+          const otPerWorker = (sched.overtimeHours / totalUniversalHeadcount).toFixed(1);
+          sched.note = `Перегруз закрывается сверхурочными: ${sched.overtimeHours} н-ч (+${otPerWorker} ч/чел)`;
+        } else {
+          sched.mode = "Критический дефицит (2/12 + Перегруз)";
+          sched.brigadesActive = brigadesCount;
+          sched.badgeClass = "badge-shift-overload";
+          sched.statusZone = "red";
+          sched.overtimeHours = Math.round(uHours - totalPoolNominalCapacity);
+          const deficitPct = Math.round(((uHours - totalPoolMaxWithOvertime) / totalPoolNominalCapacity) * 100);
+          sched.note = `Превышение лимита переработок на +${deficitPct}%. Требуется доп. бригада или выравнивание`;
+        }
+        universalSchedules.push(sched);
+      }
+
       const mainStaffSpTotal = new Array(numMonths).fill(0);
       for (let m = 0; m < numMonths; m++) {
-        data.professions.forEach(prof => {
-          mainStaffSpTotal[m] += staffByProfSp[prof.id][m];
+        let dedicatedSum = 0;
+        dedicatedProfs.forEach(p => {
+          dedicatedSum += staffByProfSp[p.id][m];
         });
+        mainStaffSpTotal[m] = universalStaffSpTotal[m] + dedicatedSum;
       }
 
       const auxPercent = parseNum(data.settings.auxOtkPercent) + parseNum(data.settings.auxSetupPercent);
       const auxFixed = parseNum(data.settings.auxFixedPosts);
       const auxStaffSpTotal = mainStaffSpTotal.map(mStaff => (mStaff * (auxPercent / 100)) + auxFixed);
-      const grandTotalStaff = mainStaffSpTotal.map((mStaff, idx) => Math.ceil(mStaff) + Math.ceil(auxStaffSpTotal[idx]));
+      
+      const grandTotalStaff = mainStaffSpTotal.map((mStaff, idx) => {
+        const uniCeil = Math.ceil(universalStaffSpTotal[idx]);
+        let dedCeilSum = 0;
+        dedicatedProfs.forEach(p => {
+          dedCeilSum += Math.ceil(staffByProfSp[p.id][idx]);
+        });
+        return uniCeil + dedCeilSum + Math.ceil(auxStaffSpTotal[idx]);
+      });
 
       return {
         numMonths, fNom, fEff, kVn,
+        brigadesCount, brigadeSize, maxOvertimePct, totalUniversalHeadcount,
+        oneBrigadeCapacity, totalPoolNominalCapacity, totalPoolMaxWithOvertime,
         productTotals, hoursByProf, hoursByProduct,
         totalHoursByMonth, staffByProfSp, staffByProfYav,
+        universalProfs, dedicatedProfs, universalHoursTotal, universalStaffSpTotal,
+        universalBrigadesNeeded, universalSchedules,
         mainStaffSpTotal, auxStaffSpTotal, grandTotalStaff
       };
     }
@@ -1436,7 +1676,7 @@
       renderDictionaries();
       populateNormSelects();
       renderAnalytics();
-      renderMethodologyCards();
+      renderDynamicGuides();
       renderSavedNormsRegistry();
       updateLevelToggleButton();
     }
@@ -1454,7 +1694,6 @@
       document.getElementById("kpiAvgStaff").textContent = avgStaff + " чел.";
     }
 
-    // --- Render Plan Matrix with Month Tools ---
     function renderPlanTable() {
       const data = getActiveData();
       const headerRow = document.getElementById("planTableHeader");
@@ -1515,9 +1754,16 @@
       `;
     }
 
-    // --- Render Dictionaries ---
     function renderDictionaries() {
       const data = getActiveData();
+
+      document.getElementById("inputBrigadesCount").value = data.settings.brigadesCount !== undefined ? data.settings.brigadesCount : 3;
+      document.getElementById("inputBrigadeSize").value = data.settings.brigadeSize !== undefined ? data.settings.brigadeSize : 6;
+      document.getElementById("inputMaxOvertime").value = data.settings.maxOvertimePercent !== undefined ? data.settings.maxOvertimePercent : 15;
+      
+      const bCount = parseInt(document.getElementById("inputBrigadesCount").value) || 3;
+      const bSize = parseInt(document.getElementById("inputBrigadeSize").value) || 6;
+      document.getElementById("calcUniversalHeadcount").textContent = `${bCount * bSize} чел. (${bCount} бриг. по ${bSize} чел.)`;
 
       document.getElementById("inputFNom").value = data.settings.fNom;
       document.getElementById("inputFEff").value = data.settings.fEff;
@@ -1526,11 +1772,11 @@
       document.getElementById("inputAuxSetup").value = data.settings.auxSetupPercent;
       document.getElementById("inputAuxFixed").value = data.settings.auxFixedPosts;
 
-      // Таблица профессий
       const profTbody = document.getElementById("professionsTableBody");
       profTbody.innerHTML = "";
       data.professions.forEach((prof, idx) => {
         const isMachine = (prof.type === "machine");
+        const poolType = prof.pool || "universal";
         const tr = document.createElement("tr");
         tr.setAttribute("data-index", idx);
         tr.innerHTML = `
@@ -1541,6 +1787,12 @@
           </td>
           <td>
             <input type="text" class="input-control prof-name-input" data-prof-id="${prof.id}" value="${prof.name}">
+          </td>
+          <td style="text-align:center;">
+            <select class="input-control prof-pool-select" data-prof-id="${prof.id}" style="font-size:12px; font-weight:700;">
+              <option value="universal" ${poolType === 'universal' ? 'selected' : ''}>Универсальный пул</option>
+              <option value="dedicated" ${poolType === 'dedicated' ? 'selected' : ''}>Выделенный пост</option>
+            </select>
           </td>
           <td>
             <input type="number" min="1" step="1" class="input-control input-num prof-machines-input" data-prof-id="${prof.id}" value="${prof.machines || 1}">
@@ -1563,7 +1815,6 @@
         profTbody.appendChild(tr);
       });
 
-      // Таблица изделий и маршрутов
       const prodHeader = document.getElementById("productsTableHeader");
       prodHeader.innerHTML = `
         <th class="col-drag"></th>
@@ -1687,58 +1938,164 @@
       });
     }
 
-    // --- Methodology Explanations ---
-    function renderMethodologyCards() {
+    // --- РЕАКТИВНЫЕ ДИНАМИЧЕСКИЕ СПРАВКИ ДЛЯ ВСЕХ 4 ВКЛАДОК ---
+    function renderDynamicGuides() {
       const data = getActiveData();
-      const grid = document.getElementById("methodologyGrid");
-      if (!grid) return;
+      const calc = calculate();
+      const totalHours = calc.totalHoursByMonth.reduce((a, b) => a + b, 0);
 
-      const fNom = data.settings.fNom;
-      const fEff = data.settings.fEff;
-      const kVn = data.settings.kVn;
-      const otk = data.settings.auxOtkPercent;
-      const setup = data.settings.auxSetupPercent;
-      const totalAuxPercent = otk + setup;
-      const fixed = data.settings.auxFixedPosts;
-
-      grid.innerHTML = `
-        <div class="method-item">
-          <div class="method-item-title">Шаг 1. Общий объём работы (Трудоёмкость программы)</div>
-          <div class="method-item-formula">Трудоёмкость = План выпуска × Норма времени × (1 + Брак %)</div>
-          <div class="method-item-desc">Мы берём планируемое количество изделий, умножаем на время их изготовления и прибавляем процент на технологический брак. Получаем суммарный объём работы цеха в нормо-часах.</div>
-        </div>
-
-        <div class="method-item">
-          <div class="method-item-title">Шаг 2. Сколько людей нужно нанять (Штат основных рабочих)</div>
-          <div class="method-item-formula">Штат рабочих = Общая трудоёмкость / (${fEff} ч × ${kVn})</div>
-          <div class="method-item-desc">Один рабочий за месяц отрабатывает в среднем <strong>${fEff} ч</strong> (остальное время — отпуска и больничные). Мы делим всю работу на ${fEff} ч с учётом перевыполнения норм (${kVn}) и узнаём необходимое количество людей в штате.</div>
-        </div>
-
-        <div class="method-item">
-          <div class="method-item-title">Шаг 3. Сколько людей должно выйти в смену (Явочная численность)</div>
-          <div class="method-item-formula">Явка на смену = Общая трудоёмкость / (${fNom} ч × ${kVn})</div>
-          <div class="method-item-desc">Показывает, сколько рабочих должны физически стоять у станков каждый рабочий день месяца исходя из полного календаря (<strong>${fNom} ч</strong> в месяц). Разница между штатом и явкой — это резерв на подмену.</div>
-        </div>
-
-        <div class="method-item">
-          <div class="method-item-title">Шаг 4. Вспомогательные службы цеха</div>
-          <div class="method-item-formula">Вспомогательный штат = Штат рабочих × ${totalAuxPercent}% + ${fixed} дежурных</div>
-          <div class="method-item-desc">Для обеспечения работы цеха к основным рабочим добавляются контролёры ОТК и логисты (${otk}%), наладчики станков (${setup}%), а также постоянные дежурные посты электриков/слесарей (${fixed} чел.).</div>
-        </div>
-
-        <div class="method-item" style="border-left-color:#059669; background:#f0fdf4;">
-          <div class="method-item-title" style="color:#065f46;">Шаг 5. Итоговый штат цеха (Количество людей к утверждению)</div>
-          <div class="method-item-desc" style="color:#1e293b;">
-            Суммируются рассчитанные доли людей по каждой профессии и вспомогательным службам. Итоговое значение <strong>округляется в большую сторону до целого человека</strong>, исключая риски дефицита специалистов.
+      // Вкладка 1: План
+      const g1 = document.getElementById("guideTab1Dynamic");
+      if (g1) {
+        g1.innerHTML = `
+          <div class="method-item">
+            <div class="method-item-title">1. Назначение плана выпуска</div>
+            <div class="method-item-desc">В этой таблице задаются помесячные объёмы готовой продукции. Система непрерывно рассчитывает общую трудоёмкость (<strong>${Math.round(totalHours).toLocaleString()} н-ч</strong>) по <strong>${data.products.length} позициям</strong> номенклатуры на горизонте <strong>${data.months.length} мес.</strong></div>
           </div>
-        </div>
-      `;
+          <div class="method-item">
+            <div class="method-item-title">2. Как сроки влияют на штат</div>
+            <div class="method-item-desc">При неравномерном распределении заказов по месяцам возникают пики потребности (сейчас пик: <strong>${Math.max(...calc.grandTotalStaff)} чел.</strong> в мес. при среднем значении <strong>${(calc.grandTotalStaff.reduce((a,b)=>a+b,0)/calc.grandTotalStaff.length).toFixed(1)} чел.</strong>). Сгладить такие перепады позволяет кнопка «Выровнять план под штат».</div>
+          </div>
+        `;
+      }
+
+      // Вкладка 2: Справочники
+      const g2 = document.getElementById("guideTab2Dynamic");
+      if (g2) {
+        const uHoursSum = calc.universalHoursTotal.reduce((a,b)=>a+b,0);
+        g2.innerHTML = `
+          <div class="method-item" style="border-left-color:#2563eb; background:#eff6ff;">
+            <div class="method-item-title" style="color:#1e40af;">1. Текущий баланс универсального пула</div>
+            <div class="method-item-desc">В универсальный пул входит <strong>${calc.universalProfs.length} постов</strong> с общей трудоёмкостью <strong>${Math.round(uHoursSum).toLocaleString()} н-ч</strong> (${totalHours > 0 ? Math.round((uHoursSum/totalHours)*100) : 0}% программы). Доступно <strong>${calc.brigadesCount} бригад(ы)</strong> по <strong>${calc.brigadeSize} чел.</strong> (активный штат: <strong>${calc.totalUniversalHeadcount} чел.</strong>).</div>
+          </div>
+          <div class="method-item">
+            <div class="method-item-title">2. Выделенные стационарные посты</div>
+            <div class="method-item-desc">К выделенным отнесено <strong>${calc.dedicatedProfs.length} постов</strong> (${calc.dedicatedProfs.map(p=>p.name).join(', ') || 'нет'}), где операторы не ротируются.</div>
+          </div>
+          <div class="method-item">
+            <div class="method-item-title">3. Формула располагаемого фонда времени</div>
+            <div class="method-item-formula">Емкость 1 бригады = ${calc.brigadeSize} чел × ${calc.fEff}ч × ${calc.kVn} = ${calc.oneBrigadeCapacity.toFixed(1)} н-ч/мес</div>
+            <div class="method-item-desc">Суммарная номинальная емкость всех ${calc.brigadesCount} бригад составляет <strong>${calc.totalPoolNominalCapacity.toFixed(1)} н-ч/мес</strong>. С учётом лимита переработок ${calc.maxOvertimePct}% максимум равен <strong>${calc.totalPoolMaxWithOvertime.toFixed(1)} н-ч/мес</strong>.</div>
+          </div>
+        `;
+      }
+
+      // Вкладка 3: Нормирование
+      const g3 = document.getElementById("guideTab3Dynamic");
+      if (g3) {
+        g3.innerHTML = `
+          <div class="method-item">
+            <div class="method-item-title">1. Сменно-статистический расчёт</div>
+            <div class="method-item-formula">Норма = (Nраб × (Смена - Перерывы/60) × Kэф) / Q</div>
+            <div class="method-item-desc">Автоматически вычисляет фактическую норму по сдаче партии за смену и привязывает параметры к выбранной паре «Изделие + Участок».</div>
+          </div>
+          <div class="method-item">
+            <div class="method-item-title">2. Поэлементный хронометраж</div>
+            <div class="method-item-formula">Tшт = ((Tосн + Tвсп) × (1 + (Kобс + Kотд)/100) + Tпз/50) × Звено / 60</div>
+            <div class="method-item-desc">Инженерный расчёт штучного времени по секундомеру с учётом подготовительно-заключительного времени и размера звена.</div>
+          </div>
+        `;
+      }
+
+      // Вкладка 4: Методология и Аналитика
+      const g4 = document.getElementById("guideTab4Dynamic");
+      if (g4) {
+        g4.innerHTML = `
+          <div class="method-item" style="border-left-color:#2563eb; background:#eff6ff;">
+            <div class="method-item-title" style="color:#1e40af;">Шаг 1. 3 Зоны загрузки универсального пула</div>
+            <div class="method-item-desc">
+              • <strong>Зелёная зона (до ${calc.totalPoolNominalCapacity.toFixed(0)} н-ч):</strong> покрывается базовым фондом бригад без сверхурочных.<br>
+              • <strong>Жёлтая зона (до ${calc.totalPoolMaxWithOvertime.toFixed(0)} н-ч):</strong> компенсируется лимитом сверхурочных до +${calc.maxOvertimePct}%.<br>
+              • <strong>Красная зона (выше ${calc.totalPoolMaxWithOvertime.toFixed(0)} н-ч):</strong> требует выравнивания плана или ввода дополнительной бригады.
+            </div>
+          </div>
+          <div class="method-item">
+            <div class="method-item-title">Шаг 2. Расчёт штата и пиковых нагрузок</div>
+            <div class="method-item-formula">Штат = Трудоёмкость / (${calc.fEff}ч × ${calc.kVn})</div>
+            <div class="method-item-desc">Один рабочий вырабатывает <strong>${(calc.fEff * calc.kVn).toFixed(1)} н-ч/мес</strong>. Пиковая нагрузка завода составляет <strong>${Math.max(...calc.grandTotalStaff)} чел.</strong>, средняя — <strong>${(calc.grandTotalStaff.reduce((a,b)=>a+b,0)/calc.grandTotalStaff.length).toFixed(1)} чел.</strong></div>
+          </div>
+        `;
+      }
     }
 
-    // --- Render Analytics, Shift Recommendations & Charts ---
+    // --- SMART ADVISOR: ИНТЕЛЛЕКТУАЛЬНЫЙ АССИСТЕНТ БАЛАНСИРОВКИ ---
+    function renderSmartAdvisor(calc, data) {
+      const listEl = document.getElementById("advisorList");
+      const badgeEl = document.getElementById("advisorStatusBadge");
+      if (!listEl) return;
+
+      const items = [];
+      let maxDeficitMonth = null;
+      let maxDeficitVal = 0;
+      let maxUnderloadMonth = null;
+      let maxUnderloadPct = 0;
+
+      data.months.forEach((m, idx) => {
+        const uHrs = calc.universalHoursTotal[idx];
+        const nomCap = calc.totalPoolNominalCapacity;
+        const maxCap = calc.totalPoolMaxWithOvertime;
+
+        if (uHrs > maxCap) {
+          const def = Math.round(uHrs - maxCap);
+          const defPct = Math.round(((uHrs - nomCap) / nomCap) * 100);
+          items.push({
+            type: "alert-overload",
+            month: m,
+            text: `В периоде <strong>${m}</strong> критический дефицит <strong>+${def} н-ч</strong> (+${defPct}% к штату). Превышен лимит переработок ${calc.maxOvertimePct}%.`,
+            actionLabel: `Выровнять план под ${calc.grandTotalStaff[idx]} чел.`,
+            actionFn: () => { executeLevelLoading(calc.grandTotalStaff[idx]); }
+          });
+          if (def > maxDeficitVal) { maxDeficitVal = def; maxDeficitMonth = m; }
+        } else if (uHrs > nomCap) {
+          const otHrs = Math.round(uHrs - nomCap);
+          const otPerMan = (otHrs / calc.totalUniversalHeadcount).toFixed(1);
+          items.push({
+            type: "alert-overtime",
+            month: m,
+            text: `В периоде <strong>${m}</strong> перегруз <strong>+${otHrs} н-ч</strong>. Закрывается сверхурочными: <strong>+${otPerMan} ч/чел</strong> (в пределах лимита ${calc.maxOvertimePct}%).`,
+            actionLabel: `Перевести в 2/12 (2/2)`,
+            actionFn: () => { modalSystem.alert("Рекомендация графика", `Для периода ${m} рекомендуется задействовать все ${calc.brigadesCount} бригады по 12-часовому графику 2/2.`); }
+          });
+        } else if (uHrs < calc.oneBrigadeCapacity * 0.75 && uHrs > 0) {
+          const underPct = Math.round(((nomCap - uHrs) / nomCap) * 100);
+          items.push({
+            type: "alert-underload",
+            month: m,
+            text: `В периоде <strong>${m}</strong> недозагрузка универсалов <strong>${underPct}%</strong> (объем всего ${Math.round(uHrs)} н-ч).`,
+            actionLabel: `Направить на опережение`,
+            actionFn: () => { modalSystem.alert("Рекомендация", `В период ${m} рекомендуется задействовать свободные бригады на опережающую заготовку панелей.`); }
+          });
+        }
+      });
+
+      if (items.length === 0) {
+        badgeEl.textContent = "Баланс оптимален";
+        badgeEl.style.color = "var(--success)";
+        listEl.innerHTML = `
+          <div class="advisor-item alert-optimal">
+            <span>✅ Все периоды производственной программы сбалансированы и укладываются в емкость <strong>${calc.brigadesCount} бригад</strong> (${calc.totalUniversalHeadcount} чел.) без критических перегрузок.</span>
+          </div>
+        `;
+      } else {
+        badgeEl.textContent = `Обнаружено ${items.length} замечаний`;
+        badgeEl.style.color = "var(--warning)";
+        listEl.innerHTML = items.map((it, i) => `
+          <div class="advisor-item ${it.type}">
+            <span>${it.text}</span>
+            <button class="btn btn-secondary btn-sm" onclick="window.advisorActions[${i}]()">${it.actionLabel}</button>
+          </div>
+        `).join("");
+
+        window.advisorActions = items.map(it => it.actionFn);
+      }
+    }
+
     function renderAnalytics() {
       const data = getActiveData();
       const calc = calculate();
+
+      document.getElementById("txtBrigadesCount").textContent = calc.brigadesCount;
+      document.getElementById("txtBrigadeSize").textContent = calc.brigadeSize;
 
       const summaryList = document.getElementById("summaryBulletPoints");
       summaryList.innerHTML = "";
@@ -1758,14 +2115,13 @@
 
       const totalPlanHours = calc.totalHoursByMonth.reduce((a, b) => a + b, 0);
       const bottleneckShare = totalPlanHours > 0 ? ((maxProfHours / totalPlanHours) * 100).toFixed(1) : 0;
-      const reserveRate = (((calc.fNom - calc.fEff) / calc.fNom) * 100).toFixed(1);
-      const kSp = (calc.fNom / calc.fEff).toFixed(2);
+      const universalShare = totalPlanHours > 0 ? ((calc.universalHoursTotal.reduce((a,b)=>a+b,0) / totalPlanHours) * 100).toFixed(1) : 0;
 
       const bullets = [
-        `<strong>Пиковый период программы:</strong> приходится на <strong>${maxMonth}</strong> — требуется <strong>${maxStaff} чел.</strong> суммарного штата.`,
-        `<strong>Минимальная загрузка:</strong> зафиксирована в <strong>${minMonth}</strong> (${minStaff} чел.). Амплитуда колебания потребности составляет ${maxStaff - minStaff} чел.`,
-        `<strong>Лимитирующий технологический участок:</strong> «<strong>${maxProfName || '—'}</strong>» забирает <strong>${bottleneckShare}%</strong> всей трудоёмкости программы (${Math.round(maxProfHours).toLocaleString()} н-ч). Это главная зона внимания при подборе кадров.`,
-        `<strong>Запас времени на плановые отпуска и больничные:</strong> заложен на уровне <strong>${reserveRate}%</strong>. Коэффициент штатного резерва K<sub>сп</sub> = ${kSp} (на каждые 100 рабочих мест в смене нужно держать в штате ${Math.round(kSp * 100)} человек для подмены).`
+        `<strong>Пиковый период программы:</strong> приходится на <strong>${maxMonth}</strong> — требуется <strong>${maxStaff} чел.</strong> суммарного штата завода.`,
+        `<strong>Минимальная загрузка:</strong> зафиксирована в <strong>${minMonth}</strong> (${minStaff} чел.). Колебание потребности: ${maxStaff - minStaff} чел.`,
+        `<strong>Универсальный пул персонала:</strong> объединяет <strong>${calc.universalProfs.length} постов</strong> и берет на себя <strong>${universalShare}%</strong> всей программы. Доступно <strong>${calc.brigadesCount} бригад(ы)</strong> по <strong>${calc.brigadeSize} чел.</strong> (всего ${calc.totalUniversalHeadcount} универсалов).`,
+        `<strong>Лимитирующий технологический участок:</strong> «<strong>${maxProfName || '—'}</strong>» забирает <strong>${bottleneckShare}%</strong> всей трудоёмкости (${Math.round(maxProfHours).toLocaleString()} н-ч).`
       ];
 
       bullets.forEach(b => {
@@ -1774,24 +2130,50 @@
         summaryList.appendChild(li);
       });
 
+      renderSmartAdvisor(calc, data);
+
+      const brigadeDetails = document.getElementById("brigadeScheduleDetails");
+      let schedHtml = `<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:10px;">`;
+      data.months.forEach((m, idx) => {
+        const sched = calc.universalSchedules[idx];
+        const uHrs = Math.round(calc.universalHoursTotal[idx]);
+        const bNeeded = calc.universalBrigadesNeeded[idx].toFixed(2);
+
+        schedHtml += `
+          <div style="background:#f8fafc; border:1px solid var(--border-color); border-radius:6px; padding:8px 12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+              <strong>Период: ${m}</strong>
+              <span class="${sched.badgeClass}">${sched.mode}</span>
+            </div>
+            <div>Трудоемкость универсалов: <strong>${uHrs} н-ч</strong> (расчетно: <strong>${bNeeded} бриг.</strong>)</div>
+            <div style="font-size:11.5px; color:var(--text-muted); margin-top:2px;">${sched.note}</div>
+          </div>
+        `;
+      });
+      schedHtml += `</div>`;
+      brigadeDetails.innerHTML = schedHtml;
+
       renderShiftScheduleTable(calc, data);
 
       const resultsThead = document.getElementById("resultsTableHeader");
       resultsThead.innerHTML = `
-        <th class="col-sticky-name" style="min-width: 250px;">Показатель / Профессия</th>
+        <th class="col-sticky-name" style="min-width: 260px;">Показатель / Пул квалификации</th>
         ${data.months.map(m => `<th style="text-align: right; min-width: 80px;">${m}</th>`).join("")}
         <th style="text-align: right; min-width: 105px;">Итого / Среднее</th>
       `;
 
       const resultsTbody = document.getElementById("resultsTableBody");
-      resultsTbody.innerHTML = `
-        <tr style="background:#f8fafc; font-weight:600;"><td class="col-sticky-name" colspan="${data.months.length + 2}">1. Трудоёмкость по технологическим участкам (н-ч)</td></tr>
+      let html = `
+        <tr style="background:#f8fafc; font-weight:700;"><td class="col-sticky-name" colspan="${data.months.length + 2}">1. Прямая трудоёмкость по операциям (н-ч)</td></tr>
         ${data.professions.map(prof => {
           const rowHours = calc.hoursByProf[prof.id];
           const sumHours = rowHours.reduce((a, b) => a + b, 0);
           return `
             <tr>
-              <td class="col-sticky-name" style="padding-left: 18px;">${prof.name}</td>
+              <td class="col-sticky-name" style="padding-left: 18px;">
+                ${prof.name}
+                <span class="${prof.pool === 'universal' ? 'badge-pool-universal' : 'badge-pool-dedicated'}" style="font-size:10px; margin-left:6px;">${prof.pool === 'universal' ? 'Универсал' : 'Выделенный'}</span>
+              </td>
               ${rowHours.map(h => `<td style="text-align: right;">${Math.round(h).toLocaleString()}</td>`).join("")}
               <td style="text-align: right; font-weight:600;">${Math.round(sumHours).toLocaleString()}</td>
             </tr>
@@ -1800,11 +2182,34 @@
         <tr style="font-weight:700; background:#f1f5f9;">
           <td class="col-sticky-name">ИТОГО прямая трудоёмкость (н-ч):</td>
           ${calc.totalHoursByMonth.map(h => `<td style="text-align: right;">${Math.round(h).toLocaleString()}</td>`).join("")}
-          <td style="text-align: right;">${Math.round(calc.totalHoursByMonth.reduce((a,b)=>a+b, 0)).toLocaleString()}</td>
+          <td style="text-align: right; color:var(--accent);">${Math.round(calc.totalHoursByMonth.reduce((a,b)=>a+b, 0)).toLocaleString()}</td>
         </tr>
 
-        <tr style="background:#f8fafc; font-weight:600;"><td class="col-sticky-name" colspan="${data.months.length + 2}">2. Штатная потребность: Основные рабочие (чел.)</td></tr>
-        ${data.professions.map(prof => {
+        <tr style="background:#e0f2fe; font-weight:700; color:#0369a1;"><td class="col-sticky-name" colspan="${data.months.length + 2}">2. Универсальный пул (${calc.brigadesCount} бригад(ы) по ${calc.brigadeSize} чел)</td></tr>
+        <tr style="font-weight:700; background:#f0f9ff;">
+          <td class="col-sticky-name" style="padding-left: 18px; color:#0369a1;">ШТАТ УНИВЕРСАЛОВ (чел.):</td>
+          ${calc.universalStaffSpTotal.map(s => `<td style="text-align: right; color:#0369a1; font-weight:700;">${s.toFixed(1)}</td>`).join("")}
+          <td style="text-align: right; font-weight:700; color:#0369a1;">${(calc.universalStaffSpTotal.reduce((a,b)=>a+b,0)/calc.universalStaffSpTotal.length).toFixed(1)}</td>
+        </tr>
+        <tr style="font-weight:600; background:#f0f9ff;">
+          <td class="col-sticky-name" style="padding-left: 18px; color:#0369a1;">РЕКОМЕНДУЕМЫЙ РЕЖИМ СМЕН:</td>
+          ${calc.universalSchedules.map(sc => `<td style="text-align: right; font-size:11px; font-weight:700;"><span class="${sc.badgeClass}">${sc.mode}</span></td>`).join("")}
+          <td style="text-align: right; font-size:11px; color:#0369a1;">—</td>
+        </tr>
+        ${calc.universalProfs.map(prof => {
+          const rowStaff = calc.staffByProfSp[prof.id];
+          const avgStaff = (rowStaff.reduce((a, b) => a + b, 0) / rowStaff.length).toFixed(1);
+          return `
+            <tr style="color:var(--text-secondary);">
+              <td class="col-sticky-name" style="padding-left: 32px; font-size:12px;">↳ ${prof.name}</td>
+              ${rowStaff.map(s => `<td style="text-align: right; font-size:12px;">${s.toFixed(1)}</td>`).join("")}
+              <td style="text-align: right; font-size:12px;">${avgStaff}</td>
+            </tr>
+          `;
+        }).join("")}
+
+        <tr style="background:#fef3c7; font-weight:700; color:#92400e;"><td class="col-sticky-name" colspan="${data.months.length + 2}">3. Выделенные посты (Без ротации)</td></tr>
+        ${calc.dedicatedProfs.map(prof => {
           const rowStaff = calc.staffByProfSp[prof.id];
           const avgStaff = (rowStaff.reduce((a, b) => a + b, 0) / rowStaff.length).toFixed(1);
           return `
@@ -1816,23 +2221,23 @@
           `;
         }).join("")}
 
-        <tr style="background:#f8fafc; font-weight:600;"><td class="col-sticky-name" colspan="${data.months.length + 2}">3. Вспомогательный персонал и ИТОГО</td></tr>
+        <tr style="background:#f8fafc; font-weight:700;"><td class="col-sticky-name" colspan="${data.months.length + 2}">4. Вспомогательный персонал и Итоговый штат</td></tr>
         <tr>
-          <td class="col-sticky-name" style="padding-left: 18px;">Вспомогательный персонал (ОТК, наладка, службы)</td>
+          <td class="col-sticky-name" style="padding-left: 18px;">Вспомогательные службы (ОТК, наладка, дежурные)</td>
           ${calc.auxStaffSpTotal.map(s => `<td style="text-align: right;">${s.toFixed(1)}</td>`).join("")}
           <td style="text-align: right; font-weight:600;">${(calc.auxStaffSpTotal.reduce((a,b)=>a+b,0)/calc.auxStaffSpTotal.length).toFixed(1)}</td>
         </tr>
         <tr style="font-weight:700; background:#e2e8f0; font-size:13.5px;">
-          <td class="col-sticky-name">ИТОГО ОБЩИЙ ШТАТ (чел., с округлением):</td>
-          ${calc.grandTotalStaff.map(s => `<td style="text-align: right; color:var(--accent); font-weight:700;">${s}</td>`).join("")}
-          <td style="text-align: right; color:var(--accent);">max: ${Math.max(...calc.grandTotalStaff)}</td>
+          <td class="col-sticky-name">ИТОГО ОБЩИЙ ШТАТ ЗАВОДА (чел., с округлением):</td>
+          ${calc.grandTotalStaff.map(s => `<td style="text-align: right; color:var(--accent); font-weight:800;">${s}</td>`).join("")}
+          <td style="text-align: right; color:var(--accent); font-weight:800;">max: ${Math.max(...calc.grandTotalStaff)}</td>
         </tr>
       `;
 
+      resultsTbody.innerHTML = html;
       renderCharts(calc, data);
     }
 
-    // --- Capacity Balancing & Shift Recommendation Engine ---
     function renderShiftScheduleTable(calc, data) {
       const thead = document.getElementById("shiftScheduleTableHeader");
       const tbody = document.getElementById("shiftScheduleTableBody");
@@ -1840,6 +2245,7 @@
 
       thead.innerHTML = `
         <th class="col-sticky-name" style="min-width: 220px;">Участок / Оборудование</th>
+        <th style="width: 130px; text-align: center;">Пул</th>
         <th style="width: 65px; text-align: center;">Станков</th>
         <th style="width: 75px; text-align: center;">Звено</th>
         ${data.months.map(m => `<th style="text-align: center; min-width: 110px;">${m}</th>`).join("")}
@@ -1850,12 +2256,16 @@
         const machines = Math.max(1, prof.machines || 1);
         const crew = Math.max(1, prof.crew || 1);
         const isMachine = (prof.type === "machine");
+        const poolType = prof.pool || "universal";
         const tr = document.createElement("tr");
 
         let html = `
           <td class="col-sticky-name">
             <strong>${prof.name}</strong>
             <div style="font-size:11px; color:var(--text-muted);">${isMachine ? 'Станочный участок' : 'Ручной труд'}</div>
+          </td>
+          <td style="text-align: center;">
+            <span class="${poolType === 'universal' ? 'badge-pool-universal' : 'badge-pool-dedicated'}">${poolType === 'universal' ? 'Универсал' : 'Выделенный'}</span>
           </td>
           <td style="text-align: center; font-weight:600;">${machines}</td>
           <td style="text-align: center; font-weight:600; color:var(--text-secondary);">${crew} чел</td>
@@ -1865,26 +2275,24 @@
           const laborHours = calc.hoursByProf[prof.id][mIdx];
           const machineHours = laborHours / crew;
           const hoursPerMachine = machineHours / machines;
+          const daysInMonth = 21;
+          const hoursPerDay = (hoursPerMachine / daysInMonth).toFixed(1);
 
           let badge = '';
           if (hoursPerMachine <= 0) {
             badge = `<span style="color:var(--text-muted); font-size:12px;">Простой</span>`;
           } else if (hoursPerMachine <= 168) {
             const load = Math.round((hoursPerMachine / 168) * 100);
-            badge = `<span class="badge-shift-1" title="Загрузка 1 смены: ${load}%">1 см. (8ч) · ${load}%</span>`;
+            badge = `<span class="badge-shift-1" title="Загрузка: ${hoursPerDay} ч/сут (1 смена: ${load}%)">1 см (8ч) · ${hoursPerDay}ч/сут</span>`;
           } else if (hoursPerMachine <= 336) {
             const load = Math.round((hoursPerMachine / 336) * 100);
-            badge = `<span class="badge-shift-2" title="Загрузка 2 смен: ${load}%">2 см. (8ч) · ${load}%</span>`;
-          } else if (hoursPerMachine <= 520) {
-            const load = Math.round((hoursPerMachine / 504) * 100);
-            if (isMachine) {
-              badge = `<span class="badge-shift-12" title="Круглосуточно: рекомендовано 2 смены по 12ч (график 2/2)">2 см. × 12ч (2/2)</span>`;
-            } else {
-              badge = `<span class="badge-shift-3" title="Круглосуточно: рекомендовано 3 смены по 8ч">3 см. × 8ч</span>`;
-            }
+            badge = `<span class="badge-shift-2" title="Загрузка: ${hoursPerDay} ч/сут (2 смены: ${load}%)">2 см (8ч) · ${hoursPerDay}ч/сут</span>`;
+          } else if (hoursPerMachine <= 462) {
+            const load = Math.round((hoursPerMachine / 462) * 100);
+            badge = `<span class="badge-shift-12" title="Загрузка: ${hoursPerDay} ч/сут (2x12ч 2/2: ${load}%)">2 см × 12ч (2/2)</span>`;
           } else {
-            const load = Math.round((hoursPerMachine / 504) * 100);
-            badge = `<span class="badge-shift-overload" title="Дефицит мощности даже при круглосуточной работе!">24/7 Перегруз (${load}%)</span>`;
+            const load = Math.round((hoursPerMachine / 462) * 100);
+            badge = `<span class="badge-shift-overload" title="Дефицит мощности даже при 2x12ч!">2/12 Перегруз (${load}%)</span>`;
           }
 
           html += `<td style="text-align: center;">${badge}</td>`;
@@ -1896,17 +2304,28 @@
     }
 
     function renderCharts(calc, data) {
-      const palette = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#dc2626', '#0891b2', '#4b5563', '#ea580c', '#8b5cf6'];
+      const palette = ['#0284c7', '#d97706', '#dc2626', '#7c3aed', '#059669', '#4b5563', '#ea580c', '#8b5cf6'];
 
       if (staffChartInstance) staffChartInstance.destroy();
       if (productsChartInstance) productsChartInstance.destroy();
 
-      const staffDatasets = data.professions.map((prof, idx) => ({
-        label: prof.name,
-        data: calc.staffByProfSp[prof.id].map(v => parseFloat(v.toFixed(1))),
-        backgroundColor: palette[idx % palette.length],
+      const staffDatasets = [];
+
+      staffDatasets.push({
+        label: `Универсальный пул (${calc.brigadesCount} бриг. по ${calc.brigadeSize} чел)`,
+        data: calc.universalStaffSpTotal.map(v => parseFloat(v.toFixed(1))),
+        backgroundColor: '#0284c7',
         stack: 'main'
-      }));
+      });
+
+      calc.dedicatedProfs.forEach((prof, idx) => {
+        staffDatasets.push({
+          label: `Выделенный: ${prof.name}`,
+          data: calc.staffByProfSp[prof.id].map(v => parseFloat(v.toFixed(1))),
+          backgroundColor: palette[(idx + 1) % palette.length],
+          stack: 'main'
+        });
+      });
 
       staffDatasets.push({
         label: 'Вспомогательный персонал',
@@ -1943,7 +2362,6 @@
       });
     }
 
-    // --- Helper: Calculate Recommended Headcount ---
     function getRecommendedHeadcount() {
       const data = getActiveData();
       const calc = calculate();
@@ -1960,7 +2378,6 @@
       return Math.max(recommendedTotal, 1);
     }
 
-    // --- Two-Pass Forward/Backward Level Loading Algorithm ---
     function executeLevelLoading(targetHeadcount) {
       const data = getActiveData();
       const fEff = data.settings.fEff || 144;
@@ -1986,7 +2403,6 @@
         return hrs;
       }
 
-      // Pass 1: Forward distribution
       for (let m = 0; m < numMonths - 1; m++) {
         let currentLabor = getMonthLabor(m);
         if (currentLabor > maxMonthlyHours) {
@@ -2013,7 +2429,6 @@
         }
       }
 
-      // Pass 2: Backward distribution
       for (let m = numMonths - 1; m >= 1; m--) {
         let currentLabor = getMonthLabor(m);
         if (currentLabor > maxMonthlyHours) {
@@ -2046,11 +2461,10 @@
         Производственная программа успешно перераспределена под целевой штат <strong>${targetHeadcount} чел.</strong><br><br>
         • Допустимая ёмкость месяца: <strong>${Math.round(maxMonthlyHours).toLocaleString()} н-ч</strong><br>
         • Перераспределено объёмов: <strong>${Math.round(totalShiftedHours).toLocaleString()} н-ч</strong><br><br>
-        Все пики сглажены. Кнопка вверху переключена на «Откатить к исходному плану».
+        Все пики сглажены. Кнопка переключена на «Откатить к исходному плану».
       `);
     }
 
-    // --- TAB 3: МОДУЛЬ НОРМИРОВАНИЯ С ПРИВЯЗКОЙ КОНТЕКСТА К СВЯЗКЕ «ИЗДЕЛИЕ + УЧАСТОК» ---
     function populateNormSelects() {
       const data = getActiveData();
       
@@ -2147,7 +2561,6 @@
       const norm = totalLabor / q;
       document.getElementById("normStatResult").textContent = norm.toFixed(3) + " н-ч / ед";
 
-      // Сверка с матрицей
       const data = getActiveData();
       const pId = document.getElementById("normStatProdSelect").value;
       const profId = document.getElementById("normStatProfSelect").value;
@@ -2180,7 +2593,6 @@
       const norm = (pieceCycle * crew) / 60;
       document.getElementById("normChronoResult").textContent = norm.toFixed(3) + " н-ч / ед";
 
-      // Сверка с матрицей
       const data = getActiveData();
       const pId = document.getElementById("normChronoProdSelect").value;
       const profId = document.getElementById("normChronoProfSelect").value;
@@ -2200,7 +2612,6 @@
       return norm;
     }
 
-    // --- РЕНДЕР РЕЕСТРА СОХРАНЕННЫХ НОРМ ---
     function renderSavedNormsRegistry() {
       const data = getActiveData();
       if (!data.normConfigs) data.normConfigs = {};
@@ -2287,15 +2698,15 @@
       });
     }
 
-    // --- Event Listeners & Handlers ---
     function attachEvents() {
       setupTabs();
 
       const toggles = [
-        { btn: "toggleMethodologyBtn", content: "methodologyContent", chevron: "methodChevron" },
+        { btn: "toggleGuideTab1", content: "contentGuideTab1", chevron: "chevronGuideTab1" },
         { btn: "toggleGuideTab2", content: "contentGuideTab2", chevron: "chevronGuideTab2" },
         { btn: "toggleGuideTab3", content: "contentGuideTab3", chevron: "chevronGuideTab3" },
-        { btn: "toggleSavedNormsRegistry", content: "contentSavedNorms", chevron: "chevronSavedNorms" }
+        { btn: "toggleSavedNormsRegistry", content: "contentSavedNorms", chevron: "chevronSavedNorms" },
+        { btn: "toggleMethodologyBtn", content: "methodologyContent", chevron: "methodChevron" }
       ];
 
       toggles.forEach(t => {
@@ -2355,7 +2766,6 @@
       document.getElementById("btnLevelToggle").addEventListener("click", () => {
         const data = getActiveData();
         if (data._planSnapshot) {
-          // Действие: Откатить
           modalSystem.confirm("Откат плана", "Вернуть производственный план к исходным объемам до выравнивания?", () => {
             data.plan = JSON.parse(JSON.stringify(data._planSnapshot));
             delete data._planSnapshot;
@@ -2365,7 +2775,6 @@
             modalSystem.alert("Откат выполнен", "Производственный план возвращён к исходным значениям.");
           });
         } else {
-          // Действие: Выровнять под штат
           const rec = getRecommendedHeadcount();
           modalSystem.prompt(
             "Выравнивание плана под штат",
@@ -2406,7 +2815,14 @@
             if (imported.scenarios && imported.currentScenario) {
               state = imported;
               Object.keys(state.scenarios).forEach(k => {
-                if (!state.scenarios[k].normConfigs) state.scenarios[k].normConfigs = {};
+                const sc = state.scenarios[k];
+                if (!sc.normConfigs) sc.normConfigs = {};
+                if (sc.settings.brigadesCount === undefined) sc.settings.brigadesCount = 3;
+                if (sc.settings.brigadeSize === undefined) sc.settings.brigadeSize = 6;
+                if (sc.settings.maxOvertimePercent === undefined) sc.settings.maxOvertimePercent = 15;
+                sc.professions.forEach(pr => {
+                  if (!pr.pool) pr.pool = (["p1787298939301", "p1787298947495", "p1787298952912", "p1787298961438", "p1787298966902"].includes(pr.id) ? "dedicated" : "universal");
+                });
               });
               saveToStorage();
               renderScenarioSelector();
@@ -2456,7 +2872,6 @@
         link.click();
       });
 
-      // Перенос норм с фиксацией в реестре normConfigs
       document.getElementById("btnPushStatNormToRouting").addEventListener("click", () => {
         const norm = calculateStatNorm();
         const prodId = document.getElementById("normStatProdSelect").value;
@@ -2490,6 +2905,7 @@
           renderDictionaries();
           renderKPIs();
           renderAnalytics();
+          renderDynamicGuides();
           renderSavedNormsRegistry();
           calculateStatNorm();
           modalSystem.alert("Норма сохранена", `Норма <strong>${norm.toFixed(3)} н-ч</strong> для «${product.name}» (участок: ${prof.name}) записана в матрицу норм и зафиксирована в реестре.`);
@@ -2530,6 +2946,7 @@
           renderDictionaries();
           renderKPIs();
           renderAnalytics();
+          renderDynamicGuides();
           renderSavedNormsRegistry();
           calculateChronoNorm();
           modalSystem.alert("Норма сохранена", `Норма <strong>${norm.toFixed(3)} н-ч</strong> для «${product.name}» (участок: ${prof.name}) записана в матрицу норм и зафиксирована в реестре.`);
@@ -2543,7 +2960,6 @@
         document.getElementById(id).addEventListener("input", calculateChronoNorm);
       });
 
-      // Plan Inputs Live Update
       document.getElementById("planTable").addEventListener("input", (e) => {
         if (e.target.classList.contains("plan-input")) {
           const pId = e.target.getAttribute("data-product-id");
@@ -2554,6 +2970,7 @@
           data.plan[pId][mIdx] = val;
           saveToStorage();
           renderKPIs();
+          renderDynamicGuides();
           const rowSum = data.plan[pId].reduce((s, v) => s + parseNum(v), 0);
           const pObj = data.products.find(x => x.id === pId);
           e.target.closest("tr").querySelector("td:last-child").textContent = `${rowSum.toLocaleString()} ${pObj ? pObj.unit || 'м²' : ''}`;
@@ -2565,7 +2982,6 @@
         }
       });
 
-      // Month Column Move and Delete Toolbar Handlers
       document.getElementById("planTable").addEventListener("click", (e) => {
         const btnLeft = e.target.closest(".btn-move-left");
         const btnRight = e.target.closest(".btn-move-right");
@@ -2628,7 +3044,6 @@
         });
       });
 
-      // Products Table Handlers
       document.getElementById("productsTable").addEventListener("input", (e) => {
         const pId = e.target.getAttribute("data-product-id");
         const data = getActiveData();
@@ -2647,6 +3062,7 @@
         }
         saveToStorage();
         renderKPIs();
+        renderDynamicGuides();
         let sumNorm = 0;
         data.professions.forEach(prof => { sumNorm += parseNum(product.norms[prof.id]); });
         const tr = e.target.closest("tr");
@@ -2695,7 +3111,6 @@
         }
       });
 
-      // Professions Table Handlers
       document.getElementById("professionsTable").addEventListener("input", (e) => {
         const profId = e.target.getAttribute("data-prof-id");
         const data = getActiveData();
@@ -2714,6 +3129,7 @@
           p.crew = Math.max(1, parseInt(e.target.value) || 1);
         }
         saveToStorage();
+        renderDynamicGuides();
       });
 
       document.getElementById("professionsTable").addEventListener("change", (e) => {
@@ -2722,12 +3138,19 @@
         const p = data.professions.find(x => x.id === profId);
         if (!p) return;
 
-        if (e.target.classList.contains("prof-type-select")) {
+        if (e.target.classList.contains("prof-pool-select")) {
+          p.pool = e.target.value;
+          saveToStorage();
+          renderAnalytics();
+          renderDynamicGuides();
+        } else if (e.target.classList.contains("prof-type-select")) {
           p.type = e.target.value;
           saveToStorage();
           renderAnalytics();
+          renderDynamicGuides();
         } else if (e.target.classList.contains("prof-machines-input") || e.target.classList.contains("prof-crew-input")) {
           renderAnalytics();
+          renderDynamicGuides();
         }
       });
 
@@ -2736,7 +3159,7 @@
           if (name && name.trim()) {
             const data = getActiveData();
             const newId = "p" + Date.now();
-            data.professions.push({ id: newId, name: name.trim(), machines: 1, crew: 1, type: "machine" });
+            data.professions.push({ id: newId, name: name.trim(), pool: "universal", machines: 1, crew: 1, type: "machine" });
             data.products.forEach(p => { p.norms[newId] = 0; });
             saveToStorage();
             populateNormSelects();
@@ -2759,25 +3182,32 @@
         }
       });
 
-      // Settings Inputs
-      ["inputFNom", "inputFEff", "inputKVn", "inputAuxOtk", "inputAuxSetup", "inputAuxFixed"].forEach(id => {
+      // Settings Inputs Handlers
+      ["inputBrigadesCount", "inputBrigadeSize", "inputMaxOvertime", "inputFNom", "inputFEff", "inputKVn", "inputAuxOtk", "inputAuxSetup", "inputAuxFixed"].forEach(id => {
         document.getElementById(id).addEventListener("input", () => {
           const data = getActiveData();
+          data.settings.brigadesCount = Math.max(1, parseInt(document.getElementById("inputBrigadesCount").value) || 3);
+          data.settings.brigadeSize = Math.max(1, parseInt(document.getElementById("inputBrigadeSize").value) || 6);
+          data.settings.maxOvertimePercent = Math.max(0, Math.min(30, parseNum(document.getElementById("inputMaxOvertime").value) || 15));
+          
+          document.getElementById("calcUniversalHeadcount").textContent = `${data.settings.brigadesCount * data.settings.brigadeSize} чел. (${data.settings.brigadesCount} бриг. по ${data.settings.brigadeSize} чел.)`;
+
           data.settings.fNom = parseNum(document.getElementById("inputFNom").value) || 168;
           data.settings.fEff = parseNum(document.getElementById("inputFEff").value) || 144;
           data.settings.kVn = parseNum(document.getElementById("inputKVn").value) || 1.0;
           data.settings.auxOtkPercent = parseNum(document.getElementById("inputAuxOtk").value);
           data.settings.auxSetupPercent = parseNum(document.getElementById("inputAuxSetup").value);
           data.settings.auxFixedPosts = parseNum(document.getElementById("inputAuxFixed").value);
+          
           saveToStorage();
           renderKPIs();
-          renderMethodologyCards();
+          renderAnalytics();
+          renderDynamicGuides();
         });
       });
 
-      // Reset Scenario Handler
       document.getElementById("btnResetData").addEventListener("click", () => {
-        modalSystem.confirm("Сброс данных", "Сбросить данные к двум эталонным планам от 21.08.2026 (с Ливадией и без Ливадии)?", () => {
+        modalSystem.confirm("Сброс данных", "Сбросить данные к эталонным планам (включая «План сент-окт 2026»)?", () => {
           loadDefaultScenario();
           renderScenarioSelector();
           updateLevelToggleButton();
@@ -2785,7 +3215,7 @@
           loadNormContextValues('stat');
           loadNormContextValues('chrono');
           renderAll();
-          modalSystem.alert("Сброс выполнен", "Загружены 2 эталонных плана от 21.08.2026.");
+          modalSystem.alert("Сброс выполнен", "Загружены 3 эталонных сценария.");
         });
       });
     }
