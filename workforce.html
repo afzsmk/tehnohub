@@ -171,36 +171,21 @@
 
     .col-tool-btn:disabled { opacity: 0.25; cursor: not-allowed; }
 
-    .kpi-strip {
-      background-color: #ffffff;
+    /* Тонкая строка справочных фактов под executive summary — вторично важные цифры
+       (номенклатура, суммарная трудоёмкость, среднесписочная, неравномерность плана),
+       не дублирующие пиковый штат, который уже показан крупно в exec-summary выше. */
+    .quick-facts-strip {
+      background-color: #fafbfc;
       border-bottom: 1px solid var(--border-color);
-      padding: 12px 24px;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 16px;
-    }
-
-    .kpi-card {
+      padding: 8px 24px;
       display: flex;
-      flex-direction: column;
-      border-left: 3px solid var(--accent);
-      padding-left: 12px;
+      flex-wrap: wrap;
+      gap: 4px 28px;
+      font-size: 12.5px;
+      color: var(--text-secondary);
     }
-
-    .kpi-label {
-      font-size: 11.5px;
-      font-weight: 600;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    .kpi-value {
-      font-size: 20px;
-      font-weight: 700;
-      color: var(--text-primary);
-      margin-top: 2px;
-    }
+    .quick-facts-strip .qf-item { white-space: nowrap; }
+    .quick-facts-strip .qf-item strong { color: var(--text-primary); font-weight: 700; }
 
     .tab-navigation {
       display: flex;
@@ -344,6 +329,18 @@
     .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
     @media (max-width: 1100px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } }
     @media (max-width: 1400px) { .grid-4 { grid-template-columns: repeat(2, 1fr); } }
+
+    /* Панель «Календарь и сменность»: подзаголовки групп + живой предпросчёт ёмкости */
+    .settings-subhead { font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; margin: 4px 0 10px; padding-top: 10px; border-top: 1px dashed var(--border-color); }
+    .settings-subhead:first-child { padding-top: 0; border-top: none; margin-top: 0; }
+    .capacity-preview { margin-top: 6px; padding: 12px 14px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; }
+    .capacity-preview-title { font-size: 11px; font-weight: 700; color: #1e40af; text-transform: uppercase; letter-spacing: .03em; margin-bottom: 8px; }
+    .capacity-tier-row { display: flex; align-items: center; justify-content: space-between; padding: 5px 0; font-size: 12.5px; border-bottom: 1px solid #dbeafe; }
+    .capacity-tier-row:last-child { border-bottom: none; }
+    .capacity-tier-dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:8px; vertical-align:-1px; }
+    .field-link-btn { font-size: 11px; color: var(--accent); font-weight:600; background:none; border:none; cursor:pointer; padding:0; text-decoration: underline; text-underline-offset: 2px; }
+    .field-flash { animation: fieldFlash 1.1s ease; }
+    @keyframes fieldFlash { 0%, 100% { box-shadow: none; } 25%, 75% { box-shadow: 0 0 0 3px rgba(37,99,235,.35); } }
 
     /* Панели калькуляторов нормирования: прижимаем итоговый блок с кнопкой
        к низу карточки, чтобы кнопки "Перенести в матрицу норм" были на одной
@@ -745,25 +742,6 @@
     </div>
   </div>
 
-  <div class="kpi-strip">
-    <div class="kpi-card" style="border-left-color: #2563eb;">
-      <span class="kpi-label">Номенклатура программы</span>
-      <span class="kpi-value" id="kpiTotalProducts">15 поз.</span>
-    </div>
-    <div class="kpi-card" style="border-left-color: #7c3aed;">
-      <span class="kpi-label">Трудоёмкость программы</span>
-      <span class="kpi-value" id="kpiTotalHours">0 н-ч</span>
-    </div>
-    <div class="kpi-card" style="border-left-color: #059669;">
-      <span class="kpi-label">Пиковая потребность (Штат)</span>
-      <span class="kpi-value" id="kpiPeakStaff">0 чел.</span>
-    </div>
-    <div class="kpi-card" style="border-left-color: #d97706;">
-      <span class="kpi-label">Среднесписочная численность</span>
-      <span class="kpi-value" id="kpiAvgStaff">0 чел.</span>
-    </div>
-  </div>
-
   <div class="exec-summary" id="execSummary">
     <div class="exec-status-card">
       <span class="exec-status-label">Статус производственной программы</span>
@@ -782,6 +760,14 @@
       <div class="exec-fact-desc">Рекомендация</div>
     </div>
   </div>
+
+  <div class="quick-facts-strip" id="quickFactsStrip">
+    <span class="qf-item">Номенклатура: <strong id="kpiTotalProducts">0 поз.</strong></span>
+    <span class="qf-item">Трудоёмкость программы: <strong id="kpiTotalHours">0 н-ч</strong></span>
+    <span class="qf-item">Среднесписочная численность: <strong id="kpiAvgStaff">0 чел.</strong></span>
+    <span class="qf-item" title="Во сколько раз пиковая потребность в штате превышает среднюю — чем выше, тем более неравномерно распределён план по месяцам">Неравномерность плана (пик/среднее): <strong id="kpiVolatility">×1.0</strong></span>
+  </div>
+
 
   <nav class="tab-navigation">
     <button class="tab-button active" data-tab="tab-plan">
@@ -958,30 +944,84 @@
         <div class="panel">
           <div class="panel-header">
             <div class="panel-title">Параметры календаря и сменности участков</div>
+            <button type="button" class="btn btn-secondary btn-sm" id="btnResetCalendarDefaults" title="Вернуть 21 раб.день, смену 8ч и коэфф. 2.75">
+              Сбросить к типовым
+            </button>
           </div>
           <div class="panel-body">
-            <p style="font-size:12px; color:var(--text-secondary); margin-bottom:10px;">
-              Эти параметры задают пороги «1 смена / 2 смены / 2×12ч» в таблице загрузки оборудования (ранее были зашиты в код как фиксированные числа — теперь пересчитываются от факта).
+            <p style="font-size:12px; color:var(--text-secondary); margin-bottom:14px;">
+              Эти параметры определяют, при какой загрузке участку хватает 1 смены, когда нужны 2 смены, а когда — вахта 2×12ч (2/2). Результат сразу виден в предпросчёте справа/ниже — не нужно переходить в «Аналитику», чтобы проверить эффект.
             </p>
-            <div class="grid-2" style="gap: 12px;">
+            <div class="grid-2" style="gap: 20px; align-items: start;">
               <div>
-                <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);" title="Количество рабочих дней в расчётном месяце для таблицы загрузки станков">РАБОЧИХ ДНЕЙ В МЕСЯЦЕ:</label>
-                <input type="number" min="1" max="31" id="inputWorkDays" class="input-control input-num" value="21">
+                <div class="settings-subhead">Календарь месяца</div>
+                <div class="grid-2" style="gap: 12px; margin-bottom: 4px;">
+                  <div>
+                    <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);" title="Количество рабочих дней в расчётном месяце для таблицы загрузки станков">РАБОЧИХ ДНЕЙ В МЕСЯЦЕ:</label>
+                    <input type="number" min="1" max="31" id="inputWorkDays" class="input-control input-num" value="21">
+                  </div>
+                  <div>
+                    <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);" title="Длительность стандартной (1-й) смены">СМЕНА (часов):</label>
+                    <input type="number" min="1" max="24" step="0.5" id="inputShiftHours" class="input-control input-num" value="8">
+                  </div>
+                </div>
+
+                <div class="settings-subhead">Пороги перехода на усиленный режим</div>
+                <div class="grid-2" style="gap: 12px;">
+                  <div>
+                    <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);" title="Во сколько раз ёмкость режима «2×12ч (2/2)» больше ёмкости 1 смены. По умолчанию 2.75 (эквивалент прежних 462/168 ч)">КОЭФФ. РЕЖИМА 2×12Ч (2/2):</label>
+                    <input type="number" min="1" max="5" step="0.05" id="inputThirdTierFactor" class="input-control input-num" value="2.75">
+                  </div>
+                  <div>
+                    <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);" title="Общий коэффициент выполнения норм — тот же, что используется при расчёте штата универсалов">ВЫПОЛНЕНИЕ НОРМ (Kвн):</label>
+                    <div style="display:flex; align-items:center; gap:8px; padding:8px 10px; background:#f8fafc; border:1px solid var(--border-color); border-radius:6px; font-weight:700; color:var(--text-secondary);">
+                      <span id="calendarKVnPreview">1.05</span>
+                      <button type="button" class="field-link-btn" id="btnJumpToKVn">изменить ↑</button>
+                    </div>
+                  </div>
+                </div>
+                <p style="font-size:11px; color:var(--text-muted); margin-top:6px;">
+                  Каждый участок дополнительно настраивается в «Технологических участках» выше: количество станков, звено (чел./станок) и минимальный штат поста — именно они определяют, какая часть общей трудоёмкости придётся на один станок.
+                </p>
               </div>
+
               <div>
-                <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);" title="Длительность стандартной (1-й) смены">СМЕНА (часов):</label>
-                <input type="number" min="1" max="24" step="0.5" id="inputShiftHours" class="input-control input-num" value="8">
-              </div>
-              <div class="grid-2" style="grid-column: 1 / -1; gap:12px;">
-                <div>
-                  <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);" title="Во сколько раз ёмкость режима «2×12ч (2/2)» больше ёмкости 1 смены. По умолчанию 2.75 (эквивалент прежних 462/168 ч)">КОЭФФ. РЕЖИМА 2×12Ч (2/2) К 1 СМЕНЕ:</label>
-                  <input type="number" min="1" max="5" step="0.05" id="inputThirdTierFactor" class="input-control input-num" value="2.75">
+                <div class="settings-subhead">Предпросчёт ёмкости одного станка/поста</div>
+                <div class="capacity-preview">
+                  <div class="capacity-preview-title">Часов в месяц на 1 станок, при которых достаточно…</div>
+                  <div class="capacity-tier-row">
+                    <span><span class="capacity-tier-dot" style="background:#86efac;"></span>1 смены</span>
+                    <strong id="previewCap1">до 176 ч/мес</strong>
+                  </div>
+                  <div class="capacity-tier-row">
+                    <span><span class="capacity-tier-dot" style="background:#86efac;"></span>2 смен</span>
+                    <strong id="previewCap2">до 353 ч/мес</strong>
+                  </div>
+                  <div class="capacity-tier-row">
+                    <span><span class="capacity-tier-dot" style="background:#fde68a;"></span>2×12ч (2/2)</span>
+                    <strong id="previewCap3">до 485 ч/мес</strong>
+                  </div>
+                  <div class="capacity-tier-row">
+                    <span><span class="capacity-tier-dot" style="background:#fca5a5;"></span>свыше — перегруз</span>
+                    <strong id="previewCap4">от 485 ч/мес</strong>
+                  </div>
                 </div>
-                <div>
-                  <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);" title="Название компании/цеха — используется в титульном листе PDF-отчёта и в Excel-выгрузке">НАЗВАНИЕ ОРГАНИЗАЦИИ / ЦЕХА:</label>
-                  <input type="text" id="inputCompanyName" class="input-control" placeholder="Например: ООО «Завод металлоконструкций»">
-                </div>
+                <p style="font-size:11px; color:var(--text-muted); margin-top:8px;">
+                  Пересчитывается сразу при изменении параметров слева. Проверить, как это выглядит для конкретных участков — вкладка «Аналитика» → «Загрузка оборудования».
+                </p>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Реквизиты для отчётов (PDF / Excel)</div>
+          </div>
+          <div class="panel-body">
+            <div style="max-width: 420px;">
+              <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);" title="Используется в титульном листе PDF-отчёта и в шапке Excel-выгрузки">НАЗВАНИЕ ОРГАНИЗАЦИИ / ЦЕХА:</label>
+              <input type="text" id="inputCompanyName" class="input-control" placeholder="Например: ООО «Завод металлоконструкций»">
             </div>
           </div>
         </div>
@@ -1843,13 +1883,13 @@
           sched.statusZone = "green";
           sched.note = `Задействовано 2 бригады (${brigadeSize * 2} чел) в 2 смены`;
         } else if (uHours <= totalPoolNominalCapacity * 1.05) {
-          sched.mode = "2 смены по 12ч (2/2)";
+          sched.mode = "2×12ч (2/2)";
           sched.brigadesActive = brigadesCount;
           sched.badgeClass = "badge-shift-12";
           sched.statusZone = "green";
           sched.note = `Все ${brigadesCount} бригады (${totalUniversalHeadcount} чел) в графике 2/2`;
         } else if (uHours <= totalPoolMaxWithOvertime) {
-          sched.mode = "2 смены по 12ч + Сверхурочные";
+          sched.mode = "2×12ч (2/2) + сверхурочные";
           sched.brigadesActive = brigadesCount;
           sched.badgeClass = "badge-shift-overload";
           sched.statusZone = "yellow";
@@ -1857,7 +1897,7 @@
           const otPerWorker = (sched.overtimeHours / totalUniversalHeadcount).toFixed(1);
           sched.note = `Перегруз закрывается сверхурочными: ${sched.overtimeHours} н-ч (+${otPerWorker} ч/чел)`;
         } else {
-          sched.mode = "Критический дефицит (2/12 + Перегруз)";
+          sched.mode = "Критический дефицит мощности";
           sched.brigadesActive = brigadesCount;
           sched.badgeClass = "badge-shift-overload";
           sched.statusZone = "red";
@@ -1983,6 +2023,30 @@
       return { badgeClass: "", statusZone, pct24, hoursPerDay, tierLabel, plainLabel, label };
     }
 
+    // Живой предпросчёт ёмкости станка/поста в панели настроек "Календарь и сменность" —
+    // те же формулы, что и в calculate()/classifyMachineLoad, но выводятся сразу при
+    // вводе параметров, без необходимости открывать вкладку "Аналитика", чтобы увидеть эффект.
+    function updateCalendarCapacityPreview() {
+      const data = getActiveData();
+      const workDaysPerMonth = Math.max(1, parseInt(document.getElementById("inputWorkDays").value) || 21);
+      const shiftHoursStandard = parseNum(document.getElementById("inputShiftHours").value) || 8;
+      const thirdTierFactor = parseNum(document.getElementById("inputThirdTierFactor").value) || 2.75;
+      const kVn = parseNum(document.getElementById("inputKVn").value) || 1.0;
+
+      const cap1 = workDaysPerMonth * shiftHoursStandard * kVn;
+      const cap2 = cap1 * 2;
+      const cap3 = cap1 * thirdTierFactor;
+
+      const kvnPreviewEl = document.getElementById("calendarKVnPreview");
+      if (kvnPreviewEl) kvnPreviewEl.textContent = kVn.toFixed(2);
+
+      const setTier = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+      setTier("previewCap1", `до ${Math.round(cap1)} ч/мес`);
+      setTier("previewCap2", `до ${Math.round(cap2)} ч/мес`);
+      setTier("previewCap3", `до ${Math.round(cap3)} ч/мес`);
+      setTier("previewCap4", `от ${Math.round(cap3)} ч/мес`);
+    }
+
     function renderAll() {
       renderKPIs();
       renderExecSummary();
@@ -2000,12 +2064,13 @@
       const calc = calculate();
       const totalHours = calc.totalHoursByMonth.reduce((a, b) => a + b, 0);
       const peakStaff = calc.grandTotalStaff.length ? Math.max(...calc.grandTotalStaff) : 0;
-      const avgStaff = calc.grandTotalStaff.length ? (calc.grandTotalStaff.reduce((a, b) => a + b, 0) / calc.grandTotalStaff.length).toFixed(1) : 0;
+      const avgStaffNum = calc.grandTotalStaff.length ? (calc.grandTotalStaff.reduce((a, b) => a + b, 0) / calc.grandTotalStaff.length) : 0;
+      const volatility = avgStaffNum > 0 ? (peakStaff / avgStaffNum) : 1;
 
       document.getElementById("kpiTotalProducts").textContent = data.products.length + " поз.";
       document.getElementById("kpiTotalHours").textContent = Math.round(totalHours).toLocaleString() + " н-ч";
-      document.getElementById("kpiPeakStaff").textContent = peakStaff + " чел.";
-      document.getElementById("kpiAvgStaff").textContent = avgStaff + " чел.";
+      document.getElementById("kpiAvgStaff").textContent = avgStaffNum.toFixed(1) + " чел.";
+      document.getElementById("kpiVolatility").textContent = "×" + volatility.toFixed(2);
     }
 
     // Executive summary — единая карточка "на человеческом языке" для руководителя.
@@ -2131,6 +2196,7 @@
       document.getElementById("inputShiftHours").value = data.settings.shiftHoursStandard !== undefined ? data.settings.shiftHoursStandard : 8;
       document.getElementById("inputThirdTierFactor").value = data.settings.thirdTierFactor !== undefined ? data.settings.thirdTierFactor : 2.75;
       document.getElementById("inputCompanyName").value = data.settings.companyName || "";
+      updateCalendarCapacityPreview();
 
       const profTbody = document.getElementById("professionsTableBody");
       profTbody.innerHTML = "";
@@ -2488,8 +2554,7 @@
       const universalShare = totalPlanHours > 0 ? ((calc.universalHoursTotal.reduce((a,b)=>a+b,0) / totalPlanHours) * 100).toFixed(1) : 0;
 
       const bullets = [
-        `<strong>Пиковый период программы:</strong> приходится на <strong>${maxMonth}</strong> — требуется <strong>${maxStaff} чел.</strong> суммарного штата завода.`,
-        `<strong>Минимальная загрузка:</strong> зафиксирована в <strong>${minMonth}</strong> (${minStaff} чел.). Колебание потребности: ${maxStaff - minStaff} чел.`,
+        `<strong>Диапазон потребности в штате:</strong> от <strong>${minStaff} чел.</strong> (${escapeHtml(minMonth)}) до <strong>${maxStaff} чел.</strong> (${escapeHtml(maxMonth)}) — колебание ${maxStaff - minStaff} чел. за счёт неравномерности плана по месяцам.`,
         `<strong>Универсальный пул персонала:</strong> объединяет <strong>${calc.universalProfs.length} постов</strong> и берет на себя <strong>${universalShare}%</strong> всей программы. Доступно <strong>${calc.brigadesCount} бригад(ы)</strong> по <strong>${calc.brigadeSize} чел.</strong> (всего ${calc.totalUniversalHeadcount} универсалов).`,
         `<strong>Лимитирующий технологический участок:</strong> «<strong>${escapeHtml(maxProfName) || '—'}</strong>» забирает <strong>${bottleneckShare}%</strong> всей трудоёмкости (${Math.round(maxProfHours).toLocaleString()} н-ч).`
       ];
@@ -2614,8 +2679,7 @@
       if (!thead || !tbody) return;
 
       thead.innerHTML = `
-        <th class="col-sticky-name" style="min-width: 220px;">Участок / Оборудование</th>
-        <th style="width: 130px; text-align: center;">Пул</th>
+        <th class="col-sticky-name" style="min-width: 240px;">Участок / Оборудование</th>
         <th style="width: 65px; text-align: center;">Станков</th>
         <th style="width: 75px; text-align: center;">Звено</th>
         ${data.months.map(m => `<th style="text-align: center; min-width: 110px;">${escapeHtml(m)}</th>`).join("")}
@@ -2629,13 +2693,15 @@
         const poolType = prof.pool || "universal";
         const tr = document.createElement("tr");
 
+        // Пул показываем тем же значком рядом с названием, что и в "Сводной ведомости
+        // потребности в персонале" (раздел 1) — раньше здесь был отдельный столбец
+        // "Пул", а там — значок в названии; теперь один способ представления во всей
+        // аналитике, включая PDF/Excel.
         let html = `
           <td class="col-sticky-name">
             <strong>${escapeHtml(prof.name)}</strong>
+            <span class="${poolType === 'universal' ? 'badge-pool-universal' : 'badge-pool-dedicated'}" style="font-size:10px; margin-left:6px;">${poolType === 'universal' ? 'Универсал' : 'Выделенный'}</span>
             <div style="font-size:11px; color:var(--text-muted);">${isMachine ? 'Станочный участок' : 'Ручной труд'}</div>
-          </td>
-          <td style="text-align: center;">
-            <span class="${poolType === 'universal' ? 'badge-pool-universal' : 'badge-pool-dedicated'}">${poolType === 'universal' ? 'Универсал' : 'Выделенный'}</span>
           </td>
           <td style="text-align: center; font-weight:600;">${machines}</td>
           <td style="text-align: center; font-weight:600; color:var(--text-secondary);">${crew} чел</td>
@@ -2728,6 +2794,16 @@
 
     function executeLevelLoading(targetHeadcount) {
       const data = getActiveData();
+
+      // Снимок исходного плана берём здесь же, один раз — раньше это делал только
+      // обработчик кнопки на вкладке «План», поэтому запуск выравнивания из «Умного
+      // советника» (там своя кнопка «Выровнять план под X чел.») не создавал снимок,
+      // и кнопка «Откатить к исходному плану» после этого не появлялась. Теперь both
+      // входные точки гарантированно проходят через одно и то же место.
+      if (!data._planSnapshot) {
+        data._planSnapshot = JSON.parse(JSON.stringify(data.plan));
+      }
+
       const fEff = data.settings.fEff || 144;
       const kVn = data.settings.kVn || 1.05;
       const auxPercent = (data.settings.auxOtkPercent + data.settings.auxSetupPercent) / 100;
@@ -2805,6 +2881,7 @@
 
       saveToStorage();
       renderAll();
+      updateLevelToggleButton();
 
       // ВАЖНО: выравнивание распределяет трудоёмкость исходя из штата так, как будто
       // труд полностью взаимозаменяем. Но «выделенные» посты (1 станок/1 звено) физически
@@ -3216,7 +3293,7 @@
       // --- Сменность ---
       html += `<div class="rpt-page"><div class="rpt-section-title">5. Режим загрузки оборудования по участкам</div><table class="rpt-table"><thead><tr><th>Участок</th>${data.months.map(m => `<th>${escapeHtml(m)}</th>`).join("")}</tr></thead><tbody>`;
       data.professions.forEach(prof => {
-        html += `<tr><td>${escapeHtml(prof.name)}</td>${calc.profMachineZones[prof.id].map(z => `<td class="${zoneCellClass(z.statusZone)}">${escapeHtml(z.plainLabel) || "—"}</td>`).join("")}</tr>`;
+        html += `<tr><td>${escapeHtml(prof.name)} <span style="font-size:9.5px; color:#64748b;">(${prof.pool === 'universal' ? 'Универсал' : 'Выделенный'})</span></td>${calc.profMachineZones[prof.id].map(z => `<td class="${zoneCellClass(z.statusZone)}">${escapeHtml(z.plainLabel) || "—"}</td>`).join("")}</tr>`;
       });
       html += `</tbody></table><div class="rpt-footer-note">Пороги режимов рассчитаны при: ${calc.workDaysPerMonth} раб.дн./мес, смена ${calc.shiftHoursStandard}ч, Kвн=${calc.kVn}, коэфф. режима 2×12ч(2/2) = ${calc.thirdTierFactor}.</div></div>`;
 
@@ -3346,7 +3423,7 @@
       wsShift.columns = [{ width: 28 }, ...data.months.map(() => ({ width: 20 }))];
       data.professions.forEach(prof => {
         const rowVals = calc.profMachineZones[prof.id].map(z => z.plainLabel || "Простой");
-        const row = wsShift.addRow([prof.name, ...rowVals]);
+        const row = wsShift.addRow([`${prof.name} (${prof.pool === 'universal' ? 'Универсал' : 'Выделенный'})`, ...rowVals]);
         calc.profMachineZones[prof.id].forEach((z, i) => {
           const cell = row.getCell(i + 2);
           if (zoneFill[z.statusZone]) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: zoneFill[z.statusZone] } };
@@ -3455,11 +3532,7 @@
             String(rec),
             (targetVal) => {
               const headcount = parseInt(targetVal);
-              if (headcount > 0) {
-                data._planSnapshot = JSON.parse(JSON.stringify(data.plan));
-                executeLevelLoading(headcount);
-                updateLevelToggleButton();
-              }
+              if (headcount > 0) executeLevelLoading(headcount);
             }
           );
         }
@@ -3925,6 +3998,7 @@
           data.settings.thirdTierFactor = parseNum(document.getElementById("inputThirdTierFactor").value) || 2.75;
 
           saveToStorage();
+          updateCalendarCapacityPreview();
           renderAll();
         });
       });
@@ -3933,6 +4007,39 @@
         const data = getActiveData();
         data.settings.companyName = document.getElementById("inputCompanyName").value;
         saveToStorage();
+      });
+
+      // Ссылка "изменить →" рядом с read-only показателем Kвн — прокручивает
+      // к реальному полю в блоке "Параметры бригад..." и подсвечивает его,
+      // чтобы не заводить второе редактируемое поле для одного и того же параметра.
+      document.getElementById("btnJumpToKVn").addEventListener("click", () => {
+        const target = document.getElementById("inputKVn");
+        if (typeof target.scrollIntoView === "function") {
+          target.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+        target.classList.remove("field-flash");
+        void target.offsetWidth;
+        target.classList.add("field-flash");
+        setTimeout(() => target.focus(), 300);
+      });
+
+      document.getElementById("btnResetCalendarDefaults").addEventListener("click", () => {
+        modalSystem.confirm(
+          "Сбросить параметры календаря",
+          "Вернуть «Рабочих дней в месяце» → 21, «Смена» → 8ч, «Коэфф. режима 2×12ч» → 2.75? Это изменит пороги в таблице загрузки оборудования для текущего сценария.",
+          () => {
+            const data = getActiveData();
+            data.settings.workDaysPerMonth = 21;
+            data.settings.shiftHoursStandard = 8;
+            data.settings.thirdTierFactor = 2.75;
+            document.getElementById("inputWorkDays").value = 21;
+            document.getElementById("inputShiftHours").value = 8;
+            document.getElementById("inputThirdTierFactor").value = 2.75;
+            saveToStorage();
+            updateCalendarCapacityPreview();
+            renderAll();
+          }
+        );
       });
 
       document.getElementById("btnResetData").addEventListener("click", () => {
