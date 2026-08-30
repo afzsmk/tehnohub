@@ -6,6 +6,7 @@
   <title>Планирование производства и нормирование трудовых ресурсов</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
   <style>
     :root {
       --bg-main: #f8fafc;
@@ -592,6 +593,60 @@
       .chart-box { height: 240px; }
       @page { size: landscape; margin: 10mm; }
     }
+
+    /* --- Единая цветовая шкала статуса (используется в KPI, советнике, PDF/Excel) --- */
+    .status-zone-green { color: var(--success); }
+    .status-zone-yellow { color: var(--warning); }
+    .status-zone-red { color: var(--danger); }
+    .status-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 700; }
+    .status-pill.status-zone-green { background: var(--success-light); border: 1px solid #a7f3d0; }
+    .status-pill.status-zone-yellow { background: var(--warning-light); border: 1px solid #fde68a; }
+    .status-pill.status-zone-red { background: var(--danger-light); border: 1px solid #fca5a5; }
+
+    /* --- Executive summary (сводка для руководителя) --- */
+    .exec-summary {
+      background: #ffffff;
+      border-bottom: 1px solid var(--border-color);
+      padding: 14px 24px;
+      display: grid;
+      grid-template-columns: minmax(220px, 1.3fr) repeat(3, 1fr);
+      gap: 16px;
+      align-items: center;
+    }
+    .exec-status-card { display: flex; flex-direction: column; gap: 6px; }
+    .exec-status-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; }
+    .exec-fact-card { border-left: 3px solid var(--border-color); padding-left: 12px; }
+    .exec-fact-value { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+    .exec-fact-desc { font-size: 12px; color: var(--text-secondary); margin-top: 1px; }
+    @media (max-width: 1000px) { .exec-summary { grid-template-columns: 1fr 1fr; } }
+
+    /* --- Печатный отчёт (полноценные разделы, а не снимок вкладки) --- */
+    #printReportRoot { display: none; }
+    body.report-mode > *:not(#printReportRoot) { display: none !important; }
+    body.report-mode #printReportRoot { display: block; background: #fff; color: #0f172a; padding: 24px; }
+    .rpt-page { page-break-after: always; padding-bottom: 10px; }
+    .rpt-page:last-child { page-break-after: auto; }
+    .rpt-title-page { display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 90vh; text-align: center; }
+    .rpt-title-page h1 { font-size: 26px; margin-bottom: 8px; }
+    .rpt-title-page .rpt-scenario { font-size: 16px; color: #334155; margin-bottom: 24px; }
+    .rpt-title-page .rpt-meta { font-size: 12.5px; color: #64748b; line-height: 1.8; }
+    .rpt-section-title { font-size: 16px; font-weight: 800; border-bottom: 2px solid #1e40af; padding-bottom: 6px; margin-bottom: 12px; color: #1e293b; }
+    .rpt-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 14px; }
+    .rpt-table th, .rpt-table td { border: 1px solid #94a3b8; padding: 4px 6px; text-align: right; }
+    .rpt-table th { background: #f1f5f9; text-align: center; }
+    .rpt-table td:first-child, .rpt-table th:first-child { text-align: left; }
+    .rpt-summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+    .rpt-summary-box { border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px; }
+    .rpt-summary-box .lbl { font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700; }
+    .rpt-summary-box .val { font-size: 17px; font-weight: 800; }
+    .rpt-footer-note { font-size: 10.5px; color: #64748b; margin-top: 6px; }
+    .rpt-zone-green { background: #ecfdf5 !important; }
+    .rpt-zone-yellow { background: #fffbeb !important; }
+    .rpt-zone-red { background: #fef2f2 !important; }
+    @media print {
+      #printReportRoot .rpt-page { page-break-after: always; }
+      @page { size: landscape; margin: 12mm; }
+    }
   </style>
 </head>
 <body>
@@ -685,6 +740,25 @@
     <div class="kpi-card" style="border-left-color: #d97706;">
       <span class="kpi-label">Среднесписочная численность</span>
       <span class="kpi-value" id="kpiAvgStaff">0 чел.</span>
+    </div>
+  </div>
+
+  <div class="exec-summary" id="execSummary">
+    <div class="exec-status-card">
+      <span class="exec-status-label">Статус производственной программы</span>
+      <span class="status-pill" id="execStatusPill">—</span>
+    </div>
+    <div class="exec-fact-card" id="execFactPeak" style="border-left-color:#2563eb;">
+      <div class="exec-fact-value" id="execPeakValue">—</div>
+      <div class="exec-fact-desc" id="execPeakDesc">Пиковая потребность в штате</div>
+    </div>
+    <div class="exec-fact-card" id="execFactBottleneck" style="border-left-color:#d97706;">
+      <div class="exec-fact-value" id="execBottleneckValue">—</div>
+      <div class="exec-fact-desc" id="execBottleneckDesc">Узкое место программы</div>
+    </div>
+    <div class="exec-fact-card" id="execFactRecommendation" style="border-left-color:#059669;">
+      <div class="exec-fact-value" id="execRecommendationValue" style="font-size:12.5px; font-weight:600;">—</div>
+      <div class="exec-fact-desc">Рекомендация</div>
     </div>
   </div>
 
@@ -858,6 +932,37 @@
             </div>
           </div>
         </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Параметры календаря и сменности участков</div>
+          </div>
+          <div class="panel-body">
+            <p style="font-size:12px; color:var(--text-secondary); margin-bottom:10px;">
+              Эти параметры задают пороги «1 смена / 2 смены / 2×12ч» в таблице загрузки оборудования (ранее были зашиты в код как фиксированные числа — теперь пересчитываются от факта).
+            </p>
+            <div class="grid-2" style="gap: 12px;">
+              <div>
+                <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);" title="Количество рабочих дней в расчётном месяце для таблицы загрузки станков">РАБОЧИХ ДНЕЙ В МЕСЯЦЕ:</label>
+                <input type="number" min="1" max="31" id="inputWorkDays" class="input-control input-num" value="21">
+              </div>
+              <div>
+                <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);" title="Длительность стандартной (1-й) смены">СМЕНА (часов):</label>
+                <input type="number" min="1" max="24" step="0.5" id="inputShiftHours" class="input-control input-num" value="8">
+              </div>
+              <div class="grid-2" style="grid-column: 1 / -1; gap:12px;">
+                <div>
+                  <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);" title="Во сколько раз ёмкость режима «2×12ч (2/2)» больше ёмкости 1 смены. По умолчанию 2.75 (эквивалент прежних 462/168 ч)">КОЭФФ. РЕЖИМА 2×12Ч (2/2) К 1 СМЕНЕ:</label>
+                  <input type="number" min="1" max="5" step="0.05" id="inputThirdTierFactor" class="input-control input-num" value="2.75">
+                </div>
+                <div>
+                  <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);" title="Название компании/цеха — используется в титульном листе PDF-отчёта и в Excel-выгрузке">НАЗВАНИЕ ОРГАНИЗАЦИИ / ЦЕХА:</label>
+                  <input type="text" id="inputCompanyName" class="input-control" placeholder="Например: ООО «Завод металлоконструкций»">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -979,6 +1084,12 @@
                 <input type="text" id="normChronoTPz" class="input-control input-num" value="30">
               </div>
             </div>
+            <div class="grid-2">
+              <div style="margin-top:2px;">
+                <label style="font-size:11.5px; font-weight:600; color:var(--text-muted);" title="Размер партии, на которую распределяется подготовительно-заключительное время. Раньше был жёстко зашит как 50 — теперь задаётся здесь">РАЗМЕР ПАРТИИ (шт., для ПЗ):</label>
+                <input type="text" id="normChronoBatchSize" class="input-control input-num" value="50">
+              </div>
+            </div>
             <div style="margin-top: 14px; padding: 12px; background: #f8fafc; border-radius: 6px; border: 1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
               <div>
                 <span style="font-size: 11px; color:var(--text-muted); font-weight:600;">ШТУЧНАЯ НОРМА / В МАТРИЦЕ:</span>
@@ -1025,15 +1136,18 @@
 
     <!-- ВКЛАДКА 4: АНАЛИТИКА И РЕЗУЛЬТАТЫ -->
     <section id="tab-analytics" class="tab-content">
-      <div style="display:flex; justify-content:flex-end; gap:8px; margin-bottom: 14px;">
-        <button class="btn btn-primary" id="btnDownloadAnalyticsImage">
-          <svg class="icon"><use href="#icon-image"></use></svg> Скачать аналитику (PNG)
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-bottom: 14px; flex-wrap: wrap;">
+        <button class="btn btn-primary" id="btnExportXlsx" title="Полная выгрузка: свод, план, трудоёмкость, штат, сменность, нормы — в отдельных листах с форматированием">
+          <svg class="icon"><use href="#icon-download"></use></svg> Экспорт в Excel (.xlsx)
         </button>
-        <button class="btn btn-secondary" id="btnPrintPdf">
-          <svg class="icon"><use href="#icon-print"></use></svg> Печать / Экспорт в PDF
+        <button class="btn btn-secondary" id="btnPrintPdf" title="Многостраничный отчёт с титульным листом и разделами — для печати или сохранения в PDF">
+          <svg class="icon"><use href="#icon-print"></use></svg> Печать / Отчёт PDF
         </button>
-        <button class="btn btn-secondary" id="btnExportCSV">
-          <svg class="icon"><use href="#icon-download"></use></svg> Выгрузить таблицу в CSV
+        <button class="btn btn-secondary" id="btnDownloadAnalyticsImage">
+          <svg class="icon"><use href="#icon-image"></use></svg> Снимок аналитики (PNG)
+        </button>
+        <button class="btn btn-secondary" id="btnExportCSV" title="Простая таблица трудоёмкости — для интеграции с другими системами">
+          <svg class="icon"><use href="#icon-download"></use></svg> CSV (для интеграции)
         </button>
       </div>
 
@@ -1158,6 +1272,8 @@
     </div>
   </div>
 
+  <div id="printReportRoot"></div>
+
   <script>
     const UNIT_PRESETS = ["м²", "шт", "м.п.", "кг", "т", "компл", "узлы", "партии"];
 
@@ -1167,6 +1283,82 @@
       const cleaned = String(val).replace(/\s+/g, "").replace(",", ".");
       const num = parseFloat(cleaned);
       return isNaN(num) ? 0 : num;
+    }
+
+    // Экранирование пользовательского текста перед вставкой в innerHTML
+    // (защита от self-XSS через названия изделий/участков, в т.ч. из импортированных JSON-файлов)
+    function escapeHtml(val) {
+      if (val === undefined || val === null) return "";
+      return String(val)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    // Единая точка применения дефолтов настроек и восстановления совместимости
+    // старых сохранений/сценариев — используется и при старте, и при импорте JSON.
+    function normalizeScenario(sc) {
+      if (!sc.normConfigs) sc.normConfigs = {};
+      if (!sc.settings) sc.settings = {};
+      const s = sc.settings;
+      if (s.brigadesCount === undefined) s.brigadesCount = 3;
+      if (s.brigadeSize === undefined) s.brigadeSize = 6;
+      if (s.maxOvertimePercent === undefined) s.maxOvertimePercent = 15;
+      if (s.fNom === undefined) s.fNom = 168;
+      if (s.fEff === undefined) s.fEff = 144;
+      if (s.kVn === undefined) s.kVn = 1.0;
+      if (s.auxOtkPercent === undefined) s.auxOtkPercent = 0;
+      if (s.auxSetupPercent === undefined) s.auxSetupPercent = 0;
+      if (s.auxFixedPosts === undefined) s.auxFixedPosts = 0;
+      // Параметры, ранее зашитые в код константами — теперь настраиваемые
+      if (s.workDaysPerMonth === undefined) s.workDaysPerMonth = 21;
+      if (s.shiftHoursStandard === undefined) s.shiftHoursStandard = 8;
+      if (s.thirdTierFactor === undefined) s.thirdTierFactor = 2.75;
+      if (s.companyName === undefined) s.companyName = "";
+      (sc.professions || []).forEach(pr => {
+        if (!pr.pool) {
+          pr.pool = (["p1787298939301", "p1787298947495", "p1787298952912", "p1787298961438", "p1787298966902"].includes(pr.id) ? "dedicated" : "universal");
+        }
+      });
+      return sc;
+    }
+
+    // Проверка структуры сценариев при импорте JSON — чтобы не падать в рантайме
+    // на середине рендера с невнятной ошибкой, а сразу сказать пользователю, что не так.
+    function validateImportedState(obj) {
+      const errors = [];
+      if (!obj || typeof obj !== "object") { errors.push("Файл не содержит объект верхнего уровня."); return errors; }
+      if (!obj.scenarios || typeof obj.scenarios !== "object" || Array.isArray(obj.scenarios)) {
+        errors.push('Отсутствует или повреждён раздел "scenarios".'); return errors;
+      }
+      const scKeys = Object.keys(obj.scenarios);
+      if (scKeys.length === 0) { errors.push("В файле нет ни одного сценария."); return errors; }
+      if (!obj.currentScenario || !scKeys.includes(obj.currentScenario)) {
+        errors.push('Поле "currentScenario" отсутствует или не соответствует ни одному сценарию.');
+      }
+      scKeys.forEach(key => {
+        const sc = obj.scenarios[key];
+        const tag = `Сценарий «${key}»`;
+        if (!Array.isArray(sc.professions)) { errors.push(`${tag}: отсутствует список "professions".`); return; }
+        if (!Array.isArray(sc.products)) { errors.push(`${tag}: отсутствует список "products".`); return; }
+        if (!Array.isArray(sc.months) || sc.months.length === 0) { errors.push(`${tag}: отсутствует список "months".`); return; }
+        if (!sc.plan || typeof sc.plan !== "object") { errors.push(`${tag}: отсутствует раздел "plan".`); return; }
+        const profIds = new Set(sc.professions.map(p => p.id));
+        sc.professions.forEach((p, i) => { if (!p.id || !p.name) errors.push(`${tag}: профессия #${i + 1} без id/name.`); });
+        sc.products.forEach((p, i) => {
+          if (!p.id || !p.name) { errors.push(`${tag}: изделие #${i + 1} без id/name.`); return; }
+          const row = sc.plan[p.id];
+          if (!Array.isArray(row) || row.length !== sc.months.length) {
+            errors.push(`${tag}: план по изделию «${p.name}» не соответствует числу месяцев (${sc.months.length}).`);
+          }
+          if (p.norms && typeof p.norms === "object") {
+            Object.keys(p.norms).forEach(pid => { if (!profIds.has(pid)) errors.push(`${tag}: у изделия «${p.name}» есть норма на несуществующий участок.`); });
+          }
+        });
+      });
+      return errors;
     }
 
     const modalSystem = {
@@ -1447,18 +1639,7 @@
         loadDefaultScenario();
       }
 
-      Object.keys(state.scenarios).forEach(scKey => {
-        const sc = state.scenarios[scKey];
-        if (!sc.normConfigs) sc.normConfigs = {};
-        if (sc.settings.brigadesCount === undefined) sc.settings.brigadesCount = 3;
-        if (sc.settings.brigadeSize === undefined) sc.settings.brigadeSize = 6;
-        if (sc.settings.maxOvertimePercent === undefined) sc.settings.maxOvertimePercent = 15;
-        sc.professions.forEach(pr => {
-          if (!pr.pool) {
-            pr.pool = (["p1787298939301", "p1787298947495", "p1787298952912", "p1787298961438", "p1787298966902"].includes(pr.id) ? "dedicated" : "universal");
-          }
-        });
-      });
+      Object.keys(state.scenarios).forEach(scKey => normalizeScenario(state.scenarios[scKey]));
 
       renderScenarioSelector();
       updateLevelToggleButton();
@@ -1529,6 +1710,15 @@
       const brigadeSize = Math.max(1, parseInt(data.settings.brigadeSize) || 6);
       const maxOvertimePct = Math.max(0, Math.min(30, parseNum(data.settings.maxOvertimePercent) || 15));
       const totalUniversalHeadcount = brigadesCount * brigadeSize;
+
+      // Параметры сменности участков — раньше были зашиты как константы 168/336/462 и daysInMonth=21
+      // независимо от настроек; теперь единообразно выводятся из fEff/kVn/рабочих дней/длины смены.
+      const workDaysPerMonth = Math.max(1, parseInt(data.settings.workDaysPerMonth) || 21);
+      const shiftHoursStandard = parseNum(data.settings.shiftHoursStandard) || 8;
+      const thirdTierFactor = parseNum(data.settings.thirdTierFactor) || 2.75;
+      const machineCap1Shift = workDaysPerMonth * shiftHoursStandard * kVn;
+      const machineCap2Shift = machineCap1Shift * 2;
+      const machineCap3Tier = machineCap1Shift * thirdTierFactor;
 
       const productTotals = {};
       data.products.forEach(p => {
@@ -1658,20 +1848,79 @@
         return uniCeil + dedCeilSum + Math.ceil(auxStaffSpTotal[idx]);
       });
 
+      // Классификация загрузки каждого отдельного участка (станко-часы/машина) —
+      // считается один раз здесь и переиспользуется в таблице «Загрузка оборудования»
+      // и в общем статусе программы, чтобы не иметь двух независимых источников истины.
+      const caps = { workDaysPerMonth, shiftHoursStandard, cap1: machineCap1Shift, cap2: machineCap2Shift, cap3: machineCap3Tier };
+      const profMachineZones = {};
+      data.professions.forEach(prof => {
+        const machines = Math.max(1, prof.machines || 1);
+        const crew = Math.max(1, prof.crew || 1);
+        profMachineZones[prof.id] = [];
+        for (let m = 0; m < numMonths; m++) {
+          const laborHours = hoursByProf[prof.id][m];
+          const hoursPerMachine = (laborHours / crew) / machines;
+          profMachineZones[prof.id].push(classifyMachineLoad(hoursPerMachine, caps));
+        }
+      });
+
+      // Единый статус программы (светофор) для executive summary — учитывает и
+      // бригадный пул универсалов, и загрузку каждого отдельного (в т.ч. выделенного)
+      // участка, чтобы локальный дефицит на одном станке не терялся на фоне общего баланса.
+      let overallZone = "green";
+      for (let m = 0; m < numMonths; m++) {
+        if (universalSchedules[m].statusZone === "red") overallZone = "red";
+        else if (universalSchedules[m].statusZone === "yellow" && overallZone !== "red") overallZone = "yellow";
+      }
+      data.professions.forEach(prof => {
+        profMachineZones[prof.id].forEach(z => {
+          if (z.statusZone === "red") overallZone = "red";
+          else if (z.statusZone === "yellow" && overallZone !== "red") overallZone = "yellow";
+        });
+      });
+
       return {
         numMonths, fNom, fEff, kVn,
         brigadesCount, brigadeSize, maxOvertimePct, totalUniversalHeadcount,
         oneBrigadeCapacity, totalPoolNominalCapacity, totalPoolMaxWithOvertime,
+        workDaysPerMonth, shiftHoursStandard, thirdTierFactor,
+        machineCap1Shift, machineCap2Shift, machineCap3Tier, caps, profMachineZones,
         productTotals, hoursByProf, hoursByProduct,
         totalHoursByMonth, staffByProfSp, staffByProfYav,
         universalProfs, dedicatedProfs, universalHoursTotal, universalStaffSpTotal,
-        universalBrigadesNeeded, universalSchedules,
+        universalBrigadesNeeded, universalSchedules, overallZone,
         mainStaffSpTotal, auxStaffSpTotal, grandTotalStaff
       };
     }
 
+    // Единая классификация режима загрузки ОДНОГО станка/поста (в отличие от
+    // calc.universalSchedules, которая классифицирует пул целиком). Используется
+    // и внутри calculate() (для профиля каждого участка/месяца), и в таблице
+    // «Загрузка оборудования». Раньше пороги были захардкожены (168/336/462, 21 день) —
+    // теперь считаются из настраиваемых fEff/kVn/рабочих дней/длины смены/коэффициента 2×12ч.
+    function classifyMachineLoad(hoursPerMachine, caps) {
+      const { workDaysPerMonth, shiftHoursStandard, cap1, cap2, cap3 } = caps;
+      const hoursPerDay = (hoursPerMachine / workDaysPerMonth);
+      if (hoursPerMachine <= 0) {
+        return { badgeClass: "", statusZone: "none", label: `<span style="color:var(--text-muted); font-size:12px;">Простой</span>` };
+      } else if (hoursPerMachine <= cap1) {
+        const load = Math.round((hoursPerMachine / cap1) * 100);
+        return { badgeClass: "badge-shift-1", statusZone: "green", label: `<span class="badge-shift-1" title="Загрузка: ${hoursPerDay.toFixed(1)} ч/сут (1 смена: ${load}%)">1 см (${shiftHoursStandard}ч) · ${hoursPerDay.toFixed(1)}ч/сут</span>` };
+      } else if (hoursPerMachine <= cap2) {
+        const load = Math.round((hoursPerMachine / cap2) * 100);
+        return { badgeClass: "badge-shift-2", statusZone: "green", label: `<span class="badge-shift-2" title="Загрузка: ${hoursPerDay.toFixed(1)} ч/сут (2 смены: ${load}%)">2 см (${shiftHoursStandard}ч) · ${hoursPerDay.toFixed(1)}ч/сут</span>` };
+      } else if (hoursPerMachine <= cap3) {
+        const load = Math.round((hoursPerMachine / cap3) * 100);
+        return { badgeClass: "badge-shift-12", statusZone: "yellow", label: `<span class="badge-shift-12" title="Загрузка: ${hoursPerDay.toFixed(1)} ч/сут (2×12ч 2/2: ${load}%)">2 см × 12ч (2/2)</span>` };
+      } else {
+        const load = Math.round((hoursPerMachine / cap3) * 100);
+        return { badgeClass: "badge-shift-overload", statusZone: "red", label: `<span class="badge-shift-overload" title="Дефицит мощности даже при 2×12ч!">2/12 Перегруз (${load}%)</span>` };
+      }
+    }
+
     function renderAll() {
       renderKPIs();
+      renderExecSummary();
       renderPlanTable();
       renderDictionaries();
       populateNormSelects();
@@ -1692,6 +1941,48 @@
       document.getElementById("kpiTotalHours").textContent = Math.round(totalHours).toLocaleString() + " н-ч";
       document.getElementById("kpiPeakStaff").textContent = peakStaff + " чел.";
       document.getElementById("kpiAvgStaff").textContent = avgStaff + " чел.";
+    }
+
+    // Executive summary — единая карточка "на человеческом языке" для руководителя.
+    // Статус берётся из calc.overallZone — того же источника, что управляет цветом
+    // бейджей в таблице сменности и в советнике, поэтому здесь никогда не может
+    // появиться зелёный статус при наличии красных бейджей где-то ниже на странице.
+    function renderExecSummary() {
+      const data = getActiveData();
+      const calc = calculate();
+
+      const pillEl = document.getElementById("execStatusPill");
+      const zoneLabels = {
+        green: { text: "Программа выполнима", cls: "status-zone-green", icon: "✓" },
+        yellow: { text: "Выполнима с оговорками", cls: "status-zone-yellow", icon: "!" },
+        red: { text: "Требует пересмотра", cls: "status-zone-red", icon: "✕" }
+      };
+      const z = zoneLabels[calc.overallZone] || zoneLabels.green;
+      pillEl.className = `status-pill ${z.cls}`;
+      pillEl.textContent = `${z.icon} ${z.text}`;
+
+      const peakStaff = calc.grandTotalStaff.length ? Math.max(...calc.grandTotalStaff) : 0;
+      const peakIdx = calc.grandTotalStaff.indexOf(peakStaff);
+      document.getElementById("execPeakValue").textContent = `${peakStaff} чел.`;
+      document.getElementById("execPeakDesc").textContent = peakIdx >= 0 ? `Пиковый штат (${data.months[peakIdx]})` : "Пиковая потребность в штате";
+
+      // Узкое место — тот же расчёт, что и в аналитическом резюме на вкладке «Аналитика».
+      let bottleneckName = "—", bottleneckHours = -1;
+      data.professions.forEach(prof => {
+        const sumH = calc.hoursByProf[prof.id].reduce((a, b) => a + b, 0);
+        if (sumH > bottleneckHours) { bottleneckHours = sumH; bottleneckName = prof.name; }
+      });
+      document.getElementById("execBottleneckValue").textContent = bottleneckName;
+
+      let recommendation;
+      if (calc.overallZone === "red") {
+        recommendation = "Обнаружен критический дефицит мощности — см. вкладку «Аналитика» → «Умный советник», требуется выравнивание плана или увеличение штата/оборудования.";
+      } else if (calc.overallZone === "yellow") {
+        recommendation = "Отдельные периоды загружены сверх номинала и закрываются сверхурочными/2-сменным режимом — критического дефицита нет.";
+      } else {
+        recommendation = "Программа укладывается в номинальную мощность бригад и оборудования без сверхурочных.";
+      }
+      document.getElementById("execRecommendationValue").textContent = recommendation;
     }
 
     function renderPlanTable() {
@@ -1716,7 +2007,7 @@
                 <svg class="icon icon-sm"><use href="#icon-arrow-right"></use></svg>
               </button>
             </div>
-            <input type="text" class="input-control month-name-input" value="${m}" data-month-idx="${idx}" style="font-weight: 700; text-align: center; padding: 3px 4px; font-size: 12.5px;">
+            <input type="text" class="input-control month-name-input" value="${escapeHtml(m)}" data-month-idx="${idx}" style="font-weight: 700; text-align: center; padding: 3px 4px; font-size: 12.5px;">
           </th>
         `).join("")}
         <th style="min-width: 120px; text-align: right; vertical-align: bottom;">Итого выпуск</th>
@@ -1730,8 +2021,8 @@
 
         const tr = document.createElement("tr");
         tr.innerHTML = `
-          <td class="col-sticky-name"><strong>${p.name}</strong></td>
-          <td style="text-align: center;"><span class="badge-unit">${unitLabel}</span></td>
+          <td class="col-sticky-name"><strong>${escapeHtml(p.name)}</strong></td>
+          <td style="text-align: center;"><span class="badge-unit">${escapeHtml(unitLabel)}</span></td>
           ${data.months.map((_, mIdx) => `
             <td>
               <input type="text" class="input-control input-num plan-input"
@@ -1771,6 +2062,10 @@
       document.getElementById("inputAuxOtk").value = data.settings.auxOtkPercent;
       document.getElementById("inputAuxSetup").value = data.settings.auxSetupPercent;
       document.getElementById("inputAuxFixed").value = data.settings.auxFixedPosts;
+      document.getElementById("inputWorkDays").value = data.settings.workDaysPerMonth !== undefined ? data.settings.workDaysPerMonth : 21;
+      document.getElementById("inputShiftHours").value = data.settings.shiftHoursStandard !== undefined ? data.settings.shiftHoursStandard : 8;
+      document.getElementById("inputThirdTierFactor").value = data.settings.thirdTierFactor !== undefined ? data.settings.thirdTierFactor : 2.75;
+      document.getElementById("inputCompanyName").value = data.settings.companyName || "";
 
       const profTbody = document.getElementById("professionsTableBody");
       profTbody.innerHTML = "";
@@ -1786,7 +2081,7 @@
             </span>
           </td>
           <td>
-            <input type="text" class="input-control prof-name-input" data-prof-id="${prof.id}" value="${prof.name}">
+            <input type="text" class="input-control prof-name-input" data-prof-id="${prof.id}" value="${escapeHtml(prof.name)}">
           </td>
           <td style="text-align:center;">
             <select class="input-control prof-pool-select" data-prof-id="${prof.id}" style="font-size:12px; font-weight:700;">
@@ -1821,7 +2116,7 @@
         <th class="col-sticky-name" style="min-width: 220px;">Наименование изделия</th>
         <th style="min-width: 90px; text-align: center;">Ед. изм.</th>
         <th style="min-width: 75px; text-align: right;" title="Технологический брак %">Брак, %</th>
-        ${data.professions.map(prof => `<th style="min-width: 95px; text-align: right;">${prof.name}</th>`).join("")}
+        ${data.professions.map(prof => `<th style="min-width: 95px; text-align: right;">${escapeHtml(prof.name)}</th>`).join("")}
         <th style="min-width: 90px; text-align: right;">Всего н-ч</th>
         <th style="width: 45px; text-align: center;"></th>
       `;
@@ -1845,11 +2140,11 @@
             </span>
           </td>
           <td class="col-sticky-name">
-            <input type="text" class="input-control prod-name-input" data-product-id="${p.id}" value="${p.name}">
+            <input type="text" class="input-control prod-name-input" data-product-id="${p.id}" value="${escapeHtml(p.name)}">
           </td>
           <td style="text-align: center;">
             <select class="input-control prod-unit-select" data-product-id="${p.id}" style="text-align: center; font-weight:600;">
-              ${unitList.map(u => `<option value="${u}" ${p.unit === u ? 'selected' : ''}>${u}</option>`).join("")}
+              ${unitList.map(u => `<option value="${escapeHtml(u)}" ${p.unit === u ? 'selected' : ''}>${escapeHtml(u)}</option>`).join("")}
             </select>
           </td>
           <td>
@@ -1970,7 +2265,7 @@
           </div>
           <div class="method-item">
             <div class="method-item-title">2. Выделенные стационарные посты</div>
-            <div class="method-item-desc">К выделенным отнесено <strong>${calc.dedicatedProfs.length} постов</strong> (${calc.dedicatedProfs.map(p=>p.name).join(', ') || 'нет'}), где операторы не ротируются.</div>
+            <div class="method-item-desc">К выделенным отнесено <strong>${calc.dedicatedProfs.length} постов</strong> (${calc.dedicatedProfs.map(p=>escapeHtml(p.name)).join(', ') || 'нет'}), где операторы не ротируются.</div>
           </div>
           <div class="method-item">
             <div class="method-item-title">3. Формула располагаемого фонда времени</div>
@@ -2041,7 +2336,7 @@
           items.push({
             type: "alert-overload",
             month: m,
-            text: `В периоде <strong>${m}</strong> критический дефицит <strong>+${def} н-ч</strong> (+${defPct}% к штату). Превышен лимит переработок ${calc.maxOvertimePct}%.`,
+            text: `В периоде <strong>${escapeHtml(m)}</strong> критический дефицит <strong>+${def} н-ч</strong> (+${defPct}% к штату). Превышен лимит переработок ${calc.maxOvertimePct}%.`,
             actionLabel: `Выровнять план под ${calc.grandTotalStaff[idx]} чел.`,
             actionFn: () => { executeLevelLoading(calc.grandTotalStaff[idx]); }
           });
@@ -2052,18 +2347,18 @@
           items.push({
             type: "alert-overtime",
             month: m,
-            text: `В периоде <strong>${m}</strong> перегруз <strong>+${otHrs} н-ч</strong>. Закрывается сверхурочными: <strong>+${otPerMan} ч/чел</strong> (в пределах лимита ${calc.maxOvertimePct}%).`,
+            text: `В периоде <strong>${escapeHtml(m)}</strong> перегруз <strong>+${otHrs} н-ч</strong>. Закрывается сверхурочными: <strong>+${otPerMan} ч/чел</strong> (в пределах лимита ${calc.maxOvertimePct}%).`,
             actionLabel: `Перевести в 2/12 (2/2)`,
-            actionFn: () => { modalSystem.alert("Рекомендация графика", `Для периода ${m} рекомендуется задействовать все ${calc.brigadesCount} бригады по 12-часовому графику 2/2.`); }
+            actionFn: () => { modalSystem.alert("Рекомендация графика", `Для периода ${escapeHtml(m)} рекомендуется задействовать все ${calc.brigadesCount} бригады по 12-часовому графику 2/2.`); }
           });
         } else if (uHrs < calc.oneBrigadeCapacity * 0.75 && uHrs > 0) {
           const underPct = Math.round(((nomCap - uHrs) / nomCap) * 100);
           items.push({
             type: "alert-underload",
             month: m,
-            text: `В периоде <strong>${m}</strong> недозагрузка универсалов <strong>${underPct}%</strong> (объем всего ${Math.round(uHrs)} н-ч).`,
+            text: `В периоде <strong>${escapeHtml(m)}</strong> недозагрузка универсалов <strong>${underPct}%</strong> (объем всего ${Math.round(uHrs)} н-ч).`,
             actionLabel: `Направить на опережение`,
-            actionFn: () => { modalSystem.alert("Рекомендация", `В период ${m} рекомендуется задействовать свободные бригады на опережающую заготовку панелей.`); }
+            actionFn: () => { modalSystem.alert("Рекомендация", `В период ${escapeHtml(m)} рекомендуется задействовать свободные бригады на опережающую заготовку панелей.`); }
           });
         }
       });
@@ -2121,7 +2416,7 @@
         `<strong>Пиковый период программы:</strong> приходится на <strong>${maxMonth}</strong> — требуется <strong>${maxStaff} чел.</strong> суммарного штата завода.`,
         `<strong>Минимальная загрузка:</strong> зафиксирована в <strong>${minMonth}</strong> (${minStaff} чел.). Колебание потребности: ${maxStaff - minStaff} чел.`,
         `<strong>Универсальный пул персонала:</strong> объединяет <strong>${calc.universalProfs.length} постов</strong> и берет на себя <strong>${universalShare}%</strong> всей программы. Доступно <strong>${calc.brigadesCount} бригад(ы)</strong> по <strong>${calc.brigadeSize} чел.</strong> (всего ${calc.totalUniversalHeadcount} универсалов).`,
-        `<strong>Лимитирующий технологический участок:</strong> «<strong>${maxProfName || '—'}</strong>» забирает <strong>${bottleneckShare}%</strong> всей трудоёмкости (${Math.round(maxProfHours).toLocaleString()} н-ч).`
+        `<strong>Лимитирующий технологический участок:</strong> «<strong>${escapeHtml(maxProfName) || '—'}</strong>» забирает <strong>${bottleneckShare}%</strong> всей трудоёмкости (${Math.round(maxProfHours).toLocaleString()} н-ч).`
       ];
 
       bullets.forEach(b => {
@@ -2142,7 +2437,7 @@
         schedHtml += `
           <div style="background:#f8fafc; border:1px solid var(--border-color); border-radius:6px; padding:8px 12px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-              <strong>Период: ${m}</strong>
+              <strong>Период: ${escapeHtml(m)}</strong>
               <span class="${sched.badgeClass}">${sched.mode}</span>
             </div>
             <div>Трудоемкость универсалов: <strong>${uHrs} н-ч</strong> (расчетно: <strong>${bNeeded} бриг.</strong>)</div>
@@ -2158,7 +2453,7 @@
       const resultsThead = document.getElementById("resultsTableHeader");
       resultsThead.innerHTML = `
         <th class="col-sticky-name" style="min-width: 260px;">Показатель / Пул квалификации</th>
-        ${data.months.map(m => `<th style="text-align: right; min-width: 80px;">${m}</th>`).join("")}
+        ${data.months.map(m => `<th style="text-align: right; min-width: 80px;">${escapeHtml(m)}</th>`).join("")}
         <th style="text-align: right; min-width: 105px;">Итого / Среднее</th>
       `;
 
@@ -2248,7 +2543,7 @@
         <th style="width: 130px; text-align: center;">Пул</th>
         <th style="width: 65px; text-align: center;">Станков</th>
         <th style="width: 75px; text-align: center;">Звено</th>
-        ${data.months.map(m => `<th style="text-align: center; min-width: 110px;">${m}</th>`).join("")}
+        ${data.months.map(m => `<th style="text-align: center; min-width: 110px;">${escapeHtml(m)}</th>`).join("")}
       `;
 
       tbody.innerHTML = "";
@@ -2261,7 +2556,7 @@
 
         let html = `
           <td class="col-sticky-name">
-            <strong>${prof.name}</strong>
+            <strong>${escapeHtml(prof.name)}</strong>
             <div style="font-size:11px; color:var(--text-muted);">${isMachine ? 'Станочный участок' : 'Ручной труд'}</div>
           </td>
           <td style="text-align: center;">
@@ -2271,31 +2566,12 @@
           <td style="text-align: center; font-weight:600; color:var(--text-secondary);">${crew} чел</td>
         `;
 
+        // Классификация берётся из calc.profMachineZones — единожды посчитана в calculate()
+        // по настраиваемым параметрам (workDaysPerMonth/shiftHoursStandard/thirdTierFactor),
+        // а не задублирована здесь захардкоженными числами.
         data.months.forEach((_, mIdx) => {
-          const laborHours = calc.hoursByProf[prof.id][mIdx];
-          const machineHours = laborHours / crew;
-          const hoursPerMachine = machineHours / machines;
-          const daysInMonth = 21;
-          const hoursPerDay = (hoursPerMachine / daysInMonth).toFixed(1);
-
-          let badge = '';
-          if (hoursPerMachine <= 0) {
-            badge = `<span style="color:var(--text-muted); font-size:12px;">Простой</span>`;
-          } else if (hoursPerMachine <= 168) {
-            const load = Math.round((hoursPerMachine / 168) * 100);
-            badge = `<span class="badge-shift-1" title="Загрузка: ${hoursPerDay} ч/сут (1 смена: ${load}%)">1 см (8ч) · ${hoursPerDay}ч/сут</span>`;
-          } else if (hoursPerMachine <= 336) {
-            const load = Math.round((hoursPerMachine / 336) * 100);
-            badge = `<span class="badge-shift-2" title="Загрузка: ${hoursPerDay} ч/сут (2 смены: ${load}%)">2 см (8ч) · ${hoursPerDay}ч/сут</span>`;
-          } else if (hoursPerMachine <= 462) {
-            const load = Math.round((hoursPerMachine / 462) * 100);
-            badge = `<span class="badge-shift-12" title="Загрузка: ${hoursPerDay} ч/сут (2x12ч 2/2: ${load}%)">2 см × 12ч (2/2)</span>`;
-          } else {
-            const load = Math.round((hoursPerMachine / 462) * 100);
-            badge = `<span class="badge-shift-overload" title="Дефицит мощности даже при 2x12ч!">2/12 Перегруз (${load}%)</span>`;
-          }
-
-          html += `<td style="text-align: center;">${badge}</td>`;
+          const zone = calc.profMachineZones[prof.id][mIdx];
+          html += `<td style="text-align: center;">${zone.label}</td>`;
         });
 
         tr.innerHTML = html;
@@ -2362,20 +2638,17 @@
       });
     }
 
+    // ВАЖНО: раньше эта функция считала штат по отдельной, упрощённой формуле
+    // (просто "все часы / фонд одного человека"), не совпадающей с тем, как штат
+    // считается в аналитике (calc.grandTotalStaff — по пулам, с поштучным округлением
+    // universal/dedicated/aux). Из-за этого число в диалоге «Выровнять план под штат»
+    // могло не совпадать с тем, что показано на вкладке «Аналитика». Теперь это одна
+    // и та же величина — среднемесячный итоговый штат из calculate().
     function getRecommendedHeadcount() {
-      const data = getActiveData();
       const calc = calculate();
-      const totalHours = calc.totalHoursByMonth.reduce((a, b) => a + b, 0);
-      const numMonths = data.months.length || 1;
-      const avgMonthlyHours = totalHours / numMonths;
-      const fEff = data.settings.fEff || 144;
-      const kVn = data.settings.kVn || 1.05;
-      const auxPercent = (data.settings.auxOtkPercent + data.settings.auxSetupPercent) / 100;
-      const auxFixed = data.settings.auxFixedPosts || 2;
-
-      const neededMain = avgMonthlyHours / (fEff * kVn);
-      const recommendedTotal = Math.ceil(neededMain * (1 + auxPercent) + auxFixed);
-      return Math.max(recommendedTotal, 1);
+      if (!calc.grandTotalStaff.length) return 1;
+      const avg = calc.grandTotalStaff.reduce((a, b) => a + b, 0) / calc.grandTotalStaff.length;
+      return Math.max(1, Math.round(avg));
     }
 
     function executeLevelLoading(targetHeadcount) {
@@ -2457,11 +2730,34 @@
 
       saveToStorage();
       renderAll();
+
+      // ВАЖНО: выравнивание распределяет трудоёмкость исходя из штата так, как будто
+      // труд полностью взаимозаменяем. Но «выделенные» посты (1 станок/1 звено) физически
+      // не могут работать быстрее от одного лишь увеличения численности — это ограничение
+      // оборудования, а не кадров. Поэтому после выравнивания отдельно проверяем, не остался
+      // ли какой-то выделенный участок перегруженным, и явно предупреждаем об этом,
+      // а не показываем ложное «всё сбалансировано».
+      const freshCalc = calculate();
+      const stillBottlenecked = [];
+      freshCalc.dedicatedProfs.forEach(prof => {
+        freshCalc.profMachineZones[prof.id].forEach((zone, mIdx) => {
+          if (zone.statusZone === "red") stillBottlenecked.push(`${prof.name} (${data.months[mIdx]})`);
+        });
+      });
+
+      let warningHtml = "";
+      if (stillBottlenecked.length > 0) {
+        warningHtml = `<br><br><div style="background:var(--danger-light); border:1px solid #fca5a5; border-radius:6px; padding:8px 10px; color:var(--danger); font-size:12.5px;">
+          <strong>⚠ Внимание:</strong> выравнивание изменило только помесячное распределение объёмов — оно не увеличивает пропускную способность оборудования. Следующие выделенные посты остаются физически перегружены даже при таком штате: <strong>${stillBottlenecked.join(', ')}</strong>. Для их разгрузки нужен доп. станок/смена или снижение выпуска по соответствующим изделиям, а не только изменение численности.
+        </div>`;
+      }
+
       modalSystem.alert("План выровнен", `
-        Производственная программа успешно перераспределена под целевой штат <strong>${targetHeadcount} чел.</strong><br><br>
-        • Допустимая ёмкость месяца: <strong>${Math.round(maxMonthlyHours).toLocaleString()} н-ч</strong><br>
+        Производственная программа перераспределена под целевой штат <strong>${targetHeadcount} чел.</strong><br><br>
+        • Допустимая ёмкость месяца (по трудоёмкости): <strong>${Math.round(maxMonthlyHours).toLocaleString()} н-ч</strong><br>
         • Перераспределено объёмов: <strong>${Math.round(totalShiftedHours).toLocaleString()} н-ч</strong><br><br>
-        Все пики сглажены. Кнопка переключена на «Откатить к исходному плану».
+        Общие пики трудоёмкости сглажены. Кнопка переключена на «Откатить к исходному плану».
+        ${warningHtml}
       `);
     }
 
@@ -2544,6 +2840,7 @@
           document.getElementById("normChronoKObs").value = config.chrono.kObs !== undefined ? config.chrono.kObs : 5;
           document.getElementById("normChronoKOtl").value = config.chrono.kOtl !== undefined ? config.chrono.kOtl : 6;
           document.getElementById("normChronoTPz").value = config.chrono.tPz !== undefined ? config.chrono.tPz : 30;
+          document.getElementById("normChronoBatchSize").value = config.chrono.batchSize !== undefined ? config.chrono.batchSize : 50;
         }
         calculateChronoNorm();
       }
@@ -2587,9 +2884,10 @@
       const kObs = parseNum(document.getElementById("normChronoKObs").value);
       const kOtl = parseNum(document.getElementById("normChronoKOtl").value);
       const tPz = parseNum(document.getElementById("normChronoTPz").value);
+      const batchSize = parseNum(document.getElementById("normChronoBatchSize").value) || 50;
 
       const tOp = tOsn + tVsp;
-      const pieceCycle = (tOp * (1 + (kObs + kOtl)/100)) + (tPz / 50);
+      const pieceCycle = (tOp * (1 + (kObs + kOtl)/100)) + (tPz / batchSize);
       const norm = (pieceCycle * crew) / 60;
       document.getElementById("normChronoResult").textContent = norm.toFixed(3) + " н-ч / ед";
 
@@ -2639,15 +2937,15 @@
 
         let paramDesc = "";
         if (item.method === 'chrono' && item.chrono) {
-          paramDesc = `T<sub>осн</sub>=${item.chrono.tOsn}м, T<sub>всп</sub>=${item.chrono.tVsp}м, Звено=${item.chrono.crew} чел, ПЗ=${item.chrono.tPz}м (обсл: ${item.chrono.kObs}%, отд: ${item.chrono.kOtl}%)`;
+          paramDesc = `T<sub>осн</sub>=${item.chrono.tOsn}м, T<sub>всп</sub>=${item.chrono.tVsp}м, Звено=${item.chrono.crew} чел, ПЗ=${item.chrono.tPz}м/парт.${item.chrono.batchSize || 50}шт (обсл: ${item.chrono.kObs}%, отд: ${item.chrono.kOtl}%)`;
         } else if (item.stat) {
           paramDesc = `Q=${item.stat.output} ${prod.unit || 'ед'}, N<sub>раб</sub>=${item.stat.workers} чел, Смена=${item.stat.shiftHours}ч, Перерывы=${item.stat.breaks}м, K<sub>эф</sub>=${item.stat.kEff}`;
         }
 
         return `
           <tr>
-            <td><strong>${prod.name}</strong> <span class="badge-unit">${prod.unit || 'м²'}</span></td>
-            <td>${prof.name}</td>
+            <td><strong>${escapeHtml(prod.name)}</strong> <span class="badge-unit">${escapeHtml(prod.unit || 'м²')}</span></td>
+            <td>${escapeHtml(prof.name)}</td>
             <td style="text-align:center;">${methodBadge}</td>
             <td style="font-size:12px; color:var(--text-secondary);">${paramDesc}</td>
             <td style="text-align:right; font-weight:700; color:var(--accent);">${item.norm.toFixed(3)}</td>
@@ -2696,6 +2994,247 @@
         if (name === state.currentScenario) opt.selected = true;
         selector.appendChild(opt);
       });
+    }
+
+    // ============================================================
+    // ПЕЧАТНЫЙ ОТЧЁТ (замена голого window.print() на структурированный
+    // многостраничный документ с титульным листом и разделами)
+    // ============================================================
+    function zoneCellClass(zone) {
+      if (zone === "red") return "rpt-zone-red";
+      if (zone === "yellow") return "rpt-zone-yellow";
+      if (zone === "green") return "rpt-zone-green";
+      return "";
+    }
+
+    function buildPrintReport() {
+      const data = getActiveData();
+      const calc = calculate();
+      const root = document.getElementById("printReportRoot");
+      const now = new Date().toLocaleString("ru-RU", { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const companyName = data.settings.companyName && data.settings.companyName.trim() ? data.settings.companyName.trim() : "Производственная программа";
+      const zoneLabels = { green: "Программа выполнима", yellow: "Выполнима с оговорками", red: "Требует пересмотра" };
+      const peakStaff = calc.grandTotalStaff.length ? Math.max(...calc.grandTotalStaff) : 0;
+      const peakIdx = calc.grandTotalStaff.indexOf(peakStaff);
+
+      let bottleneckName = "—", bottleneckHours = -1;
+      data.professions.forEach(prof => {
+        const sumH = calc.hoursByProf[prof.id].reduce((a, b) => a + b, 0);
+        if (sumH > bottleneckHours) { bottleneckHours = sumH; bottleneckName = prof.name; }
+      });
+
+      // --- Титульный лист ---
+      let html = `
+        <div class="rpt-page rpt-title-page">
+          <h1>${escapeHtml(companyName)}</h1>
+          <div class="rpt-scenario">Отчёт по производственной программе: «${escapeHtml(state.currentScenario)}»</div>
+          <div class="rpt-meta">
+            Период: ${escapeHtml(data.months[0])} — ${escapeHtml(data.months[data.months.length - 1])} (${data.months.length} мес.)<br>
+            Дата формирования отчёта: ${now}<br>
+            Статус программы: <strong>${zoneLabels[calc.overallZone] || ''}</strong>
+          </div>
+        </div>
+      `;
+
+      // --- Executive summary ---
+      html += `
+        <div class="rpt-page">
+          <div class="rpt-section-title">1. Резюме для руководителя</div>
+          <div class="rpt-summary-grid">
+            <div class="rpt-summary-box"><div class="lbl">Статус</div><div class="val">${zoneLabels[calc.overallZone] || ''}</div></div>
+            <div class="rpt-summary-box"><div class="lbl">Пиковый штат</div><div class="val">${peakStaff} чел.${peakIdx >= 0 ? ` (${escapeHtml(data.months[peakIdx])})` : ''}</div></div>
+            <div class="rpt-summary-box"><div class="lbl">Узкое место</div><div class="val">${escapeHtml(bottleneckName)}</div></div>
+            <div class="rpt-summary-box"><div class="lbl">Номенклатура</div><div class="val">${data.products.length} поз.</div></div>
+          </div>
+          <div class="rpt-section-title" style="margin-top:20px;">Рекомендации автоматического советника</div>
+          <div id="rptAdvisorList"></div>
+        </div>
+      `;
+
+      // --- План выпуска ---
+      html += `<div class="rpt-page"><div class="rpt-section-title">2. Производственный план выпуска</div><table class="rpt-table"><thead><tr><th>Изделие</th><th>Ед.</th>${data.months.map(m => `<th>${escapeHtml(m)}</th>`).join("")}<th>Итого</th></tr></thead><tbody>`;
+      data.products.forEach(p => {
+        const row = data.plan[p.id] || [];
+        const total = row.reduce((a, b) => a + parseNum(b), 0);
+        html += `<tr><td>${escapeHtml(p.name)}</td><td style="text-align:center;">${escapeHtml(p.unit || '')}</td>${row.map(v => `<td>${parseNum(v).toLocaleString()}</td>`).join("")}<td><strong>${total.toLocaleString()}</strong></td></tr>`;
+      });
+      html += `</tbody></table></div>`;
+
+      // --- Трудоёмкость ---
+      html += `<div class="rpt-page"><div class="rpt-section-title">3. Трудоёмкость по технологическим участкам (н-ч)</div><table class="rpt-table"><thead><tr><th>Участок</th><th>Пул</th>${data.months.map(m => `<th>${escapeHtml(m)}</th>`).join("")}<th>Итого</th></tr></thead><tbody>`;
+      data.professions.forEach(prof => {
+        const row = calc.hoursByProf[prof.id];
+        const total = row.reduce((a, b) => a + b, 0);
+        html += `<tr><td>${escapeHtml(prof.name)}</td><td style="text-align:center;">${prof.pool === 'universal' ? 'Универсал' : 'Выделенный'}</td>${row.map(h => `<td>${Math.round(h).toLocaleString()}</td>`).join("")}<td><strong>${Math.round(total).toLocaleString()}</strong></td></tr>`;
+      });
+      html += `<tr><td colspan="2"><strong>ИТОГО</strong></td>${calc.totalHoursByMonth.map(h => `<td><strong>${Math.round(h).toLocaleString()}</strong></td>`).join("")}<td><strong>${Math.round(calc.totalHoursByMonth.reduce((a,b)=>a+b,0)).toLocaleString()}</strong></td></tr>`;
+      html += `</tbody></table></div>`;
+
+      // --- Штат ---
+      html += `<div class="rpt-page"><div class="rpt-section-title">4. Расчёт потребного штата по пулам квалификации (чел.)</div><table class="rpt-table"><thead><tr><th>Пул / показатель</th>${data.months.map(m => `<th>${escapeHtml(m)}</th>`).join("")}</tr></thead><tbody>`;
+      html += `<tr><td>Универсальный пул (${calc.brigadesCount}×${calc.brigadeSize} чел.)</td>${calc.universalStaffSpTotal.map(v => `<td>${v.toFixed(1)}</td>`).join("")}</tr>`;
+      calc.dedicatedProfs.forEach(prof => {
+        html += `<tr><td>↳ ${escapeHtml(prof.name)} (выделенный)</td>${calc.staffByProfSp[prof.id].map(v => `<td>${v.toFixed(1)}</td>`).join("")}</tr>`;
+      });
+      html += `<tr><td>Вспомогательный персонал</td>${calc.auxStaffSpTotal.map(v => `<td>${v.toFixed(1)}</td>`).join("")}</tr>`;
+      html += `<tr><td><strong>ИТОГО ШТАТ</strong></td>${calc.grandTotalStaff.map(v => `<td><strong>${v}</strong></td>`).join("")}</tr>`;
+      html += `</tbody></table></div>`;
+
+      // --- Сменность ---
+      html += `<div class="rpt-page"><div class="rpt-section-title">5. Режим загрузки оборудования по участкам</div><table class="rpt-table"><thead><tr><th>Участок</th>${data.months.map(m => `<th>${escapeHtml(m)}</th>`).join("")}</tr></thead><tbody>`;
+      data.professions.forEach(prof => {
+        html += `<tr><td>${escapeHtml(prof.name)}</td>${calc.profMachineZones[prof.id].map(z => `<td class="${zoneCellClass(z.statusZone)}">${z.label.replace(/<[^>]+>/g, "").trim() || "—"}</td>`).join("")}</tr>`;
+      });
+      html += `</tbody></table><div class="rpt-footer-note">Пороги режимов рассчитаны при: ${calc.workDaysPerMonth} раб.дн./мес, смена ${calc.shiftHoursStandard}ч, Kвн=${calc.kVn}, коэфф. режима 2×12ч(2/2) = ${calc.thirdTierFactor}.</div></div>`;
+
+      // --- Нормы (реестр) ---
+      const normEntries = data.normConfigs ? Object.values(data.normConfigs) : [];
+      html += `<div class="rpt-page"><div class="rpt-section-title">6. Приложение: реестр обоснованных технологических норм</div>`;
+      if (normEntries.length === 0) {
+        html += `<div class="rpt-footer-note">Реестр пуст — нормы были введены вручную без сохранения обоснования расчёта.</div>`;
+      } else {
+        html += `<table class="rpt-table"><thead><tr><th>Изделие</th><th>Участок</th><th>Метод</th><th>Норма, н-ч</th><th>Зафиксировано</th></tr></thead><tbody>`;
+        normEntries.forEach(item => {
+          html += `<tr><td>${escapeHtml(item.prodName)}</td><td>${escapeHtml(item.profName)}</td><td style="text-align:center;">${item.method === 'stat' ? 'Статистич.' : 'Хронометраж'}</td><td>${item.norm}</td><td style="text-align:center;">${escapeHtml(item.updatedAt || '')}</td></tr>`;
+        });
+        html += `</tbody></table>`;
+      }
+      html += `<div class="rpt-footer-note">Отчёт сформирован автоматически инструментом производственного планирования. Все расчёты выполнены по единой методике, идентичной вкладке «Аналитика» приложения.</div></div>`;
+
+      root.innerHTML = html;
+
+      // Переносим текст советника (без кнопок действий) в резюме отчёта
+      const advisorSrc = document.getElementById("advisorList");
+      const advisorDst = document.getElementById("rptAdvisorList");
+      if (advisorSrc && advisorDst) {
+        advisorDst.innerHTML = advisorSrc.innerHTML.replace(/<button[^>]*>.*?<\/button>/gs, "");
+      }
+    }
+
+    function openPrintReport() {
+      buildPrintReport();
+      document.body.classList.add("report-mode");
+      const cleanup = () => { document.body.classList.remove("report-mode"); window.removeEventListener("afterprint", cleanup); };
+      window.addEventListener("afterprint", cleanup);
+      setTimeout(() => window.print(), 50);
+    }
+
+    // ============================================================
+    // ЭКСПОРТ В EXCEL (.xlsx) — многолистовая книга с форматированием
+    // (замена CSV, который не даёт ни листов, ни стилей, ни сводки)
+    // ============================================================
+    async function exportToExcel() {
+      const data = getActiveData();
+      const calc = calculate();
+      const wb = new ExcelJS.Workbook();
+      wb.creator = "Производственное планирование";
+      wb.created = new Date();
+
+      const zoneFill = { green: "FFDCFCE7", yellow: "FFFEF3C7", red: "FFFEE2E2" };
+      const headerFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE2E8F0" } };
+      const titleFont = { bold: true, size: 13, color: { argb: "FF1E293B" } };
+
+      // --- Лист 1: Свод ---
+      const wsSummary = wb.addWorksheet("Свод");
+      wsSummary.columns = [{ width: 34 }, { width: 34 }];
+      const companyName = data.settings.companyName && data.settings.companyName.trim() ? data.settings.companyName.trim() : "Производственная программа";
+      wsSummary.mergeCells("A1:B1");
+      wsSummary.getCell("A1").value = companyName;
+      wsSummary.getCell("A1").font = { bold: true, size: 15 };
+      wsSummary.mergeCells("A2:B2");
+      wsSummary.getCell("A2").value = `Сценарий: ${state.currentScenario}`;
+      wsSummary.getCell("A2").font = { italic: true, color: { argb: "FF64748B" } };
+      wsSummary.addRow([]);
+
+      const zoneLabels = { green: "Программа выполнима", yellow: "Выполнима с оговорками", red: "Требует пересмотра" };
+      const peakStaff = calc.grandTotalStaff.length ? Math.max(...calc.grandTotalStaff) : 0;
+      const peakIdx = calc.grandTotalStaff.indexOf(peakStaff);
+      let bottleneckName = "—", bottleneckHours = -1;
+      data.professions.forEach(prof => {
+        const sumH = calc.hoursByProf[prof.id].reduce((a, b) => a + b, 0);
+        if (sumH > bottleneckHours) { bottleneckHours = sumH; bottleneckName = prof.name; }
+      });
+      const summaryRows = [
+        ["Статус программы", zoneLabels[calc.overallZone] || ""],
+        ["Период", `${data.months[0]} — ${data.months[data.months.length - 1]}`],
+        ["Номенклатура", `${data.products.length} поз.`],
+        ["Суммарная трудоёмкость", `${Math.round(calc.totalHoursByMonth.reduce((a,b)=>a+b,0)).toLocaleString()} н-ч`],
+        ["Пиковый штат", `${peakStaff} чел.${peakIdx >= 0 ? ` (${data.months[peakIdx]})` : ""}`],
+        ["Узкое место программы", bottleneckName],
+        ["Дата формирования", new Date().toLocaleString("ru-RU")]
+      ];
+      summaryRows.forEach(r => {
+        const row = wsSummary.addRow(r);
+        row.getCell(1).font = { bold: true };
+      });
+      const statusRow = wsSummary.getRow(4);
+      statusRow.getCell(2).fill = { type: "pattern", pattern: "solid", fgColor: { argb: zoneFill[calc.overallZone] || "FFFFFFFF" } };
+
+      // --- Лист 2: План выпуска ---
+      const wsPlan = wb.addWorksheet("План выпуска");
+      const planHeader = ["Изделие", "Ед.", ...data.months, "Итого"];
+      wsPlan.addRow(planHeader).eachCell(c => { c.font = { bold: true }; c.fill = headerFill; });
+      wsPlan.columns = [{ width: 30 }, { width: 8 }, ...data.months.map(() => ({ width: 12 })), { width: 12 }];
+      data.products.forEach(p => {
+        const row = data.plan[p.id] || [];
+        const total = row.reduce((a, b) => a + parseNum(b), 0);
+        wsPlan.addRow([p.name, p.unit || "", ...row.map(v => parseNum(v)), total]);
+      });
+      wsPlan.getColumn(1).font = { bold: true };
+
+      // --- Лист 3: Трудоёмкость ---
+      const wsHours = wb.addWorksheet("Трудоёмкость (н-ч)");
+      wsHours.addRow(["Участок", "Пул", ...data.months, "Итого"]).eachCell(c => { c.font = { bold: true }; c.fill = headerFill; });
+      wsHours.columns = [{ width: 28 }, { width: 14 }, ...data.months.map(() => ({ width: 12 })), { width: 12 }];
+      data.professions.forEach(prof => {
+        const row = calc.hoursByProf[prof.id];
+        const total = row.reduce((a, b) => a + b, 0);
+        wsHours.addRow([prof.name, prof.pool === "universal" ? "Универсал" : "Выделенный", ...row.map(h => Math.round(h)), Math.round(total)]);
+      });
+      const totalHoursRow = wsHours.addRow(["ИТОГО", "", ...calc.totalHoursByMonth.map(h => Math.round(h)), Math.round(calc.totalHoursByMonth.reduce((a,b)=>a+b,0))]);
+      totalHoursRow.font = { bold: true };
+
+      // --- Лист 4: Штат ---
+      const wsStaff = wb.addWorksheet("Штат по пулам");
+      wsStaff.addRow(["Пул / показатель", ...data.months]).eachCell(c => { c.font = { bold: true }; c.fill = headerFill; });
+      wsStaff.columns = [{ width: 32 }, ...data.months.map(() => ({ width: 12 }))];
+      wsStaff.addRow([`Универсальный пул (${calc.brigadesCount}×${calc.brigadeSize} чел.)`, ...calc.universalStaffSpTotal.map(v => Math.round(v * 10) / 10)]);
+      calc.dedicatedProfs.forEach(prof => {
+        wsStaff.addRow([`↳ ${prof.name} (выделенный)`, ...calc.staffByProfSp[prof.id].map(v => Math.round(v * 10) / 10)]);
+      });
+      wsStaff.addRow(["Вспомогательный персонал", ...calc.auxStaffSpTotal.map(v => Math.round(v * 10) / 10)]);
+      const grandRow = wsStaff.addRow(["ИТОГО ШТАТ", ...calc.grandTotalStaff]);
+      grandRow.font = { bold: true };
+      grandRow.eachCell(c => { c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEFF6FF" } }; });
+
+      // --- Лист 5: Сменность ---
+      const wsShift = wb.addWorksheet("Сменность");
+      wsShift.addRow(["Участок", ...data.months]).eachCell(c => { c.font = { bold: true }; c.fill = headerFill; });
+      wsShift.columns = [{ width: 28 }, ...data.months.map(() => ({ width: 20 }))];
+      data.professions.forEach(prof => {
+        const rowVals = calc.profMachineZones[prof.id].map(z => z.label.replace(/<[^>]+>/g, "").trim() || "Простой");
+        const row = wsShift.addRow([prof.name, ...rowVals]);
+        calc.profMachineZones[prof.id].forEach((z, i) => {
+          const cell = row.getCell(i + 2);
+          if (zoneFill[z.statusZone]) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: zoneFill[z.statusZone] } };
+        });
+      });
+
+      // --- Лист 6: Реестр норм ---
+      const wsNorms = wb.addWorksheet("Нормы (реестр)");
+      wsNorms.addRow(["Изделие", "Участок", "Метод", "Норма, н-ч", "Зафиксировано"]).eachCell(c => { c.font = { bold: true }; c.fill = headerFill; });
+      wsNorms.columns = [{ width: 28 }, { width: 24 }, { width: 16 }, { width: 14 }, { width: 18 }];
+      const normEntries = data.normConfigs ? Object.values(data.normConfigs) : [];
+      normEntries.forEach(item => {
+        wsNorms.addRow([item.prodName, item.profName, item.method === "stat" ? "Статистич." : "Хронометраж", item.norm, item.updatedAt || ""]);
+      });
+
+      const buffer = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `Производственная_программа_${state.currentScenario.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0,10)}.xlsx`;
+      link.click();
     }
 
     function attachEvents() {
@@ -2778,7 +3317,7 @@
           const rec = getRecommendedHeadcount();
           modalSystem.prompt(
             "Выравнивание плана под штат",
-            `Для равномерного выполнения всей программы без дефицита рекомендуемый штат: <strong>${rec} чел.</strong><br><br>Укажите целевую численность персонала цеха (чел.):`,
+            `Рекомендация — среднемесячный штат по текущей программе: <strong>${rec} чел.</strong> (та же величина, что и в аналитике). Выравнивание перераспределит объёмы между месяцами так, чтобы общая трудоёмкость не превышала ёмкость этого штата.<br><br>Укажите целевую численность персонала цеха (чел.):`,
             String(rec),
             (targetVal) => {
               const headcount = parseInt(targetVal);
@@ -2812,18 +3351,10 @@
         reader.onload = (event) => {
           try {
             const imported = JSON.parse(event.target.result);
-            if (imported.scenarios && imported.currentScenario) {
+            const errors = validateImportedState(imported);
+            if (errors.length === 0) {
               state = imported;
-              Object.keys(state.scenarios).forEach(k => {
-                const sc = state.scenarios[k];
-                if (!sc.normConfigs) sc.normConfigs = {};
-                if (sc.settings.brigadesCount === undefined) sc.settings.brigadesCount = 3;
-                if (sc.settings.brigadeSize === undefined) sc.settings.brigadeSize = 6;
-                if (sc.settings.maxOvertimePercent === undefined) sc.settings.maxOvertimePercent = 15;
-                sc.professions.forEach(pr => {
-                  if (!pr.pool) pr.pool = (["p1787298939301", "p1787298947495", "p1787298952912", "p1787298961438", "p1787298966902"].includes(pr.id) ? "dedicated" : "universal");
-                });
-              });
+              Object.keys(state.scenarios).forEach(k => normalizeScenario(state.scenarios[k]));
               saveToStorage();
               renderScenarioSelector();
               populateNormSelects();
@@ -2832,7 +3363,7 @@
               renderAll();
               modalSystem.alert("Успешно", "Данные производственной программы загружены из файла!");
             } else {
-              modalSystem.alert("Ошибка", "Файл имеет неподдерживаемый формат данных.");
+              modalSystem.alert("Файл не прошёл проверку", `Импорт отменён, текущие данные не изменены. Обнаружены проблемы:<br><br>• ${errors.slice(0, 8).join("<br>• ")}${errors.length > 8 ? `<br>… и ещё ${errors.length - 8}` : ""}`);
             }
           } catch(err) {
             modalSystem.alert("Ошибка", "Не удалось прочитать файл JSON: " + err.message);
@@ -2842,7 +3373,7 @@
         e.target.value = "";
       });
 
-      document.getElementById("btnPrintPdf").addEventListener("click", () => { window.print(); });
+      document.getElementById("btnPrintPdf").addEventListener("click", () => { openPrintReport(); });
 
       document.getElementById("btnDownloadAnalyticsImage").addEventListener("click", () => {
         const area = document.getElementById("analyticsCaptureArea");
@@ -2871,6 +3402,8 @@
         link.download = `Ведомость_персонала_${new Date().toISOString().slice(0,10)}.csv`;
         link.click();
       });
+
+      document.getElementById("btnExportXlsx").addEventListener("click", () => { exportToExcel(); });
 
       document.getElementById("btnPushStatNormToRouting").addEventListener("click", () => {
         const norm = calculateStatNorm();
@@ -2935,7 +3468,8 @@
               crew: parseNum(document.getElementById("normChronoCrew").value),
               kObs: parseNum(document.getElementById("normChronoKObs").value),
               kOtl: parseNum(document.getElementById("normChronoKOtl").value),
-              tPz: parseNum(document.getElementById("normChronoTPz").value)
+              tPz: parseNum(document.getElementById("normChronoTPz").value),
+              batchSize: parseNum(document.getElementById("normChronoBatchSize").value) || 50
             },
             norm: parseFloat(norm.toFixed(3)),
             updatedAt: new Date().toLocaleString("ru-RU", { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -2956,7 +3490,7 @@
       ["normStatOutput", "normStatWorkers", "normStatShiftHours", "normStatBreaks", "normStatKEff"].forEach(id => {
         document.getElementById(id).addEventListener("input", calculateStatNorm);
       });
-      ["normChronoTOsn", "normChronoTVsp", "normChronoCrew", "normChronoKObs", "normChronoKOtl", "normChronoTPz"].forEach(id => {
+      ["normChronoTOsn", "normChronoTVsp", "normChronoCrew", "normChronoKObs", "normChronoKOtl", "normChronoTPz", "normChronoBatchSize"].forEach(id => {
         document.getElementById(id).addEventListener("input", calculateChronoNorm);
       });
 
@@ -2970,6 +3504,7 @@
           data.plan[pId][mIdx] = val;
           saveToStorage();
           renderKPIs();
+          renderExecSummary();
           renderDynamicGuides();
           const rowSum = data.plan[pId].reduce((s, v) => s + parseNum(v), 0);
           const pObj = data.products.find(x => x.id === pId);
@@ -3103,11 +3638,25 @@
         if (btn) {
           const pId = btn.getAttribute("data-product-id");
           const data = getActiveData();
-          if (data.products.length <= 1) return;
-          data.products = data.products.filter(p => p.id !== pId);
-          delete data.plan[pId];
-          saveToStorage();
-          renderAll();
+          if (data.products.length <= 1) {
+            modalSystem.alert("Внимание", "Справочник должен содержать минимум одно изделие.");
+            return;
+          }
+          const product = data.products.find(p => p.id === pId);
+          const normsCount = data.normConfigs ? Object.keys(data.normConfigs).filter(k => k.startsWith(pId + "___")).length : 0;
+          modalSystem.confirm(
+            "Удаление изделия",
+            `Удалить изделие «${escapeHtml(product ? product.name : pId)}»? Будут безвозвратно удалены план выпуска по всем месяцам${normsCount > 0 ? ` и ${normsCount} обоснованных норм(ы) в реестре` : ""}.`,
+            () => {
+              data.products = data.products.filter(p => p.id !== pId);
+              delete data.plan[pId];
+              if (data.normConfigs) {
+                Object.keys(data.normConfigs).forEach(k => { if (k.startsWith(pId + "___")) delete data.normConfigs[k]; });
+              }
+              saveToStorage();
+              renderAll();
+            }
+          );
         }
       });
 
@@ -3173,17 +3722,31 @@
         if (btn) {
           const profId = btn.getAttribute("data-prof-id");
           const data = getActiveData();
-          if (data.professions.length <= 1) return;
-          data.professions = data.professions.filter(p => p.id !== profId);
-          data.products.forEach(p => { delete p.norms[profId]; });
-          saveToStorage();
-          populateNormSelects();
-          renderAll();
+          if (data.professions.length <= 1) {
+            modalSystem.alert("Внимание", "Справочник должен содержать минимум один технологический участок.");
+            return;
+          }
+          const prof = data.professions.find(p => p.id === profId);
+          const normsCount = data.normConfigs ? Object.keys(data.normConfigs).filter(k => k.endsWith("___" + profId)).length : 0;
+          modalSystem.confirm(
+            "Удаление участка",
+            `Удалить участок «${escapeHtml(prof ? prof.name : profId)}»? Будут безвозвратно удалены нормы времени по всем изделиям для этого участка${normsCount > 0 ? ` и ${normsCount} обоснованных норм(ы) в реестре` : ""}.`,
+            () => {
+              data.professions = data.professions.filter(p => p.id !== profId);
+              data.products.forEach(p => { delete p.norms[profId]; });
+              if (data.normConfigs) {
+                Object.keys(data.normConfigs).forEach(k => { if (k.endsWith("___" + profId)) delete data.normConfigs[k]; });
+              }
+              saveToStorage();
+              populateNormSelects();
+              renderAll();
+            }
+          );
         }
       });
 
       // Settings Inputs Handlers
-      ["inputBrigadesCount", "inputBrigadeSize", "inputMaxOvertime", "inputFNom", "inputFEff", "inputKVn", "inputAuxOtk", "inputAuxSetup", "inputAuxFixed"].forEach(id => {
+      ["inputBrigadesCount", "inputBrigadeSize", "inputMaxOvertime", "inputFNom", "inputFEff", "inputKVn", "inputAuxOtk", "inputAuxSetup", "inputAuxFixed", "inputWorkDays", "inputShiftHours", "inputThirdTierFactor"].forEach(id => {
         document.getElementById(id).addEventListener("input", () => {
           const data = getActiveData();
           data.settings.brigadesCount = Math.max(1, parseInt(document.getElementById("inputBrigadesCount").value) || 3);
@@ -3198,12 +3761,19 @@
           data.settings.auxOtkPercent = parseNum(document.getElementById("inputAuxOtk").value);
           data.settings.auxSetupPercent = parseNum(document.getElementById("inputAuxSetup").value);
           data.settings.auxFixedPosts = parseNum(document.getElementById("inputAuxFixed").value);
-          
+          data.settings.workDaysPerMonth = Math.max(1, parseInt(document.getElementById("inputWorkDays").value) || 21);
+          data.settings.shiftHoursStandard = parseNum(document.getElementById("inputShiftHours").value) || 8;
+          data.settings.thirdTierFactor = parseNum(document.getElementById("inputThirdTierFactor").value) || 2.75;
+
           saveToStorage();
-          renderKPIs();
-          renderAnalytics();
-          renderDynamicGuides();
+          renderAll();
         });
+      });
+
+      document.getElementById("inputCompanyName").addEventListener("input", () => {
+        const data = getActiveData();
+        data.settings.companyName = document.getElementById("inputCompanyName").value;
+        saveToStorage();
       });
 
       document.getElementById("btnResetData").addEventListener("click", () => {
