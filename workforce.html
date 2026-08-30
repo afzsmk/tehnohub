@@ -341,7 +341,28 @@
 
     .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
     .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-    @media (max-width: 1100px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    @media (max-width: 1100px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } }
+    @media (max-width: 1400px) { .grid-4 { grid-template-columns: repeat(2, 1fr); } }
+
+    /* Панели калькуляторов нормирования: прижимаем итоговый блок с кнопкой
+       к низу карточки, чтобы кнопки "Перенести в матрицу норм" были на одной
+       линии независимо от того, сколько строк параметров в каждом методе. */
+    .norm-calc-panel .panel-body { display: flex; flex-direction: column; height: 100%; }
+    .norm-calc-panel .norm-action-box { margin-top: auto; }
+
+    /* Единая панель нормирования: переключатель метода вместо двух карточек рядом */
+    .method-toggle { display: inline-flex; background: #eef2f7; border-radius: 8px; padding: 3px; gap: 2px; }
+    .method-toggle-btn { border: none; background: transparent; padding: 6px 14px; font-size: 12.5px; font-weight: 600; color: var(--text-secondary); border-radius: 6px; cursor: pointer; transition: background .15s, color .15s; }
+    .method-toggle-btn.active { background: #ffffff; color: var(--accent); box-shadow: 0 1px 2px rgba(15,23,42,.08); }
+    .method-toggle-btn:not(.active):hover { color: var(--text-primary); }
+
+    /* Иконка-калькулятор в ячейке матрицы норм — открывает нормирование в контексте изделие+участок */
+    .norm-cell-wrap { position: relative; }
+    .norm-jump-btn { position: absolute; top: -6px; right: -4px; width: 18px; height: 18px; border-radius: 50%; background: var(--accent); color: #fff; border: 2px solid #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: opacity .15s; padding: 0; }
+    .norm-cell-wrap:hover .norm-jump-btn { opacity: 1; }
+    .norm-jump-btn svg { width: 10px; height: 10px; }
+    .norm-jump-btn.has-config { background: var(--success); }
 
     .summary-card {
       background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%);
@@ -873,6 +894,7 @@
                     <th style="width: 140px; text-align: center;" title="Группа взаимозаменяемости персонала">Пул квалификации</th>
                     <th style="width: 65px; text-align: right;" title="Количество физических станков или рабочих мест">Станков</th>
                     <th style="width: 75px; text-align: right;" title="Количество рабочих, одновременно занятых на 1 станке/посту">Звено</th>
+                    <th style="width: 85px; text-align: right;" title="Минимальная численность, которая ставится на пост, даже если расчёт даёт меньше (например, всегда минимум 1 сварщик, а не 0.1). При нулевой трудоёмкости в месяце минимум не применяется — пост простаивает.">Мин. штат</th>
                     <th style="width: 95px; text-align: center;" title="Тип работы для рекомендации графика 8ч / 12ч">Специфика</th>
                     <th style="width: 40px; text-align: center;"></th>
                   </tr>
@@ -980,26 +1002,34 @@
         </div>
       </div>
 
-      <div class="grid-2">
-        <div class="panel">
-          <div class="panel-header">
-            <div class="panel-title">
-              <svg class="icon"><use href="#icon-calc"></use></svg> 1. Сменно-статистический расчёт нормы
-            </div>
-            <span id="normStatSyncBadge" class="badge-sync-ok">Синхронизировано</span>
+      <div class="panel norm-calc-panel">
+        <div class="panel-header" style="flex-wrap: wrap; gap: 10px;">
+          <div class="panel-title">
+            <svg class="icon"><use href="#icon-calc"></use></svg> Нормирование операции
           </div>
-          <div class="panel-body">
-            <div class="grid-2">
-              <div style="margin-bottom:10px;">
-                <label style="font-size:11.5px; font-weight:600; color:var(--text-muted);">ИЗДЕЛИЕ ИЗ СПРАВОЧНИКА:</label>
-                <select id="normStatProdSelect" class="input-control" onchange="onNormContextChange('stat')"></select>
-              </div>
-              <div style="margin-bottom:10px;">
-                <label style="font-size:11.5px; font-weight:600; color:var(--text-muted);">ТЕХНОЛОГИЧЕСКИЙ УЧАСТОК:</label>
-                <select id="normStatProfSelect" class="input-control" onchange="onNormContextChange('stat')"></select>
-              </div>
+          <div style="display:flex; align-items:center; gap:12px;">
+            <div class="method-toggle" id="normMethodToggle">
+              <button type="button" class="method-toggle-btn active" id="btnNormMethodStat" data-method="stat">Сменно-статистический</button>
+              <button type="button" class="method-toggle-btn" id="btnNormMethodChrono" data-method="chrono">Хронометраж</button>
             </div>
-            <div class="grid-3">
+            <span id="normSyncBadge" class="badge-sync-ok">Синхронизировано</span>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="grid-2">
+            <div style="margin-bottom:10px;">
+              <label style="font-size:11.5px; font-weight:600; color:var(--text-muted);">ИЗДЕЛИЕ ИЗ СПРАВОЧНИКА:</label>
+              <select id="normProdSelect" class="input-control" onchange="onNormSharedContextChange()"></select>
+            </div>
+            <div style="margin-bottom:10px;">
+              <label style="font-size:11.5px; font-weight:600; color:var(--text-muted);">ТЕХНОЛОГИЧЕСКИЙ УЧАСТОК:</label>
+              <select id="normProfSelect" class="input-control" onchange="onNormSharedContextChange()"></select>
+            </div>
+          </div>
+
+          <!-- Метод 1: сменно-статистический -->
+          <div id="normFieldsStat">
+            <div class="grid-4">
               <div style="margin-bottom:10px;">
                 <label style="font-size:11.5px; font-weight:600; color:var(--text-muted);">ВЫПУСК ЗА СМЕНУ (Q):</label>
                 <input type="text" id="normStatOutput" class="input-control input-num" value="50">
@@ -1012,51 +1042,22 @@
                 <label style="font-size:11.5px; font-weight:600; color:var(--text-muted);">СМЕНА (часов):</label>
                 <input type="text" id="normStatShiftHours" class="input-control input-num" value="8.0">
               </div>
-            </div>
-            <div class="grid-2">
-              <div>
+              <div style="margin-bottom:10px;">
                 <label style="font-size:11.5px; font-weight:600; color:var(--text-muted);">ПЕРЕРЫВЫ (мин/чел):</label>
                 <input type="text" id="normStatBreaks" class="input-control input-num" value="40">
               </div>
+            </div>
+            <div class="grid-4">
               <div>
                 <label style="font-size:11.5px; font-weight:600; color:var(--text-muted);">КОЭФФ. ЭФФЕКТИВНОСТИ (Kэф):</label>
                 <input type="text" id="normStatKEff" class="input-control input-num" value="0.95">
               </div>
             </div>
-            <div style="margin-top: 14px; padding: 12px; background: #f8fafc; border-radius: 6px; border: 1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-              <div>
-                <span style="font-size: 11px; color:var(--text-muted); font-weight:600;">РАСЧЁТНАЯ НОРМА / В МАТРИЦЕ:</span>
-                <div style="display:flex; align-items:baseline; gap:8px;">
-                  <div style="font-size: 20px; font-weight: 800; color: var(--accent);" id="normStatResult">0.418 н-ч / ед</div>
-                  <div style="font-size: 12px; color: var(--text-muted);" id="normStatMatrixVal">(в матрице: 0.000)</div>
-                </div>
-              </div>
-              <button class="btn btn-primary btn-sm" id="btnPushStatNormToRouting">
-                <svg class="icon"><use href="#icon-save"></use></svg> Перенести в матрицу норм
-              </button>
-            </div>
           </div>
-        </div>
 
-        <div class="panel">
-          <div class="panel-header">
-            <div class="panel-title">
-              <svg class="icon"><use href="#icon-timer"></use></svg> 2. Поэлементный хронометраж операции
-            </div>
-            <span id="normChronoSyncBadge" class="badge-sync-ok">Синхронизировано</span>
-          </div>
-          <div class="panel-body">
-            <div class="grid-2">
-              <div style="margin-bottom:10px;">
-                <label style="font-size:11.5px; font-weight:600; color:var(--text-muted);">ИЗДЕЛИЕ ИЗ СПРАВОЧНИКА:</label>
-                <select id="normChronoProdSelect" class="input-control" onchange="onNormContextChange('chrono')"></select>
-              </div>
-              <div style="margin-bottom:10px;">
-                <label style="font-size:11.5px; font-weight:600; color:var(--text-muted);">ТЕХНОЛОГИЧЕСКИЙ УЧАСТОК:</label>
-                <select id="normChronoProfSelect" class="input-control" onchange="onNormContextChange('chrono')"></select>
-              </div>
-            </div>
-            <div class="grid-3">
+          <!-- Метод 2: поэлементный хронометраж -->
+          <div id="normFieldsChrono" style="display:none;">
+            <div class="grid-4">
               <div style="margin-bottom:10px;">
                 <label style="font-size:11.5px; font-weight:600; color:var(--text-muted);">ОСНОВНОЕ (Tосн, мин):</label>
                 <input type="text" id="normChronoTOsn" class="input-control input-num" value="12.0">
@@ -1069,12 +1070,12 @@
                 <label style="font-size:11.5px; font-weight:600; color:var(--text-muted);">ЗВЕНО (чел):</label>
                 <input type="text" id="normChronoCrew" class="input-control input-num" value="2">
               </div>
-            </div>
-            <div class="grid-3">
-              <div>
+              <div style="margin-bottom:10px;">
                 <label style="font-size:11.5px; font-weight:600; color:var(--text-muted);">ОБСЛУЖИВАНИЕ (%):</label>
                 <input type="text" id="normChronoKObs" class="input-control input-num" value="5">
               </div>
+            </div>
+            <div class="grid-4">
               <div>
                 <label style="font-size:11.5px; font-weight:600; color:var(--text-muted);">ОТДЫХ/ЛИЧН (%):</label>
                 <input type="text" id="normChronoKOtl" class="input-control input-num" value="6">
@@ -1083,25 +1084,49 @@
                 <label style="font-size:11.5px; font-weight:600; color:var(--text-muted);">ПЗ НА ПАРТИЮ (мин):</label>
                 <input type="text" id="normChronoTPz" class="input-control input-num" value="30">
               </div>
-            </div>
-            <div class="grid-2">
-              <div style="margin-top:2px;">
-                <label style="font-size:11.5px; font-weight:600; color:var(--text-muted);" title="Размер партии, на которую распределяется подготовительно-заключительное время. Раньше был жёстко зашит как 50 — теперь задаётся здесь">РАЗМЕР ПАРТИИ (шт., для ПЗ):</label>
+              <div>
+                <label style="font-size:11.5px; font-weight:600; color:var(--text-muted);" title="Размер партии, на которую распределяется подготовительно-заключительное время">РАЗМЕР ПАРТИИ (шт., для ПЗ):</label>
                 <input type="text" id="normChronoBatchSize" class="input-control input-num" value="50">
               </div>
             </div>
-            <div style="margin-top: 14px; padding: 12px; background: #f8fafc; border-radius: 6px; border: 1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-              <div>
-                <span style="font-size: 11px; color:var(--text-muted); font-weight:600;">ШТУЧНАЯ НОРМА / В МАТРИЦЕ:</span>
-                <div style="display:flex; align-items:baseline; gap:8px;">
-                  <div style="font-size: 20px; font-weight: 800; color: var(--accent);" id="normChronoResult">0.602 н-ч / ед</div>
-                  <div style="font-size: 12px; color: var(--text-muted);" id="normChronoMatrixVal">(в матрице: 0.000)</div>
-                </div>
+          </div>
+
+          <!-- Результат метода 1 -->
+          <div class="norm-action-box" id="normActionStat" style="margin-top: 14px; padding: 12px; background: #f8fafc; border-radius: 6px; border: 1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <div>
+              <span style="font-size: 11px; color:var(--text-muted); font-weight:600;">РАСЧЁТНАЯ НОРМА / В МАТРИЦЕ:</span>
+              <div style="display:flex; align-items:baseline; gap:8px;">
+                <div style="font-size: 20px; font-weight: 800; color: var(--accent);" id="normStatResult">0.418 н-ч / ед</div>
+                <div style="font-size: 12px; color: var(--text-muted);" id="normStatMatrixVal">(в матрице: 0.000)</div>
               </div>
-              <button class="btn btn-primary btn-sm" id="btnPushChronoNormToRouting">
-                <svg class="icon"><use href="#icon-save"></use></svg> Перенести в матрицу норм
-              </button>
             </div>
+            <button class="btn btn-primary btn-sm" id="btnPushStatNormToRouting">
+              <svg class="icon"><use href="#icon-save"></use></svg> Перенести в матрицу норм
+            </button>
+          </div>
+
+          <!-- Результат метода 2 -->
+          <div class="norm-action-box" id="normActionChrono" style="display:none; margin-top: 14px; padding: 12px; background: #f8fafc; border-radius: 6px; border: 1px solid var(--border-color); justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <div>
+              <span style="font-size: 11px; color:var(--text-muted); font-weight:600;">ШТУЧНАЯ НОРМА / В МАТРИЦЕ:</span>
+              <div style="display:flex; align-items:baseline; gap:8px;">
+                <div style="font-size: 20px; font-weight: 800; color: var(--accent);" id="normChronoResult">0.602 н-ч / ед</div>
+                <div style="font-size: 12px; color: var(--text-muted);" id="normChronoMatrixVal">(в матрице: 0.000)</div>
+              </div>
+            </div>
+            <button class="btn btn-primary btn-sm" id="btnPushChronoNormToRouting">
+              <svg class="icon"><use href="#icon-save"></use></svg> Перенести в матрицу норм
+            </button>
+          </div>
+
+          <!-- Служебные дублирующие поля для обратной совместимости внутренней логики (не показываются) -->
+          <div style="display:none;">
+            <select id="normStatProdSelect"></select>
+            <select id="normStatProfSelect"></select>
+            <select id="normChronoProdSelect"></select>
+            <select id="normChronoProfSelect"></select>
+            <span id="normStatSyncBadge">Синхронизировано</span>
+            <span id="normChronoSyncBadge">Синхронизировано</span>
           </div>
         </div>
       </div>
@@ -1183,13 +1208,18 @@
         <div class="panel" style="margin-bottom: 18px;">
           <div class="panel-header">
             <div class="panel-title">
-              <svg class="icon"><use href="#icon-cpu"></use></svg> Загрузка оборудования и постов внутри графика (Станко-часы / сут)
+              <svg class="icon"><use href="#icon-cpu"></use></svg> Загрузка оборудования и постов (% от календарных 24ч/сутки)
             </div>
           </div>
           <div class="panel-body">
-            <p style="font-size:12.5px; color:var(--text-secondary); margin-bottom:12px;">
-              Показывает физическое машинное время работы каждого станка в сутки и рекомендуемую продолжительность включения линии: 1 смена (до 7.5ч), 2 смены (до 15ч) или 2 смены по 12ч (до 22ч/сут).
+            <p style="font-size:12.5px; color:var(--text-secondary); margin-bottom:8px;">
+              Полоса и процент — фактическая занятость станка/поста от суток (24ч), независимо от того, каким графиком это закрывается. Режим смены под полосой — рекомендация, производная от того же процента, а не наоборот.
             </p>
+            <div style="display:flex; gap:16px; margin-bottom:12px; font-size:11.5px; color:var(--text-secondary); flex-wrap:wrap;">
+              <span><span style="display:inline-block; width:10px; height:10px; border-radius:2px; background:#86efac; vertical-align:-1px;"></span> до ~70% — хватает 1-2 смен</span>
+              <span><span style="display:inline-block; width:10px; height:10px; border-radius:2px; background:#fde68a; vertical-align:-1px;"></span> нужен режим 2×12ч (2/2)</span>
+              <span><span style="display:inline-block; width:10px; height:10px; border-radius:2px; background:#fca5a5; vertical-align:-1px;"></span> перегруз даже при максимальном режиме</span>
+            </div>
             <div class="table-container">
               <table class="data-table" id="shiftScheduleTable">
                 <thead>
@@ -1321,6 +1351,7 @@
         if (!pr.pool) {
           pr.pool = (["p1787298939301", "p1787298947495", "p1787298952912", "p1787298961438", "p1787298966902"].includes(pr.id) ? "dedicated" : "universal");
         }
+        if (pr.minCrew === undefined) pr.minCrew = (pr.pool === "dedicated" ? 1 : 0);
       });
       return sc;
     }
@@ -1646,6 +1677,7 @@
       populateNormSelects();
       loadNormContextValues('stat');
       loadNormContextValues('chrono');
+      resyncSharedNormSelectors();
       renderAll();
       attachEvents();
     }
@@ -1692,6 +1724,7 @@
             populateNormSelects();
             loadNormContextValues('stat');
             loadNormContextValues('chrono');
+            resyncSharedNormSelectors();
             renderSavedNormsRegistry();
           }
         });
@@ -1754,7 +1787,16 @@
       const staffByProfSp = {};
       const staffByProfYav = {};
       data.professions.forEach(prof => {
-        staffByProfSp[prof.id] = hoursByProf[prof.id].map(h => h / (fEff * kVn));
+        const rawSp = hoursByProf[prof.id].map(h => h / (fEff * kVn));
+        // Минимальная численность выделенного поста: если участок используется в этом
+        // месяце (есть трудоёмкость > 0), но по расчёту требуется меньше people, чем
+        // физически необходимо для обслуживания поста (например, 0.1 сварщика) —
+        // ставим не расчётную дробь, а реальный минимум (задаётся в справочнике участков,
+        // поле "Мин. штат", по умолчанию 1 для выделенных постов). Раньше в детальной
+        // строке отображалась именно "сырая" дробь (0.1), а в итоговой сумме штата она
+        // уже незаметно округлялась вверх до 1 — эти два числа не совпадали друг с другом.
+        const minCrew = parseNum(prof.minCrew) || 0;
+        staffByProfSp[prof.id] = rawSp.map(s => (s > 0 && minCrew > 0) ? Math.max(s, minCrew) : s);
         staffByProfYav[prof.id] = hoursByProf[prof.id].map(h => h / (fNom * kVn));
       });
 
@@ -1898,24 +1940,47 @@
     // и внутри calculate() (для профиля каждого участка/месяца), и в таблице
     // «Загрузка оборудования». Раньше пороги были захардкожены (168/336/462, 21 день) —
     // теперь считаются из настраиваемых fEff/kVn/рабочих дней/длины смены/коэффициента 2×12ч.
+    //
+    // Основной показатель — % загрузки станка от календарных 24ч/сутки (наглядная
+    // физическая величина), режим смены (1/2/2×12ч) — вторичная подпись-рекомендация,
+    // выводимая из тех же порогов cap1/cap2/cap3.
     function classifyMachineLoad(hoursPerMachine, caps) {
       const { workDaysPerMonth, shiftHoursStandard, cap1, cap2, cap3 } = caps;
-      const hoursPerDay = (hoursPerMachine / workDaysPerMonth);
+      const hoursPerDay = hoursPerMachine / workDaysPerMonth;
+      const pct24 = Math.round((hoursPerDay / 24) * 100);
+
       if (hoursPerMachine <= 0) {
-        return { badgeClass: "", statusZone: "none", label: `<span style="color:var(--text-muted); font-size:12px;">Простой</span>` };
-      } else if (hoursPerMachine <= cap1) {
-        const load = Math.round((hoursPerMachine / cap1) * 100);
-        return { badgeClass: "badge-shift-1", statusZone: "green", label: `<span class="badge-shift-1" title="Загрузка: ${hoursPerDay.toFixed(1)} ч/сут (1 смена: ${load}%)">1 см (${shiftHoursStandard}ч) · ${hoursPerDay.toFixed(1)}ч/сут</span>` };
-      } else if (hoursPerMachine <= cap2) {
-        const load = Math.round((hoursPerMachine / cap2) * 100);
-        return { badgeClass: "badge-shift-2", statusZone: "green", label: `<span class="badge-shift-2" title="Загрузка: ${hoursPerDay.toFixed(1)} ч/сут (2 смены: ${load}%)">2 см (${shiftHoursStandard}ч) · ${hoursPerDay.toFixed(1)}ч/сут</span>` };
-      } else if (hoursPerMachine <= cap3) {
-        const load = Math.round((hoursPerMachine / cap3) * 100);
-        return { badgeClass: "badge-shift-12", statusZone: "yellow", label: `<span class="badge-shift-12" title="Загрузка: ${hoursPerDay.toFixed(1)} ч/сут (2×12ч 2/2: ${load}%)">2 см × 12ч (2/2)</span>` };
-      } else {
-        const load = Math.round((hoursPerMachine / cap3) * 100);
-        return { badgeClass: "badge-shift-overload", statusZone: "red", label: `<span class="badge-shift-overload" title="Дефицит мощности даже при 2×12ч!">2/12 Перегруз (${load}%)</span>` };
+        return {
+          badgeClass: "", statusZone: "none", pct24: 0, hoursPerDay: 0, tierLabel: "Простой",
+          plainLabel: "Простой",
+          label: `<span style="color:var(--text-muted); font-size:12px;">Простой</span>`
+        };
       }
+
+      let statusZone, tierLabel;
+      if (hoursPerMachine <= cap1) { statusZone = "green"; tierLabel = `1 смена (${shiftHoursStandard}ч)`; }
+      else if (hoursPerMachine <= cap2) { statusZone = "green"; tierLabel = `2 смены (${shiftHoursStandard}ч)`; }
+      else if (hoursPerMachine <= cap3) { statusZone = "yellow"; tierLabel = "2×12ч (2/2)"; }
+      else { statusZone = "red"; tierLabel = "Перегруз"; }
+
+      const zoneColor = { green: "var(--success)", yellow: "var(--warning)", red: "var(--danger)" }[statusZone];
+      const zoneFill = { green: "#86efac", yellow: "#fde68a", red: "#fca5a5" }[statusZone];
+      const barWidth = Math.min(100, pct24);
+      const plainLabel = `${pct24}% от 24ч (${hoursPerDay.toFixed(1)}ч/сут) · ${tierLabel}`;
+
+      const label = `
+        <div style="display:flex; flex-direction:column; gap:3px; min-width:112px;" title="${plainLabel}">
+          <div style="display:flex; align-items:center; gap:6px;">
+            <div style="flex:1; height:7px; background:#e2e8f0; border-radius:4px; overflow:hidden;">
+              <div style="width:${barWidth}%; height:100%; background:${zoneFill};"></div>
+            </div>
+            <span style="font-size:12px; font-weight:700; color:${zoneColor}; min-width:32px; text-align:right;">${pct24}%</span>
+          </div>
+          <div style="font-size:10.5px; color:var(--text-muted); white-space:nowrap;">${hoursPerDay.toFixed(1)}ч/сут · ${tierLabel}</div>
+        </div>
+      `;
+
+      return { badgeClass: "", statusZone, pct24, hoursPerDay, tierLabel, plainLabel, label };
     }
 
     function renderAll() {
@@ -2095,6 +2160,9 @@
           <td>
             <input type="number" min="1" step="1" class="input-control input-num prof-crew-input" data-prof-id="${prof.id}" value="${prof.crew || 1}">
           </td>
+          <td>
+            <input type="number" min="0" step="1" class="input-control input-num prof-mincrew-input" data-prof-id="${prof.id}" value="${prof.minCrew !== undefined ? prof.minCrew : (poolType === 'dedicated' ? 1 : 0)}" title="0 — численность считается только по трудоёмкости, без минимума">
+          </td>
           <td style="text-align:center;">
             <select class="input-control prof-type-select" data-prof-id="${prof.id}" style="font-size:12px; font-weight:600;">
               <option value="machine" ${isMachine ? 'selected' : ''}>Станочный</option>
@@ -2150,12 +2218,19 @@
           <td>
             <input type="text" class="input-control input-num prod-scrap-input" data-product-id="${p.id}" value="${p.scrap || 0}">
           </td>
-          ${data.professions.map(prof => `
-            <td>
+          ${data.professions.map(prof => {
+            const normKey = `${p.id}___${prof.id}`;
+            const hasConfig = data.normConfigs && data.normConfigs[normKey];
+            return `
+            <td class="norm-cell-wrap">
               <input type="text" class="input-control input-num prod-norm-input"
                      data-product-id="${p.id}" data-prof-id="${prof.id}" value="${p.norms[prof.id] !== undefined ? p.norms[prof.id] : 0}">
+              <button type="button" class="norm-jump-btn ${hasConfig ? 'has-config' : ''}" data-product-id="${p.id}" data-prof-id="${prof.id}"
+                      title="${hasConfig ? 'Норма обоснована расчётом — открыть в калькуляторе' : 'Рассчитать норму через калькулятор нормирования'}">
+                <svg class="icon"><use href="#icon-calc"></use></svg>
+              </button>
             </td>
-          `).join("")}
+          `;}).join("")}
           <td style="text-align: right; font-weight: 600;">${totalNorm.toFixed(2)}</td>
           <td style="text-align: center;">
             <button class="btn btn-secondary btn-sm btn-del-prod" data-product-id="${p.id}" title="Удалить изделие">
@@ -2765,6 +2840,7 @@
       const data = getActiveData();
       
       const pairs = [
+        { prod: "normProdSelect", prof: "normProfSelect" },
         { prod: "normStatProdSelect", prof: "normStatProfSelect" },
         { prod: "normChronoProdSelect", prof: "normChronoProfSelect" }
       ];
@@ -2807,6 +2883,63 @@
 
     function onNormContextChange(type) {
       loadNormContextValues(type);
+    }
+
+    // Единый обработчик изменения общего селектора изделие/участок — обновляет
+    // оба скрытых зеркальных селектора (используются внутренней логикой калькуляторов
+    // без изменений) и подгружает сохранённые параметры для обоих методов сразу,
+    // чтобы при переключении переключателя метода значения уже были на месте.
+    function onNormSharedContextChange() {
+      const prodVal = document.getElementById("normProdSelect").value;
+      const profVal = document.getElementById("normProfSelect").value;
+      document.getElementById("normStatProdSelect").value = prodVal;
+      document.getElementById("normStatProfSelect").value = profVal;
+      document.getElementById("normChronoProdSelect").value = prodVal;
+      document.getElementById("normChronoProfSelect").value = profVal;
+      loadNormContextValues('stat');
+      loadNormContextValues('chrono');
+      updateNormSyncBadge();
+    }
+
+    // Переключение активного метода расчёта нормы (показывает/прячет нужный блок полей
+    // и результат, без потери введённых значений в обоих методах).
+    function setNormMethod(method) {
+      const isStat = method === 'stat';
+      document.getElementById("normFieldsStat").style.display = isStat ? "" : "none";
+      document.getElementById("normFieldsChrono").style.display = isStat ? "none" : "";
+      document.getElementById("normActionStat").style.display = isStat ? "flex" : "none";
+      document.getElementById("normActionChrono").style.display = isStat ? "none" : "flex";
+      document.getElementById("btnNormMethodStat").classList.toggle("active", isStat);
+      document.getElementById("btnNormMethodChrono").classList.toggle("active", !isStat);
+      updateNormSyncBadge();
+    }
+
+    // Единый бейдж синхронизации в шапке панели отражает статус ТЕКУЩЕГО активного
+    // метода (второй метод считается независимо в фоне и получит свой бейдж, как
+    // только пользователь на него переключится).
+    function updateNormSyncBadge() {
+      const isStat = document.getElementById("normFieldsStat").style.display !== "none";
+      const srcBadge = document.getElementById(isStat ? "normStatSyncBadge" : "normChronoSyncBadge");
+      const dstBadge = document.getElementById("normSyncBadge");
+      if (srcBadge && dstBadge) {
+        dstBadge.className = srcBadge.className;
+        dstBadge.textContent = srcBadge.textContent;
+      }
+    }
+
+    // После массовых обновлений (смена сценария, импорт JSON, populateNormSelects)
+    // подтягивает видимый общий селектор к значению служебного (нужно, т.к. они
+    // заполняются независимо друг от друга при перестроении списков).
+    function resyncSharedNormSelectors() {
+      const prodSel = document.getElementById("normProdSelect");
+      const profSel = document.getElementById("normProfSelect");
+      const srcProd = document.getElementById("normStatProdSelect");
+      const srcProf = document.getElementById("normStatProfSelect");
+      if (prodSel && profSel && srcProd && srcProf) {
+        prodSel.value = srcProd.value;
+        profSel.value = srcProf.value;
+      }
+      updateNormSyncBadge();
     }
 
     function loadNormContextValues(type) {
@@ -2963,17 +3096,17 @@
       }).join("");
     }
 
-    function loadConfigIntoCalculator(prodId, profId, method) {
-      if (method === 'stat') {
-        document.getElementById("normStatProdSelect").value = prodId;
-        document.getElementById("normStatProfSelect").value = profId;
-        loadNormContextValues('stat');
-      } else {
-        document.getElementById("normChronoProdSelect").value = prodId;
-        document.getElementById("normChronoProfSelect").value = profId;
-        loadNormContextValues('chrono');
-      }
-      modalSystem.alert("Загружено", "Параметры успешно восстановлены в окне калькулятора!");
+    function loadConfigIntoCalculator(prodId, profId, method, silent) {
+      document.getElementById("normProdSelect").value = prodId;
+      document.getElementById("normProfSelect").value = profId;
+      document.getElementById("normStatProdSelect").value = prodId;
+      document.getElementById("normStatProfSelect").value = profId;
+      document.getElementById("normChronoProdSelect").value = prodId;
+      document.getElementById("normChronoProfSelect").value = profId;
+      loadNormContextValues('stat');
+      loadNormContextValues('chrono');
+      setNormMethod(method);
+      if (!silent) modalSystem.alert("Загружено", "Параметры успешно восстановлены в окне калькулятора!");
     }
 
     function deleteNormConfig(key) {
@@ -3083,7 +3216,7 @@
       // --- Сменность ---
       html += `<div class="rpt-page"><div class="rpt-section-title">5. Режим загрузки оборудования по участкам</div><table class="rpt-table"><thead><tr><th>Участок</th>${data.months.map(m => `<th>${escapeHtml(m)}</th>`).join("")}</tr></thead><tbody>`;
       data.professions.forEach(prof => {
-        html += `<tr><td>${escapeHtml(prof.name)}</td>${calc.profMachineZones[prof.id].map(z => `<td class="${zoneCellClass(z.statusZone)}">${z.label.replace(/<[^>]+>/g, "").trim() || "—"}</td>`).join("")}</tr>`;
+        html += `<tr><td>${escapeHtml(prof.name)}</td>${calc.profMachineZones[prof.id].map(z => `<td class="${zoneCellClass(z.statusZone)}">${escapeHtml(z.plainLabel) || "—"}</td>`).join("")}</tr>`;
       });
       html += `</tbody></table><div class="rpt-footer-note">Пороги режимов рассчитаны при: ${calc.workDaysPerMonth} раб.дн./мес, смена ${calc.shiftHoursStandard}ч, Kвн=${calc.kVn}, коэфф. режима 2×12ч(2/2) = ${calc.thirdTierFactor}.</div></div>`;
 
@@ -3212,7 +3345,7 @@
       wsShift.addRow(["Участок", ...data.months]).eachCell(c => { c.font = { bold: true }; c.fill = headerFill; });
       wsShift.columns = [{ width: 28 }, ...data.months.map(() => ({ width: 20 }))];
       data.professions.forEach(prof => {
-        const rowVals = calc.profMachineZones[prof.id].map(z => z.label.replace(/<[^>]+>/g, "").trim() || "Простой");
+        const rowVals = calc.profMachineZones[prof.id].map(z => z.plainLabel || "Простой");
         const row = wsShift.addRow([prof.name, ...rowVals]);
         calc.profMachineZones[prof.id].forEach((z, i) => {
           const cell = row.getCell(i + 2);
@@ -3264,6 +3397,7 @@
         populateNormSelects();
         loadNormContextValues('stat');
         loadNormContextValues('chrono');
+        resyncSharedNormSelectors();
         renderAll();
       });
 
@@ -3360,6 +3494,7 @@
               populateNormSelects();
               loadNormContextValues('stat');
               loadNormContextValues('chrono');
+              resyncSharedNormSelectors();
               renderAll();
               modalSystem.alert("Успешно", "Данные производственной программы загружены из файла!");
             } else {
@@ -3488,10 +3623,15 @@
       });
 
       ["normStatOutput", "normStatWorkers", "normStatShiftHours", "normStatBreaks", "normStatKEff"].forEach(id => {
-        document.getElementById(id).addEventListener("input", calculateStatNorm);
+        document.getElementById(id).addEventListener("input", () => { calculateStatNorm(); updateNormSyncBadge(); });
       });
       ["normChronoTOsn", "normChronoTVsp", "normChronoCrew", "normChronoKObs", "normChronoKOtl", "normChronoTPz", "normChronoBatchSize"].forEach(id => {
-        document.getElementById(id).addEventListener("input", calculateChronoNorm);
+        document.getElementById(id).addEventListener("input", () => { calculateChronoNorm(); updateNormSyncBadge(); });
+      });
+
+      document.getElementById("normMethodToggle").addEventListener("click", (e) => {
+        const btn = e.target.closest(".method-toggle-btn");
+        if (btn) setNormMethod(btn.getAttribute("data-method"));
       });
 
       document.getElementById("planTable").addEventListener("input", (e) => {
@@ -3634,6 +3774,19 @@
       });
 
       document.getElementById("productsTable").addEventListener("click", (e) => {
+        const jumpBtn = e.target.closest(".norm-jump-btn");
+        if (jumpBtn) {
+          const prodId = jumpBtn.getAttribute("data-product-id");
+          const profId = jumpBtn.getAttribute("data-prof-id");
+          const data = getActiveData();
+          const key = `${prodId}___${profId}`;
+          const config = data.normConfigs ? data.normConfigs[key] : null;
+          const method = config ? config.method : 'stat';
+          const targetTabBtn = document.querySelector('.tab-button[data-tab="tab-norming"]');
+          if (targetTabBtn) targetTabBtn.click();
+          loadConfigIntoCalculator(prodId, profId, method, true);
+          return;
+        }
         const btn = e.target.closest(".btn-del-prod");
         if (btn) {
           const pId = btn.getAttribute("data-product-id");
@@ -3676,6 +3829,8 @@
           p.machines = Math.max(1, parseInt(e.target.value) || 1);
         } else if (e.target.classList.contains("prof-crew-input")) {
           p.crew = Math.max(1, parseInt(e.target.value) || 1);
+        } else if (e.target.classList.contains("prof-mincrew-input")) {
+          p.minCrew = Math.max(0, parseInt(e.target.value) || 0);
         }
         saveToStorage();
         renderDynamicGuides();
@@ -3689,7 +3844,11 @@
 
         if (e.target.classList.contains("prof-pool-select")) {
           p.pool = e.target.value;
+          // При переключении на "Выделенный пост" по умолчанию включаем минимум 1 человек,
+          // если минимум ещё не был явно задан пользователем.
+          if (p.pool === "dedicated" && (p.minCrew === undefined || p.minCrew === 0)) p.minCrew = 1;
           saveToStorage();
+          renderDictionaries();
           renderAnalytics();
           renderDynamicGuides();
         } else if (e.target.classList.contains("prof-type-select")) {
@@ -3784,6 +3943,7 @@
           populateNormSelects();
           loadNormContextValues('stat');
           loadNormContextValues('chrono');
+          resyncSharedNormSelectors();
           renderAll();
           modalSystem.alert("Сброс выполнен", "Загружены 3 эталонных сценария.");
         });
