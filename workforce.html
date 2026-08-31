@@ -805,6 +805,13 @@
             <svg class="icon"><use href="#icon-plan"></use></svg> Матрица производственного плана (помесячно)
           </div>
           <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button class="btn btn-secondary btn-sm" id="btnDownloadPlanTemplate" title="Выгрузить текущий план в Excel — можно отредактировать офлайн и загрузить обратно">
+              <svg class="icon"><use href="#icon-download"></use></svg> Шаблон Excel
+            </button>
+            <button class="btn btn-secondary btn-sm" id="btnUploadPlanTemplate" title="Загрузить объёмы из файла, полученного через «Шаблон Excel»">
+              <svg class="icon"><use href="#icon-upload"></use></svg> Загрузить из Excel
+            </button>
+            <input type="file" id="planExcelFileInput" accept=".xlsx" style="display:none;">
             <button class="btn btn-secondary btn-sm" id="btnAddMonth">
               <svg class="icon"><use href="#icon-plus"></use></svg> Добавить месяц в конец
             </button>
@@ -814,6 +821,9 @@
           </div>
         </div>
         <div class="panel-body">
+          <p style="font-size:12px; color:var(--text-secondary); margin: -4px 0 10px;">
+            Большой план быстрее заполнять вставкой из Excel: скопируйте диапазон чисел, кликните на нужную ячейку в таблице ниже и нажмите Ctrl+V — значения заполнятся вправо и вниз от точки вставки. Либо используйте кнопки «Шаблон Excel» выше для переноса плана офлайн.
+          </p>
           <div class="table-container">
             <table class="data-table" id="planTable">
               <thead>
@@ -3333,6 +3343,106 @@
     // ЭКСПОРТ В EXCEL (.xlsx) — многолистовая книга с форматированием
     // (замена CSV, который не даёт ни листов, ни стилей, ни сводки)
     // ============================================================
+    // ============================================================
+    // ШАБЛОН ПЛАНА В EXCEL: скачать текущий план для офлайн-редактирования
+    // и загрузить обратно — сопоставление по названию изделия и названию месяца,
+    // а не по позиции строки/столбца (устойчиво к перестановке строк в файле).
+    // ============================================================
+    async function downloadPlanTemplate() {
+      const data = getActiveData();
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet("План выпуска");
+      const headerFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE2E8F0" } };
+
+      ws.addRow(["Изделие", "Ед. изм.", ...data.months]).eachCell(c => { c.font = { bold: true }; c.fill = headerFill; });
+      ws.columns = [{ width: 34 }, { width: 10 }, ...data.months.map(() => ({ width: 14 }))];
+
+      data.products.forEach(p => {
+        const row = data.plan[p.id] || new Array(data.months.length).fill(0);
+        ws.addRow([p.name, p.unit || "", ...row.map(v => parseNum(v))]);
+      });
+      ws.getColumn(1).font = { bold: true };
+      ws.views = [{ state: "frozen", xSplit: 2, ySplit: 1 }];
+
+      const buffer = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `Шаблон_плана_${state.currentScenario.replace(/\s+/g, "_")}.xlsx`;
+      link.click();
+    }
+
+    async function importPlanFromExcel(file) {
+      const data = getActiveData();
+      let wb, ws;
+      try {
+        const buffer = await file.arrayBuffer();
+        wb = new ExcelJS.Workbook();
+        await wb.xlsx.load(buffer);
+        ws = wb.worksheets[0];
+      } catch (err) {
+        modalSystem.alert("Ошибка чтения файла", "Не удалось прочитать Excel-файл: " + err.message);
+        return;
+      }
+      if (!ws) { modalSystem.alert("Ошибка", "В файле не найден ни один лист."); return; }
+
+      // Заголовок: колонка 1 — изделие, колонка 2 — ед.изм., далее — названия месяцев
+      const headerRow = ws.getRow(1);
+      const monthColByName = {};
+      for (let col = 3; col <= ws.columnCount; col++) {
+        const raw = headerRow.getCell(col).value;
+        const name = raw !== null && raw !== undefined ? String(raw).trim() : "";
+        if (name) monthColByName[name] = col;
+      }
+
+      const matchedMonths = data.months.filter(m => monthColByName[m] !== undefined);
+      if (matchedMonths.length === 0) {
+        modalSystem.alert(
+          "Не удалось распознать файл",
+          "Ни один заголовок столбца не совпал с названиями месяцев текущего плана. Загружайте файл, полученный через кнопку «Шаблон Excel», и не переименовывайте заголовки месяцев."
+        );
+        return;
+      }
+
+      const productIdByName = {};
+      data.products.forEach(p => { productIdByName[p.name.trim()] = p.id; });
+
+      let matchedRows = 0, updatedCells = 0;
+      const unmatchedRowNames = [];
+
+      for (let r = 2; r <= ws.rowCount; r++) {
+        const row = ws.getRow(r);
+        const rawName = row.getCell(1).value;
+        const name = rawName !== null && rawName !== undefined ? String(rawName).trim() : "";
+        if (!name) continue;
+        const prodId = productIdByName[name];
+        if (!prodId) { unmatchedRowNames.push(name); continue; }
+        matchedRows++;
+        if (!data.plan[prodId]) data.plan[prodId] = new Array(data.months.length).fill(0);
+        data.months.forEach((m, idx) => {
+          const col = monthColByName[m];
+          if (col === undefined) return;
+          const cellVal = row.getCell(col).value;
+          if (cellVal === null || cellVal === undefined || cellVal === "") return;
+          data.plan[prodId][idx] = parseNum(cellVal);
+          updatedCells++;
+        });
+      }
+
+      saveToStorage();
+      renderAll();
+
+      const unmatchedMonths = data.months.filter(m => monthColByName[m] === undefined);
+      let msg = `Обновлено значений: <strong>${updatedCells}</strong> (сопоставлено изделий: <strong>${matchedRows}</strong> из ${data.products.length}).`;
+      if (unmatchedRowNames.length > 0) {
+        msg += `<br><br>Не удалось сопоставить ${unmatchedRowNames.length} строк(и) файла — названия не совпали со справочником изделий: <em>${unmatchedRowNames.slice(0, 6).map(escapeHtml).join(", ")}${unmatchedRowNames.length > 6 ? "…" : ""}</em>.`;
+      }
+      if (unmatchedMonths.length > 0) {
+        msg += `<br><br>В файле не найдены столбцы для месяцев: <em>${unmatchedMonths.map(escapeHtml).join(", ")}</em> — их значения не изменились.`;
+      }
+      modalSystem.alert(matchedRows > 0 ? "Импорт плана выполнен" : "Импорт не выполнен", msg);
+    }
+
     async function exportToExcel() {
       const data = getActiveData();
       const calc = calculate();
@@ -3728,6 +3838,72 @@
           data.months[mIdx] = e.target.value.trim() || `М ${mIdx + 1}`;
           saveToStorage();
         }
+      });
+
+      // Вставка из буфера обмена (Excel/Google Таблицы): пользователь копирует диапазон
+      // чисел, кликает на стартовую ячейку плана и вставляет Ctrl+V — значения
+      // расходятся вправо/вниз от точки вставки, как в обычной табличной программе.
+      // Пустые ячейки в буфере не затирают уже введённые значения (безопаснее, чем
+      // поведение "по умолчанию" в Excel — не даём случайно обнулить часть плана).
+      document.getElementById("planTable").addEventListener("paste", (e) => {
+        const target = e.target;
+        if (!target.classList || !target.classList.contains("plan-input")) return;
+        const clipboard = e.clipboardData || window.clipboardData;
+        if (!clipboard) return;
+        const text = clipboard.getData("text");
+        if (!text) return;
+
+        const rows = text.replace(/\r/g, "").split("\n")
+          .filter((r, i, arr) => !(i === arr.length - 1 && r === ""))
+          .map(r => r.split("\t"));
+        if (rows.length === 0) return;
+
+        e.preventDefault();
+
+        const data = getActiveData();
+        const startProdId = target.getAttribute("data-product-id");
+        const startMonthIdx = parseInt(target.getAttribute("data-month-idx"));
+        const startProdIdx = data.products.findIndex(p => p.id === startProdId);
+        if (startProdIdx === -1) return;
+
+        let pastedCount = 0, skippedCount = 0;
+
+        rows.forEach((rowCells, r) => {
+          const prodIdx = startProdIdx + r;
+          if (prodIdx >= data.products.length) { skippedCount += rowCells.length; return; }
+          const prod = data.products[prodIdx];
+          if (!data.plan[prod.id]) data.plan[prod.id] = new Array(data.months.length).fill(0);
+          rowCells.forEach((cellVal, c) => {
+            const monthIdx = startMonthIdx + c;
+            if (monthIdx >= data.months.length) { skippedCount++; return; }
+            const trimmed = cellVal.trim();
+            if (trimmed === "") return;
+            data.plan[prod.id][monthIdx] = parseNum(trimmed);
+            pastedCount++;
+          });
+        });
+
+        saveToStorage();
+        renderAll();
+
+        if (skippedCount > 0) {
+          modalSystem.alert(
+            "Вставка выполнена частично",
+            `Вставлено значений: <strong>${pastedCount}</strong>. Пропущено <strong>${skippedCount}</strong> — в буфере обмена больше строк или месяцев, чем есть в текущем плане. Добавьте недостающие изделия/месяцы и вставьте оставшуюся часть отдельно.`
+          );
+        }
+      });
+
+      document.getElementById("btnDownloadPlanTemplate").addEventListener("click", () => { downloadPlanTemplate(); });
+
+      document.getElementById("btnUploadPlanTemplate").addEventListener("click", () => {
+        document.getElementById("planExcelFileInput").click();
+      });
+
+      document.getElementById("planExcelFileInput").addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        importPlanFromExcel(file).finally(() => { e.target.value = ""; });
       });
 
       document.getElementById("planTable").addEventListener("click", (e) => {
