@@ -91,20 +91,24 @@ function renderAll() {
 
   renderDynamicGuides(calc, data);
 
- renderPlanTable(
+  // Вызов рендеринга плана с сохранением фокуса ввода
+  renderPlanTable(
     data, calc,
     (prodId, mIdx, val) => {
       if (!data.plan[prodId]) data.plan[prodId] = [];
       data.plan[prodId][mIdx] = val;
       storageService.saveState(state);
-      renderAll();
+      // Обновляем только KPI и советник, не перерисовывая саму таблицу ввода
+      const freshCalc = calculateProgram(data);
+      renderKPIs(freshCalc, data);
+      renderExecutiveSummary(freshCalc, data);
+      renderDynamicGuides(freshCalc, data);
     },
     (mIdx, name) => {
       data.months[mIdx] = name;
       storageService.saveState(state);
     },
     (fromIdx, toIdx) => {
-      // Сдвиг месяца влево / вправо вместе со значениями плана
       [data.months[fromIdx], data.months[toIdx]] = [data.months[toIdx], data.months[fromIdx]];
       data.products.forEach(p => {
         if (data.plan[p.id]) {
@@ -115,7 +119,6 @@ function renderAll() {
       renderAll();
     },
     (idx) => {
-      // Удаление месяца
       data.months.splice(idx, 1);
       data.products.forEach(p => {
         if (data.plan[p.id]) data.plan[p.id].splice(idx, 1);
@@ -256,6 +259,7 @@ function setupCollapsibles() {
     { btn: "toggleGuideTab1", content: "contentGuideTab1", chevron: "chevronGuideTab1" },
     { btn: "toggleGuideTab2", content: "contentGuideTab2", chevron: "chevronGuideTab2" },
     { btn: "toggleGuideTab3", content: "contentGuideTab3", chevron: "chevronGuideTab3" },
+    { btn: "toggleMethodologyBtn", content: "methodologyContent", chevron: "methodChevron" },
     { btn: "toggleSavedNormsRegistry", content: "contentSavedNorms", chevron: "chevronSavedNorms" }
   ];
 
@@ -268,7 +272,6 @@ function setupCollapsibles() {
 }
 
 function attachGlobalEvents() {
-  // Выравнивание / Откат плана
   document.getElementById("btnLevelToggle")?.addEventListener("click", () => {
     const data = getActiveData();
     if (data._planSnapshot) {
@@ -289,13 +292,11 @@ function attachGlobalEvents() {
     }
   });
 
-  // Сохранить
   document.getElementById("btnSaveScenario")?.addEventListener("click", async () => {
     await storageService.saveState(state);
     modalSystem.alert("Сохранено", `Сценарий «${state.currentScenario}» сохранён.`);
   });
 
-  // Новый сценарий
   document.getElementById("btnNewScenario")?.addEventListener("click", () => {
     modalSystem.prompt("Новый сценарий", "Введите имя копии сценария:", `План ${new Date().toLocaleDateString()}`, (newName) => {
       if (newName?.trim()) {
@@ -309,7 +310,6 @@ function attachGlobalEvents() {
     });
   });
 
-  // Удалить сценарий
   document.getElementById("btnDeleteScenario")?.addEventListener("click", () => {
     const keys = Object.keys(state.scenarios);
     if (keys.length <= 1) {
@@ -327,7 +327,6 @@ function attachGlobalEvents() {
     });
   });
 
-  // Сброс к эталонам
   document.getElementById("btnResetData")?.addEventListener("click", () => {
     modalSystem.confirm("Сброс данных", "Сбросить сценарии к эталонным планам завода?", () => {
       state = JSON.parse(JSON.stringify(PRELOADED_STATE));
@@ -337,7 +336,6 @@ function attachGlobalEvents() {
     });
   });
 
-  // Экспорт / Импорт JSON
   document.getElementById("btnExportJson")?.addEventListener("click", () => {
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
     const link = document.createElement("a");
@@ -375,13 +373,11 @@ function attachGlobalEvents() {
     e.target.value = "";
   });
 
-  // Экспорт Excel
   document.getElementById("btnExportXlsx")?.addEventListener("click", () => {
     const data = getActiveData();
     exportToExcel(state.currentScenario, data, calculateProgram(data));
   });
 
-  // Шаблон Excel и импорт плана
   document.getElementById("btnDownloadPlanTemplate")?.addEventListener("click", () => {
     downloadPlanTemplate(state.currentScenario, getActiveData());
   });
@@ -404,7 +400,6 @@ function attachGlobalEvents() {
     e.target.value = "";
   });
 
-  // Печать PDF
   document.getElementById("btnPrintPdf")?.addEventListener("click", () => {
     const data = getActiveData();
     const root = document.getElementById("printReportRoot")!;
@@ -414,7 +409,6 @@ function attachGlobalEvents() {
     document.body.classList.remove("report-mode");
   });
 
-  // Снимок PNG
   document.getElementById("btnDownloadAnalyticsImage")?.addEventListener("click", () => {
     const area = document.getElementById("analyticsCaptureArea");
     if (!area) return;
@@ -426,7 +420,6 @@ function attachGlobalEvents() {
     });
   });
 
-  // Экспорт CSV
   document.getElementById("btnExportCSV")?.addEventListener("click", () => {
     const data = getActiveData();
     const calc = calculateProgram(data);
@@ -442,7 +435,6 @@ function attachGlobalEvents() {
     link.click();
   });
 
-  // Добавить месяц / Очистить
   document.getElementById("btnAddMonth")?.addEventListener("click", () => {
     const data = getActiveData();
     data.months.push(`М ${data.months.length + 1}`);
@@ -463,7 +455,6 @@ function attachGlobalEvents() {
     });
   });
 
-  // Добавить изделие
   document.getElementById("btnAddProduct")?.addEventListener("click", () => {
     modalSystem.prompt("Новое изделие", "Введите наименование:", "Новая позиция", (name) => {
       if (name?.trim()) {
@@ -479,7 +470,6 @@ function attachGlobalEvents() {
     });
   });
 
-  // Добавить участок
   document.getElementById("btnAddProfession")?.addEventListener("click", () => {
     modalSystem.prompt("Новый участок", "Наименование технологического участка:", "Новый участок", (name) => {
       if (name?.trim()) {
@@ -493,7 +483,6 @@ function attachGlobalEvents() {
     });
   });
 
-  // Кнопки пересчёта фондов ↺
   document.getElementById("btnRecalcFNom")?.addEventListener("click", () => {
     const data = getActiveData();
     data.settings.fNom = calcFNom(data.settings.workDaysPerMonth, data.settings.shiftHoursStandard);
@@ -543,7 +532,6 @@ function attachGlobalEvents() {
     renderAll();
   });
 
-  // Привязка инпутов настроек через строгий интерфейс Settings
   const bindInput = (id: string, prop: keyof Settings, isNum: boolean = true) => {
     const el = document.getElementById(id);
     if (!el) return;
