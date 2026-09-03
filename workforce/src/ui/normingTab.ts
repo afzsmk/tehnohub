@@ -1,7 +1,7 @@
 // src/ui/normingTab.ts
 import { ScenarioData, NormConfigEntry } from '../types';
-import { parseNum } from '../../core/funds';
-import { calculateStatNorm, calculateChronoNorm } from '../../core/norming';
+import { parseNum } from '../core/funds';
+import { calculateStatNorm, calculateChronoNorm } from '../core/norming';
 
 let currentMethod: 'stat' | 'chrono' = 'stat';
 
@@ -24,8 +24,10 @@ export function setupNormingTab(data: ScenarioData, onNormPushed: (prodId: strin
     currentMethod = method;
     btnStat?.classList.toggle("active", method === 'stat');
     btnChrono?.classList.toggle("active", method === 'chrono');
-    document.getElementById("normFieldsStat")!.style.display = method === 'stat' ? 'block' : 'none';
-    document.getElementById("normFieldsChrono")!.style.display = method === 'chrono' ? 'block' : 'none';
+    const fStat = document.getElementById("normFieldsStat");
+    const fChrono = document.getElementById("normFieldsChrono");
+    if (fStat) fStat.style.display = method === 'stat' ? 'block' : 'none';
+    if (fChrono) fChrono.style.display = method === 'chrono' ? 'block' : 'none';
     recalc();
   }
 
@@ -33,20 +35,20 @@ export function setupNormingTab(data: ScenarioData, onNormPushed: (prodId: strin
     let norm = 0;
     if (currentMethod === 'stat') {
       norm = calculateStatNorm({
-        output: parseNum((document.getElementById("normStatOutput") as HTMLInputElement).value),
-        workers: parseNum((document.getElementById("normStatWorkers") as HTMLInputElement).value),
-        shiftHours: parseNum((document.getElementById("normStatShiftHours") as HTMLInputElement).value),
-        breaks: parseNum((document.getElementById("normStatBreaks") as HTMLInputElement).value),
+        output: parseNum((document.getElementById("normStatOutput") as HTMLInputElement)?.value),
+        workers: parseNum((document.getElementById("normStatWorkers") as HTMLInputElement)?.value),
+        shiftHours: parseNum((document.getElementById("normStatShiftHours") as HTMLInputElement)?.value),
+        breaks: parseNum((document.getElementById("normStatBreaks") as HTMLInputElement)?.value),
         kEff: 0.95
       });
     } else {
       norm = calculateChronoNorm({
-        tOsn: parseNum((document.getElementById("normChronoTOsn") as HTMLInputElement).value),
-        tVsp: parseNum((document.getElementById("normChronoTVsp") as HTMLInputElement).value),
-        crew: parseNum((document.getElementById("normChronoCrew") as HTMLInputElement).value),
+        tOsn: parseNum((document.getElementById("normChronoTOsn") as HTMLInputElement)?.value),
+        tVsp: parseNum((document.getElementById("normChronoTVsp") as HTMLInputElement)?.value),
+        crew: parseNum((document.getElementById("normChronoCrew") as HTMLInputElement)?.value),
         kObs: 5,
         kOtl: 6,
-        tPz: parseNum((document.getElementById("normChronoTPz") as HTMLInputElement).value),
+        tPz: parseNum((document.getElementById("normChronoTPz") as HTMLInputElement)?.value),
         batchSize: 50
       });
     }
@@ -61,6 +63,7 @@ export function setupNormingTab(data: ScenarioData, onNormPushed: (prodId: strin
   });
 
   document.getElementById("btnPushNormToMatrix")?.addEventListener("click", () => {
+    if (!prodSel || !profSel) return;
     const prodId = prodSel.value;
     const profId = profSel.value;
     const normVal = parseFloat(recalc().toFixed(3));
