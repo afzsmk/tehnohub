@@ -2,7 +2,7 @@ name: Deploy Tehnohub to GitHub Pages
 
 on:
   push:
-    branches: ['main'] # или ваша ветка, например master
+    branches: ['main'] # или ваша рабочая ветка
 
 permissions:
   contents: read
@@ -28,24 +28,23 @@ jobs:
         with:
           node-version: 20
 
-      # 1. Собираем модуль workforce
-      - name: Build Workforce
+      # 1. Устанавливаем зависимости, запускаем ТЕСТЫ и собираем
+      - name: Test & Build Workforce
         working-directory: ./workforce
         run: |
           npm install
+          npm test          # ❗️ ЕСЛИ ТЕСТЫ НЕ ПРОШЛИ — СБОРКА ТУТ ЖЕ ОСТАНОВИТСЯ
           npm run build
 
-      # 2. Формируем итоговую папку для публикации (Технохаб + собранный workforce)
+      # 2. Формируем сайт для публикации
       - name: Prepare site directory
         run: |
           mkdir -p public_site
-          # Копируем всё содержимое Технохаба (главный index.html и другие инструменты)
           cp -r * public_site/ 2>/dev/null || true
-          # Заменяем исходники workforce на его скомпилированную версию
           rm -rf public_site/workforce
           cp -r workforce/dist public_site/workforce
 
-      # 3. Публикуем на GitHub Pages
+      # 3. Публикация
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
