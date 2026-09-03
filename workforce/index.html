@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Планирование производства и нормирование трудовых ресурсов</title>
+  <link rel="stylesheet" href="/src/styles/main.css">
+</head>
+<body>
+
+  <!-- SVG спрайт иконок -->
+  <svg style="display:none;">
+    <defs>
+      <symbol id="icon-calc" viewBox="0 0 24 24"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></symbol>
+      <symbol id="icon-save" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></symbol>
+      <symbol id="icon-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></symbol>
+      <symbol id="icon-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+      <symbol id="icon-plan" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></symbol>
+      <symbol id="icon-dict" viewBox="0 0 24 24"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></symbol>
+      <symbol id="icon-analytics" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></symbol>
+      <symbol id="icon-timer" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
+      <symbol id="icon-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></symbol>
+      <symbol id="icon-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+      <symbol id="icon-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></symbol>
+      <symbol id="icon-print" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></symbol>
+      <symbol id="icon-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></symbol>
+      <symbol id="icon-grip" viewBox="0 0 24 24"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></symbol>
+      <symbol id="icon-chevron-down" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></symbol>
+      <symbol id="icon-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></symbol>
+      <symbol id="icon-arrow-left" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></symbol>
+      <symbol id="icon-arrow-right" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></symbol>
+      <symbol id="icon-x" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+      <symbol id="icon-alert-triangle" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></symbol>
+      <symbol id="icon-sliders" viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></symbol>
+      <symbol id="icon-cpu" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></symbol>
+      <symbol id="icon-external" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></symbol>
+      <symbol id="icon-zap" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></symbol>
+    </defs>
+  </svg>
+
+  <input type="file" id="fileJsonInput" accept=".json" style="display:none;">
+
+  <header>
+    <div class="brand">
+      <svg class="icon icon-lg" style="color: #60a5fa;"><use href="#icon-calc"></use></svg>
+      <div>
+        <div class="brand-title">Планирование производства и нормирование</div>
+        <div class="brand-subtitle">Параметрический баланс бригад, лимиты сверхурочных и сменность (8ч / 12ч)</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="control-subbar">
+    <div class="scenario-controls">
+      <label style="font-size: 11.5px; color: #94a3b8; font-weight: 600;">СЦЕНАРИЙ:</label>
+      <select id="scenarioSelector" class="input-control" style="width: 260px; padding: 5px 8px; background:#0f172a; color:#fff; border-color:#334155; font-weight: 600;"></select>
+      <button class="btn btn-dark btn-sm" id="btnSaveScenario" title="Сохранить изменения в браузере">
+        <svg class="icon"><use href="#icon-save"></use></svg> Сохранить
+      </button>
+      <button class="btn btn-dark btn-sm" id="btnExportJson" title="Выгрузить файл .JSON">
+        <svg class="icon"><use href="#icon-download"></use></svg> Экспорт
+      </button>
+      <button class="btn btn-dark btn-sm" id="btnImportJson" title="Загрузить .JSON файл">
+        <svg class="icon"><use href="#icon-upload"></use></svg> Импорт
+      </button>
+      <button class="btn btn-dark btn-sm" id="btnNewScenario" title="Создать копию сценария">
+        <svg class="icon"><use href="#icon-plus"></use></svg> Новый
+      </button>
+      <button class="btn btn-dark btn-sm" id="btnDeleteScenario" title="Удалить сценарий">
+        <svg class="icon"><use href="#icon-trash"></use></svg>
+      </button>
+      <button class="btn btn-dark btn-sm" id="btnResetData" title="Сброс к эталонным планам">
+        <svg class="icon"><use href="#icon-refresh"></use></svg>
+      </button>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:8px;">
+      <button class="btn btn-level btn-sm" id="btnLevelToggle" title="Автоматически распределить объёмы под фиксированное количество людей">
+        <svg class="icon"><use href="#icon-sliders"></use></svg> Выровнять план под штат
+      </button>
+    </div>
+  </div>
+
+  <div class="exec-summary" id="execSummary">
+    <div class="exec-status-card">
+      <span class="exec-status-label">Статус производственной программы</span>
+      <span class="status-pill" id="execStatusPill">—</span>
+    </div>
+    <div class="exec-fact-card" id="execFactPeak" style="border-left-color:#2563eb;">
+      <div class="exec-fact-value" id="execPeakValue">—</div>
+      <div class="exec-fact-desc" id="execPeakDesc">Пиковая потребность в штате</div>
+    </div>
+    <div class="exec-fact-card" id="execFactBottleneck" style="border-left-color:#d97706;">
+      <div class="exec-fact-value" id="execBottleneckValue">—</div>
+      <div class="exec-fact-desc" id="execBottleneckDesc">Узкое место программы</div>
+    </div>
+    <div class="exec-fact-card" id="execFactRecommendation" style="border-left-color:#059669;">
+      <div class="exec-fact-value" id="execRecommendationValue" style="font-size:12.5px; font-weight:600;">—</div>
+      <div class="exec-fact-desc">Рекомендация</div>
+    </div>
+  </div>
+
+  <div class="quick-facts-strip" id="quickFactsStrip">
+    <span class="qf-item">Номенклатура: <strong id="kpiTotalProducts">0 поз.</strong></span>
+    <span class="qf-item">Трудоёмкость программы: <strong id="kpiTotalHours">0 н-ч</strong></span>
+    <span class="qf-item">Среднесписочная численность: <strong id="kpiAvgStaff">0 чел.</strong></span>
+    <span class="qf-item" title="Во сколько раз пиковая потребность в штате превышает среднюю">Неравномерность плана (пик/среднее): <strong id="kpiVolatility">×1.0</strong></span>
+  </div>
+
+  <nav class="tab-navigation">
+    <button class="tab-button active" data-tab="tab-plan">
+      <svg class="icon"><use href="#icon-plan"></use></svg> 1. Производственный план
+    </button>
+    <button class="tab-button" data-tab="tab-dictionaries">
+      <svg class="icon"><use href="#icon-dict"></use></svg> 2. Справочники, нормы и посты
+    </button>
+    <button class="tab-button" data-tab="tab-norming">
+      <svg class="icon"><use href="#icon-timer"></use></svg> 3. Модуль нормирования (Калькулятор н-ч)
+    </button>
+    <button class="tab-button" data-tab="tab-analytics">
+      <svg class="icon"><use href="#icon-analytics"></use></svg> 4. Аналитика и результаты
+    </button>
+  </nav>
+
+  <main>
+    <!-- ВКЛАДКА 1 -->
+    <section id="tab-plan" class="tab-content active">
+      <div class="collapsible-box">
+        <div class="collapsible-header" id="toggleGuideTab1">
+          <div style="font-size: 13.5px; font-weight: 700; color: #1e3a8a; display: flex; align-items: center; gap: 8px;">
+            <svg class="icon"><use href="#icon-info"></use></svg> Справка: Руководство по работе с производственным планом
+          </div>
+          <svg class="icon chevron-icon" id="chevronGuideTab1"><use href="#icon-chevron-down"></use></svg>
+        </div>
+        <div class="collapsible-content" id="contentGuideTab1">
+          <div class="method-grid" id="guideTab1Dynamic"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <svg class="icon"><use href="#icon-plan"></use></svg> Матрица производственного плана (помесячно)
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button class="btn btn-secondary btn-sm" id="btnDownloadPlanTemplate">
+              <svg class="icon"><use href="#icon-download"></use></svg> Шаблон Excel
+            </button>
+            <button class="btn btn-secondary btn-sm" id="btnUploadPlanTemplate">
+              <svg class="icon"><use href="#icon-upload"></use></svg> Загрузить из Excel
+            </button>
+            <input type="file" id="planExcelFileInput" accept=".xlsx" style="display:none;">
+            <button class="btn btn-secondary btn-sm" id="btnAddMonth">
+              <svg class="icon"><use href="#icon-plus"></use></svg> Добавить месяц
+            </button>
+            <button class="btn btn-secondary btn-sm" id="btnClearPlan">Очистить объёмы</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="table-container">
+            <table class="data-table" id="planTable">
+              <thead><tr id="planTableHeader"></tr></thead>
+              <tbody id="planTableBody"></tbody>
+              <tfoot id="planTableFooter"></tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ВКЛАДКА 2 -->
+    <section id="tab-dictionaries" class="tab-content">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title"><svg class="icon"><use href="#icon-dict"></use></svg> Справочник продукции и норм времени</div>
+          <button class="btn btn-primary btn-sm" id="btnAddProduct"><svg class="icon"><use href="#icon-plus"></use></svg> Добавить изделие</button>
+        </div>
+        <div class="panel-body">
+          <div class="table-container">
+            <table class="data-table" id="productsTable">
+              <thead><tr id="productsTableHeader"></tr></thead>
+              <tbody id="productsTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Участки и посты</div>
+            <button class="btn btn-secondary btn-sm" id="btnAddProfession"><svg class="icon"><use href="#icon-plus"></use></svg> Добавить</button>
+          </div>
+          <div class="panel-body">
+            <div class="table-container">
+              <table class="data-table" id="professionsTable">
+                <thead>
+                  <tr>
+                    <th class="col-drag"></th>
+                    <th>Наименование участка</th>
+                    <th style="width: 140px; text-align: center;">Пул</th>
+                    <th style="width: 65px; text-align: right;">Станков</th>
+                    <th style="width: 75px; text-align: right;">Звено</th>
+                    <th style="width: 85px; text-align: right;">Мин. штат</th>
+                    <th style="width: 100px; text-align: right;">Доступность</th>
+                    <th style="width: 40px;"></th>
+                  </tr>
+                </thead>
+                <tbody id="professionsTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">Штат универсалов</div></div>
+          <div class="panel-body">
+            <div class="grid-2" style="gap: 12px;">
+              <div>
+                <label style="font-size: 11.5px; font-weight:700; color:var(--accent);">БРИГАД УНИВЕРСАЛОВ:</label>
+                <input type="number" min="1" max="10" id="inputBrigadesCount" class="input-control input-num" value="3">
+              </div>
+              <div>
+                <label style="font-size: 11.5px; font-weight:700; color:var(--accent);">ЧЕЛОВЕК В БРИГАДЕ:</label>
+                <input type="number" min="1" max="25" id="inputBrigadeSize" class="input-control input-num" value="6">
+              </div>
+              <div>
+                <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);">ШТАТ УНИВЕРСАЛОВ:</label>
+                <div style="font-size:15px; font-weight:800; color:var(--accent);" id="calcUniversalHeadcount">18 чел.</div>
+              </div>
+              <div>
+                <label style="font-size: 11.5px; font-weight:700; color:#b45309;">ЛИМИТ СВЕРХУРОЧНЫХ (%):</label>
+                <input type="number" min="0" max="30" id="inputMaxOvertime" class="input-control input-num" value="15">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ВКЛАДКА 3 -->
+    <section id="tab-norming" class="tab-content">
+      <div class="panel norm-calc-panel">
+        <div class="panel-header">
+          <div class="panel-title"><svg class="icon"><use href="#icon-calc"></use></svg> Нормирование операции</div>
+          <div style="display:flex; align-items:center; gap:12px;">
+            <div class="method-toggle" id="normMethodToggle">
+              <button type="button" class="method-toggle-btn active" id="btnNormMethodStat" data-method="stat">Сменно-статистический</button>
+              <button type="button" class="method-toggle-btn" id="btnNormMethodChrono" data-method="chrono">Хронометраж</button>
+            </div>
+            <span id="normSyncBadge" class="badge-sync-ok">Синхронизировано</span>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="grid-2">
+            <div>
+              <label style="font-size:11.5px; font-weight:600;">ИЗДЕЛИЕ:</label>
+              <select id="normProdSelect" class="input-control"></select>
+            </div>
+            <div>
+              <label style="font-size:11.5px; font-weight:600;">ТЕХНОЛОГИЧЕСКИЙ УЧАСТОК:</label>
+              <select id="normProfSelect" class="input-control"></select>
+            </div>
+          </div>
+          <!-- Контейнеры полей нормирования -->
+          <div id="normFieldsStat" style="margin-top: 10px;">
+            <div class="grid-4">
+              <div><label>ВЫПУСК ЗА СМЕНУ (Q):</label><input type="text" id="normStatOutput" class="input-control input-num" value="50"></div>
+              <div><label>РАБОЧИХ (Nраб):</label><input type="text" id="normStatWorkers" class="input-control input-num" value="3"></div>
+              <div><label>СМЕНА (часов):</label><input type="text" id="normStatShiftHours" class="input-control input-num" value="8.0"></div>
+              <div><label>ПЕРЕРЫВЫ (мин):</label><input type="text" id="normStatBreaks" class="input-control input-num" value="40"></div>
+            </div>
+          </div>
+          <div id="normFieldsChrono" style="display:none; margin-top: 10px;">
+            <div class="grid-4">
+              <div><label>ОСНОВНОЕ (мин):</label><input type="text" id="normChronoTOsn" class="input-control input-num" value="12.0"></div>
+              <div><label>ВСПОМОГ. (мин):</label><input type="text" id="normChronoTVsp" class="input-control input-num" value="4.0"></div>
+              <div><label>ЗВЕНО (чел):</label><input type="text" id="normChronoCrew" class="input-control input-num" value="2"></div>
+              <div><label>ПЗ НА ПАРТИЮ (мин):</label><input type="text" id="normChronoTPz" class="input-control input-num" value="30"></div>
+            </div>
+          </div>
+          <div class="norm-action-box" id="normActionBox" style="margin-top:14px; padding:12px; background:#f8fafc; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <span style="font-size: 11px; color:var(--text-muted);">РАСЧЁТНАЯ НОРМА:</span>
+              <div style="font-size: 20px; font-weight: 800; color: var(--accent);" id="normResultText">0.000 н-ч / ед</div>
+            </div>
+            <button class="btn btn-primary btn-sm" id="btnPushNormToMatrix">
+              <svg class="icon"><use href="#icon-save"></use></svg> Перенести в матрицу норм
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ВКЛАДКА 4 -->
+    <section id="tab-analytics" class="tab-content">
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-bottom: 14px; flex-wrap: wrap;">
+        <button class="btn btn-primary" id="btnExportXlsx"><svg class="icon"><use href="#icon-download"></use></svg> Экспорт в Excel (.xlsx)</button>
+        <button class="btn btn-secondary" id="btnPrintPdf"><svg class="icon"><use href="#icon-print"></use></svg> Печать / Отчёт PDF</button>
+        <button class="btn btn-secondary" id="btnDownloadAnalyticsImage"><svg class="icon"><use href="#icon-image"></use></svg> Снимок аналитики (PNG)</button>
+      </div>
+
+      <div id="analyticsCaptureArea">
+        <div class="advisor-box" id="advisorBox">
+          <div class="advisor-header">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <svg class="icon" style="color:var(--accent);"><use href="#icon-zap"></use></svg>
+              <span>Анализ мощностей и рекомендации</span>
+            </div>
+            <span id="advisorStatusBadge">Статус</span>
+          </div>
+          <div id="advisorList"></div>
+        </div>
+
+        <div class="grid-2" style="margin-bottom: 18px;">
+          <div class="panel">
+            <div class="panel-header"><div class="panel-title">Штатная численность по пулам (чел.)</div></div>
+            <div class="panel-body"><div class="chart-box"><canvas id="chartStaffMonthly"></canvas></div></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><div class="panel-title">Структура трудоёмкости по продукции</div></div>
+            <div class="panel-body"><div class="chart-box"><canvas id="chartProductsShare"></canvas></div></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">Сменность и загрузка станков (% от 24ч/сут)</div></div>
+          <div class="panel-body">
+            <div class="table-container">
+              <table class="data-table" id="shiftScheduleTable">
+                <thead><tr id="shiftScheduleTableHeader"></tr></thead>
+                <tbody id="shiftScheduleTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header"><div class="panel-title">Сводная ведомость потребности в персонале</div></div>
+          <div class="panel-body">
+            <div class="table-container">
+              <table class="data-table" id="resultsTable">
+                <thead><tr id="resultsTableHeader"></tr></thead>
+                <tbody id="resultsTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Модальное окно -->
+  <div id="customModalOverlay" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header"><div class="modal-title" id="modalTitle">Диалог</div></div>
+      <div class="modal-body" id="modalBody">Содержимое</div>
+      <div style="padding: 0 20px 12px 20px; display:none;" id="modalInputWrap">
+        <input type="text" id="modalInput" class="input-control" />
+      </div>
+      <div class="modal-footer" id="modalFooter"></div>
+    </div>
+  </div>
+
+  <div id="printReportRoot"></div>
+
+  <!-- ЕДИНСТВЕННАЯ ТОЧКА ПОДКЛЮЧЕНИЯ СКРИПТА -->
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
