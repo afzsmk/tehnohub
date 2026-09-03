@@ -75,7 +75,7 @@ function renderAll() {
   renderExecutiveSummary(calc, data);
   renderKPIs(calc, data);
   renderSummaryBullets(calc, data);
-  renderBrigadeSchedule(calc, data, (newShift) => {
+  renderBrigadeSchedule(calc, data, (newShift: number) => {
     const extInput = document.getElementById("inputExtendedShiftHours") as HTMLInputElement | null;
     if (extInput) extInput.value = String(newShift);
     data.settings.extendedShiftHours = newShift;
@@ -85,7 +85,7 @@ function renderAll() {
     renderAll();
   });
 
-  renderSmartAdvisor(calc, data, (headcount) => {
+  renderSmartAdvisor(calc, data, (headcount: number) => {
     executeLevelLoading(headcount);
   });
 
@@ -93,8 +93,16 @@ function renderAll() {
 
   renderPlanTable(
     data, calc,
-    (prodId, mIdx, val) => { data.plan[prodId][mIdx] = val; storageService.saveState(state); renderAll(); },
-    (mIdx, name) => { data.months[mIdx] = name; storageService.saveState(state); }
+    (prodId, mIdx, val) => {
+      if (!data.plan[prodId]) data.plan[prodId] = [];
+      data.plan[prodId][mIdx] = val;
+      storageService.saveState(state);
+      renderAll();
+    },
+    (mIdx, name) => {
+      data.months[mIdx] = name;
+      storageService.saveState(state);
+    }
   );
 
   renderProfessionsTable(data, () => { storageService.saveState(state); renderAll(); });
@@ -109,7 +117,8 @@ function renderAll() {
 function renderKPIs(calc: any, data: ScenarioData) {
   const totalHours = calc.totalHoursByMonth.reduce((a: number, b: number) => a + b, 0);
   const peakStaff = Math.max(...calc.grandTotalStaff);
-  const avgStaff = (calc.grandTotalStaff.reduce((a: number, b: number) => a + b, 0) / calc.grandTotalStaff.length);
+  const staffSum = calc.grandTotalStaff.reduce((a: number, b: number) => a + b, 0);
+  const avgStaff = calc.grandTotalStaff.length > 0 ? (staffSum / calc.grandTotalStaff.length) : 0;
   const volatility = avgStaff > 0 ? (peakStaff / avgStaff) : 1;
 
   const pEl = document.getElementById("kpiTotalProducts");
@@ -251,7 +260,8 @@ function attachGlobalEvents() {
       });
     } else {
       const calc = calculateProgram(data);
-      const avg = Math.round(calc.grandTotalStaff.reduce((a, b) => a + b, 0) / calc.grandTotalStaff.length);
+      const staffSum = calc.grandTotalStaff.reduce((a: number, b: number) => a + b, 0);
+      const avg = calc.grandTotalStaff.length > 0 ? Math.round(staffSum / calc.grandTotalStaff.length) : 25;
       modalSystem.prompt("Выравнивание плана", "Укажите целевую численность персонала (чел.):", String(avg), (val) => {
         const target = parseInt(val);
         if (target > 0) executeLevelLoading(target);
@@ -397,4 +407,146 @@ function attachGlobalEvents() {
   });
 
   // Экспорт CSV
-  document.getElementById("btnExportCSV")?.addEventListener("click", () =>
+  document.getElementById("btnExportCSV")?.addEventListener("click", () => {
+    const data = getActiveData();
+    const calc = calculateProgram(data);
+    let csv = "\uFEFF\"Показатель\";" + data.months.map(m => `"${m}"`).join(";") + ";\"Итого\"\n";
+    data.professions.forEach(prof => {
+      csv += `"${prof.name} (н-ч)";` + calc.hoursByProf[prof.id].map(h => Math.round(h)).join(";") + `;${Math.round(calc.hoursByProf[prof.id].reduce((a,b)=>a+b,0))}\n`;
+    });
+    csv += `"ИТОГО ОБЩИЙ ШТАТ (чел)";` + calc.grandTotalStaff.join(";") + `;${Math.max(...calc.grandTotalStaff)}\n`;
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `Ведомость_персонала_${state.currentScenario}.csv`;
+    link.click();
+  });
+
+  // Добавить месяц / Очистить
+  document.getElementById("btnAddMonth")?.addEventListener("click", () => {
+    const data = getActiveData();
+    data.months.push(`М ${data.months.length + 1}`);
+    data.products.forEach(p => {
+      if (!data.plan[p.id]) data.plan[p.id] = [];
+      data.plan[p.id].push(0);
+    });
+    storageService.saveState(state);
+    renderAll();
+  });
+
+  document.getElementById("btnClearPlan")?.addEventListener("click", () => {
+    modalSystem.confirm("Очистить", "Обнулить объёмы выпуска по всем месяцам?", () => {
+      const data = getActiveData();
+      data.products.forEach(p => { data.plan[p.id] = new Array(data.months.length).fill(0); });
+      storageService.saveState(state);
+      renderAll();
+    });
+  });
+
+  // Добавить изделие
+  document.getElementById("btnAddProduct")?.addEventListener("click", () => {
+    modalSystem.prompt("Новое изделие", "Введите наименование:", "Новая позиция", (name) => {
+      if (name?.trim()) {
+        const data = getActiveData();
+        const id = "pr" + Date.now();
+        const norms: Record<string, number> = {};
+        data.professions.forEach(pr => { norms[pr.id] = 0; });
+        data.products.push({ id, name: name.trim(), unit: "м²", scrap: 2, norms });
+        data.plan[id] = new Array(data.months.length).fill(0);
+        storageService.saveState(state);
+        renderAll();
+      }
+    });
+  });
+
+  // Добавить участок
+  document.getElementById("btnAddProfession")?.addEventListener("click", () => {
+    modalSystem.prompt("Новый участок", "Наименование технологического участка:", "Новый участок", (name) => {
+      if (name?.trim()) {
+        const data = getActiveData();
+        const id = "p" + Date.now();
+        data.professions.push({ id, name: name.trim(), pool: "universal", machines: 1, crew: 1 });
+        data.products.forEach(p => { p.norms[id] = 0; });
+        storageService.saveState(state);
+        renderAll();
+      }
+    });
+  });
+
+  // Кнопки пересчёта фондов ↺
+  document.getElementById("btnRecalcFNom")?.addEventListener("click", () => {
+    const data = getActiveData();
+    data.settings.fNom = calcFNom(data.settings.workDaysPerMonth, data.settings.shiftHoursStandard);
+    storageService.saveState(state);
+    renderAll();
+  });
+
+  document.getElementById("btnRecalcFEff")?.addEventListener("click", () => {
+    const data = getActiveData();
+    data.settings.fEff = calcFEff(data.settings.fNom, data.settings.reserveOffPercent);
+    storageService.saveState(state);
+    renderAll();
+  });
+
+  document.getElementById("btnRecalcFNomExtended")?.addEventListener("click", () => {
+    const data = getActiveData();
+    data.settings.fNomExtended = calcExtendedFNom(data.settings.fNom, data.settings.extendedShiftHours, data.settings.shiftHoursStandard);
+    storageService.saveState(state);
+    renderAll();
+  });
+
+  document.getElementById("btnRecalcFEffExtended")?.addEventListener("click", () => {
+    const data = getActiveData();
+    data.settings.fEffExtended = calcFEff(data.settings.fNomExtended, data.settings.reserveOffPercent);
+    storageService.saveState(state);
+    renderAll();
+  });
+
+  document.getElementById("btnSyncAllFunds")?.addEventListener("click", () => {
+    const data = getActiveData();
+    const s = data.settings;
+    s.fNom = calcFNom(s.workDaysPerMonth, s.shiftHoursStandard);
+    s.fEff = calcFEff(s.fNom, s.reserveOffPercent);
+    s.fNomExtended = calcExtendedFNom(s.fNom, s.extendedShiftHours, s.shiftHoursStandard);
+    s.fEffExtended = calcFEff(s.fNomExtended, s.reserveOffPercent);
+    storageService.saveState(state);
+    renderAll();
+    modalSystem.alert("Синхронизировано", "Все фонды пересчитаны от текущего календаря.");
+  });
+
+  document.getElementById("btnResetCalendarDefaults")?.addEventListener("click", () => {
+    const data = getActiveData();
+    data.settings.workDaysPerMonth = 21;
+    data.settings.shiftHoursStandard = 8;
+    data.settings.extendedShiftHours = 12;
+    storageService.saveState(state);
+    renderAll();
+  });
+
+  // Привязка инпутов настроек через строгий интерфейс Settings
+  const bindInput = (id: string, prop: keyof Settings, isNum: boolean = true) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener("input", (e: any) => {
+      const data = getActiveData();
+      (data.settings as any)[prop] = isNum ? parseNum(e.target.value) : e.target.value;
+      storageService.saveState(state);
+      renderAll();
+    });
+  };
+
+  bindInput("inputBrigadesCount", "brigadesCount");
+  bindInput("inputBrigadeSize", "brigadeSize");
+  bindInput("inputMaxOvertime", "maxOvertimePercent");
+  bindInput("inputAuxOtk", "auxOtkPercent");
+  bindInput("inputAuxSetup", "auxSetupPercent");
+  bindInput("inputAuxFixed", "auxFixedPosts");
+  bindInput("inputWorkDays", "workDaysPerMonth");
+  bindInput("inputShiftHours", "shiftHoursStandard");
+  bindInput("inputExtendedShiftHours", "extendedShiftHours");
+  bindInput("inputKVn", "kVn");
+  bindInput("inputReserveOff", "reserveOffPercent");
+  bindInput("inputCompanyName", "companyName", false);
+}
+
+window.addEventListener("DOMContentLoaded", init);
