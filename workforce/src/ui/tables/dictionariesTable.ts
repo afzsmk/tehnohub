@@ -49,7 +49,6 @@ export function renderProfessionsTable(data: ScenarioData, onUpdated: () => void
     `;
   }).join("");
 
-  // Делегирование событий на таблице участков
   tbody.oninput = (e) => {
     const target = e.target as HTMLInputElement;
     const id = target.getAttribute("data-id")!;
@@ -93,8 +92,13 @@ export function renderProfessionsTable(data: ScenarioData, onUpdated: () => void
         () => {
           data.professions = data.professions.filter(p => p.id !== profId);
           data.products.forEach(p => { delete p.norms[profId]; });
-          if (data.normConfigs) {
-            Object.keys(data.normConfigs).forEach(k => { if (k.endsWith("___" + profId)) delete data.normConfigs[k]; });
+          
+          // Безопасное удаление из реестра с фиксацией типа
+          const cfgs = data.normConfigs;
+          if (cfgs) {
+            Object.keys(cfgs).forEach(k => {
+              if (k.endsWith("___" + profId)) delete cfgs[k];
+            });
           }
           onUpdated();
         }
@@ -145,7 +149,7 @@ export function renderProductsTable(data: ScenarioData, onUpdated: () => void, o
         <td><input type="text" class="input-control input-num prod-scrap" data-id="${p.id}" value="${p.scrap || 0}"></td>
         ${data.professions.map(prof => {
           const normKey = `${p.id}___${prof.id}`;
-          const hasConfig = data.normConfigs && data.normConfigs[normKey];
+          const hasConfig = Boolean(data.normConfigs && data.normConfigs[normKey]);
           return `
             <td class="norm-cell-wrap">
               <input type="text" class="input-control input-num prod-norm" data-prod="${p.id}" data-prof="${prof.id}" value="${p.norms[prof.id] !== undefined ? p.norms[prof.id] : 0}">
@@ -216,8 +220,13 @@ export function renderProductsTable(data: ScenarioData, onUpdated: () => void, o
         () => {
           data.products = data.products.filter(p => p.id !== pId);
           delete data.plan[pId];
-          if (data.normConfigs) {
-            Object.keys(data.normConfigs).forEach(k => { if (k.startsWith(pId + "___")) delete data.normConfigs[k]; });
+          
+          // Безопасное удаление из реестра с фиксацией типа
+          const cfgs = data.normConfigs;
+          if (cfgs) {
+            Object.keys(cfgs).forEach(k => {
+              if (k.startsWith(pId + "___")) delete cfgs[k];
+            });
           }
           onUpdated();
         }
