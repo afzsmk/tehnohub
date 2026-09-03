@@ -891,7 +891,7 @@
                     <th style="width: 65px; text-align: right;" title="Количество физических станков или рабочих мест">Станков</th>
                     <th style="width: 75px; text-align: right;" title="Количество рабочих, одновременно занятых на 1 станке/посту">Звено</th>
                     <th style="width: 85px; text-align: right;" title="Минимальная численность, которая ставится на пост, даже если расчёт даёт меньше (например, всегда минимум 1 сварщик, а не 0.1). При нулевой трудоёмкости в месяце минимум не применяется — пост простаивает.">Мин. штат</th>
-                    <th style="width: 95px; text-align: center;" title="Тип работы для рекомендации графика 8ч / 12ч">Специфика</th>
+                    <th style="width: 100px; text-align: right;" title="Максимально возможная длина смены для этого поста (например, регламент/безопасность/лицензия). По умолчанию 24ч — без специального ограничения; тогда потолком служит общая «Смена, усиленный режим» из календаря.">Доступность (ч/сут)</th>
                     <th style="width: 40px; text-align: center;"></th>
                   </tr>
                 </thead>
@@ -903,9 +903,12 @@
 
         <div class="panel">
           <div class="panel-header">
-            <div class="panel-title">Параметры бригад, сверхурочных и рабочего времени</div>
+            <div class="panel-title">Штат и организация труда универсалов</div>
           </div>
           <div class="panel-body">
+            <p style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">
+              Сколько человек и в какой структуре — сколько часов даёт каждый из них, задаётся в панели «Календарь и фонд рабочего времени» ниже.
+            </p>
             <div class="grid-2" style="gap: 12px;">
               <div>
                 <label style="font-size: 11.5px; font-weight:700; color:var(--accent);">КОЛ-ВО БРИГАД УНИВЕРСАЛОВ (Nбриг):</label>
@@ -916,24 +919,12 @@
                 <input type="number" min="1" max="25" id="inputBrigadeSize" class="input-control input-num" value="6" style="font-weight:700; color:var(--accent);">
               </div>
               <div>
-                <label style="font-size: 11.5px; font-weight:700; color:#b45309;">ЛИМИТ СВЕРХУРОЧНЫХ (% к фонду):</label>
-                <input type="number" min="0" max="30" step="1" id="inputMaxOvertime" class="input-control input-num" value="15" style="font-weight:700; color:#b45309;">
-              </div>
-              <div>
                 <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);">ШТАТ УНИВЕРСАЛОВ (расчетно):</label>
                 <div style="font-size:15px; font-weight:800; color:var(--accent); padding:4px 0;" id="calcUniversalHeadcount">18 чел.</div>
               </div>
               <div>
-                <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);">НОМИНАЛЬНЫЙ ФОНД (Fном, ч/мес):</label>
-                <input type="text" id="inputFNom" class="input-control input-num" value="168">
-              </div>
-              <div>
-                <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);">ЭФФЕКТИВНЫЙ ФОНД (Fэф, ч/мес):</label>
-                <input type="text" id="inputFEff" class="input-control input-num" value="144">
-              </div>
-              <div>
-                <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);">ВЫПОЛНЕНИЕ НОРМ (Kвн):</label>
-                <input type="text" id="inputKVn" class="input-control input-num" value="1.05">
+                <label style="font-size: 11.5px; font-weight:700; color:#b45309;" title="Разовые переработки (например, выход в субботу) сверх номинального фонда текущего режима смены">ЛИМИТ СВЕРХУРОЧНЫХ (% к фонду):</label>
+                <input type="number" min="0" max="30" step="1" id="inputMaxOvertime" class="input-control input-num" value="15" style="font-weight:700; color:#b45309;">
               </div>
               <div>
                 <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);">ОТК И ЛОГИСТИКА (% от осн.):</label>
@@ -950,93 +941,135 @@
             </div>
           </div>
         </div>
+      </div>
 
-        <div class="panel">
-          <div class="panel-header">
-            <div class="panel-title">Параметры календаря и сменности участков</div>
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Календарь, фонд рабочего времени и сменность участков</div>
+          <div style="display:flex; gap:8px;">
+            <button type="button" class="btn btn-primary btn-sm" id="btnSyncAllFunds" title="Пересчитать Fном → Fэф → Fном(усил.) → Fэф(усил.) от календаря одним нажатием">
+              ↺ Синхронизировать весь фонд
+            </button>
             <button type="button" class="btn btn-secondary btn-sm" id="btnResetCalendarDefaults" title="Вернуть 21 раб.день, смену 8ч и коэфф. 2.75">
               Сбросить к типовым
             </button>
           </div>
-          <div class="panel-body">
-            <p style="font-size:12px; color:var(--text-secondary); margin-bottom:14px;">
-              Эти параметры определяют, при какой загрузке участку хватает 1 смены, когда нужны 2 смены, а когда — вахта 2×12ч (2/2). Результат сразу виден в предпросчёте справа/ниже — не нужно переходить в «Аналитику», чтобы проверить эффект.
-            </p>
-            <div class="grid-2" style="gap: 20px; align-items: start;">
-              <div>
-                <div class="settings-subhead">Календарь месяца</div>
-                <div class="grid-2" style="gap: 12px; margin-bottom: 4px;">
-                  <div>
-                    <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);" title="Количество рабочих дней в расчётном месяце для таблицы загрузки станков">РАБОЧИХ ДНЕЙ В МЕСЯЦЕ:</label>
-                    <input type="number" min="1" max="31" id="inputWorkDays" class="input-control input-num" value="21">
-                  </div>
-                  <div>
-                    <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);" title="Длительность стандартной (1-й) смены">СМЕНА (часов):</label>
-                    <input type="number" min="1" max="24" step="0.5" id="inputShiftHours" class="input-control input-num" value="8">
-                  </div>
-                </div>
-
-                <div class="settings-subhead">Пороги перехода на усиленный режим</div>
-                <div class="grid-2" style="gap: 12px;">
-                  <div>
-                    <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);" title="Во сколько раз ёмкость режима «2×12ч (2/2)» больше ёмкости 1 смены. По умолчанию 2.75 (эквивалент прежних 462/168 ч)">КОЭФФ. РЕЖИМА 2×12Ч (2/2):</label>
-                    <input type="number" min="1" max="5" step="0.05" id="inputThirdTierFactor" class="input-control input-num" value="2.75">
-                  </div>
-                  <div>
-                    <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);" title="Общий коэффициент выполнения норм — тот же, что используется при расчёте штата универсалов">ВЫПОЛНЕНИЕ НОРМ (Kвн):</label>
-                    <div style="display:flex; align-items:center; gap:8px; padding:8px 10px; background:#f8fafc; border:1px solid var(--border-color); border-radius:6px; font-weight:700; color:var(--text-secondary);">
-                      <span id="calendarKVnPreview">1.05</span>
-                      <button type="button" class="field-link-btn" id="btnJumpToKVn">изменить ↑</button>
-                    </div>
-                  </div>
-                </div>
-                <p style="font-size:11px; color:var(--text-muted); margin-top:6px;">
-                  Каждый участок дополнительно настраивается в «Технологических участках» выше: количество станков, звено (чел./станок) и минимальный штат поста — именно они определяют, какая часть общей трудоёмкости придётся на один станок.
-                </p>
-              </div>
-
-              <div>
-                <div class="settings-subhead">Предпросчёт ёмкости одного станка/поста</div>
-                <div class="capacity-preview">
-                  <div class="capacity-preview-title">Часов в месяц на 1 станок, при которых достаточно…</div>
-                  <div class="capacity-tier-row">
-                    <span><span class="capacity-tier-dot" style="background:#86efac;"></span>1 смены</span>
-                    <strong id="previewCap1">до 176 ч/мес</strong>
-                  </div>
-                  <div class="capacity-tier-row">
-                    <span><span class="capacity-tier-dot" style="background:#86efac;"></span>2 смен</span>
-                    <strong id="previewCap2">до 353 ч/мес</strong>
-                  </div>
-                  <div class="capacity-tier-row">
-                    <span><span class="capacity-tier-dot" style="background:#fde68a;"></span>2×12ч (2/2)</span>
-                    <strong id="previewCap3">до 485 ч/мес</strong>
-                  </div>
-                  <div class="capacity-tier-row">
-                    <span><span class="capacity-tier-dot" style="background:#fca5a5;"></span>свыше — перегруз</span>
-                    <strong id="previewCap4">от 485 ч/мес</strong>
-                  </div>
-                </div>
-                <p style="font-size:11px; color:var(--text-muted); margin-top:8px;">
-                  Пересчитывается сразу при изменении параметров слева. Проверить, как это выглядит для конкретных участков — вкладка «Аналитика» → «Загрузка оборудования».
-                </p>
-              </div>
-            </div>
-          </div>
         </div>
+        <div class="panel-body">
+          <p style="font-size:12px; color:var(--text-secondary); margin-bottom:14px;">
+            Один и тот же календарь используется дважды: чтобы понять, сколько часов даёт <strong>один человек</strong> в месяц (фонд времени → штат) и сколько часов работает <strong>один станок/пост</strong> (загрузка оборудования, вкладка «Аналитика»). Изменение «Рабочих дней» или «Смены» здесь автоматически двигает предпросчёт обоих справа.
+          </p>
 
-        <div class="panel">
-          <div class="panel-header">
-            <div class="panel-title">Реквизиты для отчётов (PDF / Excel)</div>
-          </div>
-          <div class="panel-body">
-            <div style="max-width: 420px;">
-              <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);" title="Используется в титульном листе PDF-отчёта и в шапке Excel-выгрузки">НАЗВАНИЕ ОРГАНИЗАЦИИ / ЦЕХА:</label>
-              <input type="text" id="inputCompanyName" class="input-control" placeholder="Например: ООО «Завод металлоконструкций»">
+          <div class="settings-subhead">Календарь месяца</div>
+          <div class="grid-4" style="gap: 12px;">
+            <div>
+              <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);" title="Количество рабочих дней в расчётном месяце (график 5/2)">РАБОЧИХ ДНЕЙ В МЕСЯЦЕ:</label>
+              <input type="number" min="1" max="31" id="inputWorkDays" class="input-control input-num" value="21">
             </div>
+            <div>
+              <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);" title="Длительность обычной смены при графике 5/2">СМЕНА, ОБЫЧНЫЙ РЕЖИМ (ч):</label>
+              <input type="number" min="1" max="24" step="0.5" id="inputShiftHours" class="input-control input-num" value="8">
+            </div>
+            <div>
+              <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);" title="Длительность вахты в усиленном режиме — тот же график 5/2, но длиннее смена">СМЕНА, УСИЛЕННЫЙ РЕЖИМ (ч):</label>
+              <input type="number" min="1" max="12" step="0.5" id="inputExtendedShiftHours" class="input-control input-num" value="12">
+            </div>
+            <div>
+              <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);">ВЫПОЛНЕНИЕ НОРМ (Kвн):</label>
+              <input type="text" id="inputKVn" class="input-control input-num" value="1.05">
+            </div>
+          </div>
+
+          <div class="settings-subhead">Фонд времени одного человека (штат)</div>
+          <div class="grid-4" style="gap: 12px; align-items: end;">
+            <div>
+              <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);" title="Доля рабочего времени, закладываемая на отпуска/больничные/простои">РЕЗЕРВ НА ОТСУТСТВИЯ (%):</label>
+              <input type="number" min="0" max="50" step="0.1" id="inputReserveOff" class="input-control input-num" value="14.3">
+            </div>
+            <div>
+              <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);" title="Fном = Рабочих дней × Смена (обычный режим)">Fном, ч/мес:</label>
+              <div style="display:flex; gap:6px;">
+                <input type="text" id="inputFNom" class="input-control input-num" value="168" style="flex:1;">
+                <button type="button" class="btn btn-secondary btn-sm" id="btnRecalcFNom" title="Пересчитать = Рабочих дней × Смена">↺</button>
+              </div>
+            </div>
+            <div>
+              <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);" title="Fэф = Fном × (1 − Резерв на отсутствия)">Fэф, ч/мес:</label>
+              <div style="display:flex; gap:6px;">
+                <input type="text" id="inputFEff" class="input-control input-num" value="144" style="flex:1;">
+                <button type="button" class="btn btn-secondary btn-sm" id="btnRecalcFEff" title="Пересчитать Fэф = Fном × (1 − Резерв)">↺</button>
+              </div>
+            </div>
+            <div>
+              <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);">Один человек в месяц даёт:</label>
+              <div style="font-size:15px; font-weight:800; color:var(--accent); padding:8px 0;" id="fEffWithKvnPreview">151.2 н-ч</div>
+            </div>
+          </div>
+
+          <div class="settings-subhead">Фонд времени в усиленном режиме (то же звено, длиннее вахта)</div>
+          <p style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">
+            Когда участок/бригада переходит на удлинённую смену (график 5/2 сохраняется) — человек физически даёт больше часов в месяц. Система применяет этот фонд вместо обычного именно для тех месяцев, где по трудоёмкости требуется усиленный режим — по конкретному участку и по пулу универсалов. Все поля остаются редактируемыми вручную — кнопки «↺» лишь предлагают значение.
+          </p>
+          <div class="grid-4" style="gap: 12px; align-items: end;">
+            <div>
+              <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);" title="Fном(усил.) = Рабочих дней × Смена в усиленном режиме">Fном (усил.), ч/мес:</label>
+              <div style="display:flex; gap:6px;">
+                <input type="text" id="inputFNomExtended" class="input-control input-num" value="252" style="flex:1;">
+                <button type="button" class="btn btn-secondary btn-sm" id="btnRecalcFNomExtended" title="Пересчитать от Рабочих дней и Смены в усиленном режиме">↺</button>
+              </div>
+            </div>
+            <div>
+              <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);" title="Fэф(усил.) = Fном(усил.) × (1 − Резерв на отсутствия)">Fэф (усил.), ч/мес:</label>
+              <div style="display:flex; gap:6px;">
+                <input type="text" id="inputFEffExtended" class="input-control input-num" value="216" style="flex:1;">
+                <button type="button" class="btn btn-secondary btn-sm" id="btnRecalcFEffExtended" title="Пересчитать от Fном(усил.) и резерва">↺</button>
+              </div>
+            </div>
+            <div>
+              <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);">Прирост к обычному Fэф:</label>
+              <div style="font-size:15px; font-weight:800; color:var(--accent); padding:8px 0;" id="extendedFundRatioPreview">×1.50</div>
+            </div>
+            <div></div>
+          </div>
+
+          <div class="settings-subhead">Загрузка оборудования — правило рекомендации смены</div>
+          <p style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">
+            Для каждого станка/поста система сама считает, сколько часов в сутки он должен фактически отработать (с учётом «Станков» и «Звено» из справочника выше), и напрямую предлагает длину смены — с шагом 0.5ч, без промежуточных «1/2 смены». Потолок — минимум из «Смена, усиленный режим» (общий предел по усталости) и «Доступность оборудования» конкретного участка (задаётся в его строке справочника, по умолчанию 24ч — то есть без отдельного ограничения).
+          </p>
+          <div class="capacity-preview" style="max-width:480px;">
+            <div class="capacity-preview-title">Пример при доступности станка 24ч (без спец. ограничения)</div>
+            <div class="capacity-tier-row">
+              <span><span class="capacity-tier-dot" style="background:#86efac;"></span>Норма, без изменений</span>
+              <strong id="previewCap1">до 8ч/сутки</strong>
+            </div>
+            <div class="capacity-tier-row">
+              <span><span class="capacity-tier-dot" style="background:#fde68a;"></span>Рекомендация смены (шаг 0.5ч)</span>
+              <strong id="previewCap2">8–12ч/сутки</strong>
+            </div>
+            <div class="capacity-tier-row">
+              <span><span class="capacity-tier-dot" style="background:#fca5a5;"></span>Перегруз — не хватает поста</span>
+              <strong id="previewCap3">свыше 12ч/сутки</strong>
+            </div>
+          </div>
+          <p style="font-size:11px; color:var(--text-muted); margin-top:8px;">
+            Пересчитывается сразу при изменении параметров выше. Проверить, как это выглядит для конкретных участков — вкладка «Аналитика» → «Загрузка оборудования».
+          </p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Реквизиты для отчётов (PDF / Excel)</div>
+        </div>
+        <div class="panel-body">
+          <div style="max-width: 420px;">
+            <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);" title="Используется в титульном листе PDF-отчёта и в шапке Excel-выгрузки">НАЗВАНИЕ ОРГАНИЗАЦИИ / ЦЕХА:</label>
+            <input type="text" id="inputCompanyName" class="input-control" placeholder="Например: ООО «Завод металлоконструкций»">
           </div>
         </div>
       </div>
     </section>
+
 
     <!-- ВКЛАДКА 3: МОДУЛЬ НОРМИРОВАНИЯ -->
     <section id="tab-norming" class="tab-content">
@@ -1227,7 +1260,14 @@
       </div>
 
       <div id="analyticsCaptureArea" style="background:#ffffff; padding: 10px; border-radius: var(--radius);">
-        
+
+        <div class="summary-card">
+          <div class="summary-title">
+            <svg class="icon"><use href="#icon-analytics"></use></svg> Аналитическое резюме производственной программы
+          </div>
+          <ul class="summary-points" id="summaryBulletPoints"></ul>
+        </div>
+
         <!-- SMART ADVISOR: ИНТЕЛЛЕКТУАЛЬНЫЙ АССИСТЕНТ БАЛАНСИРОВКИ -->
         <div class="advisor-box" id="advisorBox">
           <div class="advisor-header">
@@ -1238,13 +1278,6 @@
             <span style="font-size:11.5px; font-weight:600; color:var(--text-muted);" id="advisorStatusBadge">Статус программы</span>
           </div>
           <div id="advisorList"></div>
-        </div>
-
-        <div class="summary-card">
-          <div class="summary-title">
-            <svg class="icon"><use href="#icon-analytics"></use></svg> Аналитическое резюме производственной программы
-          </div>
-          <ul class="summary-points" id="summaryBulletPoints"></ul>
         </div>
 
         <!-- БРИГАДНЫЙ ГРАФИК И СМЕННОСТЬ УНИВЕРСАЛОВ -->
@@ -1266,9 +1299,9 @@
               Полоса и процент — фактическая занятость станка/поста от суток (24ч), независимо от того, каким графиком это закрывается. Режим смены под полосой — рекомендация, производная от того же процента, а не наоборот.
             </p>
             <div style="display:flex; gap:16px; margin-bottom:12px; font-size:11.5px; color:var(--text-secondary); flex-wrap:wrap;">
-              <span><span style="display:inline-block; width:10px; height:10px; border-radius:2px; background:#86efac; vertical-align:-1px;"></span> до ~70% — хватает 1-2 смен</span>
-              <span><span style="display:inline-block; width:10px; height:10px; border-radius:2px; background:#fde68a; vertical-align:-1px;"></span> нужен режим 2×12ч (2/2)</span>
-              <span><span style="display:inline-block; width:10px; height:10px; border-radius:2px; background:#fca5a5; vertical-align:-1px;"></span> перегруз даже при максимальном режиме</span>
+              <span><span style="display:inline-block; width:10px; height:10px; border-radius:2px; background:#86efac; vertical-align:-1px;"></span> в пределах нормы (обычная смена)</span>
+              <span><span style="display:inline-block; width:10px; height:10px; border-radius:2px; background:#fde68a; vertical-align:-1px;"></span> нужна удлинённая смена (рекомендация с шагом 0.5ч)</span>
+              <span><span style="display:inline-block; width:10px; height:10px; border-radius:2px; background:#fca5a5; vertical-align:-1px;"></span> перегруз — не хватает даже макс. смены/доступности</span>
             </div>
             <div class="table-container">
               <table class="data-table" id="shiftScheduleTable">
@@ -1395,13 +1428,26 @@
       // Параметры, ранее зашитые в код константами — теперь настраиваемые
       if (s.workDaysPerMonth === undefined) s.workDaysPerMonth = 21;
       if (s.shiftHoursStandard === undefined) s.shiftHoursStandard = 8;
-      if (s.thirdTierFactor === undefined) s.thirdTierFactor = 2.75;
-      if (s.companyName === undefined) s.companyName = "";
+      if (s.companyName === undefined) s.companyName = 'ООО "ЗСМК"';
+      // Резерв на отпуска/больничные — раньше был неявно зашит в разнице между
+      // дефолтными Fном=168 и Fэф=144 (~14.3%), теперь явный редактируемый параметр,
+      // на который опирается кнопка "Пересчитать" для Fэф и для фонда в режиме 2×12.
+      if (s.reserveOffPercent === undefined) {
+        s.reserveOffPercent = s.fNom > 0 ? Math.round((1 - (s.fEff / s.fNom)) * 1000) / 10 : 14.3;
+      }
+      // Фонд времени для участков/пула, фактически работающих в усиленном режиме
+      // (2×12ч, 2/2) — то же звено, но более длинная смена при неизменном графике 5/2.
+      // Растёт пропорционально длине смены. Оба поля остаются редактируемыми вручную —
+      // это лишь дефолт/подсказка, не блокировка.
+      if (s.extendedShiftHours === undefined) s.extendedShiftHours = 12;
+      if (s.fNomExtended === undefined) s.fNomExtended = Math.round((s.fNom * s.extendedShiftHours / s.shiftHoursStandard) * 10) / 10;
+      if (s.fEffExtended === undefined) s.fEffExtended = Math.round((s.fNomExtended * (1 - s.reserveOffPercent / 100)) * 10) / 10;
       (sc.professions || []).forEach(pr => {
         if (!pr.pool) {
           pr.pool = (["p1787298939301", "p1787298947495", "p1787298952912", "p1787298961438", "p1787298966902"].includes(pr.id) ? "dedicated" : "universal");
         }
         if (pr.minCrew === undefined) pr.minCrew = (pr.pool === "dedicated" ? 1 : 0);
+        if (pr.availabilityHours === undefined) pr.availabilityHours = 24;
       });
       return sc;
     }
@@ -1791,17 +1837,21 @@
 
       const brigadesCount = Math.max(1, parseInt(data.settings.brigadesCount) || 3);
       const brigadeSize = Math.max(1, parseInt(data.settings.brigadeSize) || 6);
-      const maxOvertimePct = Math.max(0, Math.min(30, parseNum(data.settings.maxOvertimePercent) || 15));
+      const maxOvertimePct = Math.max(0, Math.min(30, parseNum(data.settings.maxOvertimePercent)));
       const totalUniversalHeadcount = brigadesCount * brigadeSize;
 
       // Параметры сменности участков — раньше были зашиты как константы 168/336/462 и daysInMonth=21
-      // независимо от настроек; теперь единообразно выводятся из fEff/kVn/рабочих дней/длины смены.
+      // независимо от настроек; теперь единообразно выводятся из рабочих дней/длины смены.
       const workDaysPerMonth = Math.max(1, parseInt(data.settings.workDaysPerMonth) || 21);
       const shiftHoursStandard = parseNum(data.settings.shiftHoursStandard) || 8;
-      const thirdTierFactor = parseNum(data.settings.thirdTierFactor) || 2.75;
-      const machineCap1Shift = workDaysPerMonth * shiftHoursStandard * kVn;
-      const machineCap2Shift = machineCap1Shift * 2;
-      const machineCap3Tier = machineCap1Shift * thirdTierFactor;
+
+      // Фонд времени в усиленном режиме (то же звено работает более длинными вахтами при
+      // неизменном календарном графике 5/2) — фонд растёт пропорционально длине смены.
+      // Оба поля остаются обычными редактируемыми настройками — это лишь дефолт/подсказка.
+      const extendedShiftHours = parseNum(data.settings.extendedShiftHours) || 12;
+      const fNomExtended = parseNum(data.settings.fNomExtended) || (fNom * extendedShiftHours / shiftHoursStandard);
+      const fEffExtended = parseNum(data.settings.fEffExtended) || (fEff * extendedShiftHours / shiftHoursStandard);
+      const reserveOffPercent = parseNum(data.settings.reserveOffPercent);
 
       const productTotals = {};
       data.products.forEach(p => {
@@ -1834,20 +1884,42 @@
         });
       }
 
+      // Классификация загрузки каждого отдельного участка (станко-часы/машина) — считается
+      // здесь, ДО расчёта штата выделенных постов.
+      const caps = { workDaysPerMonth, shiftHoursStandard };
+      const profMachineZones = {};
+      data.professions.forEach(prof => {
+        const machines = Math.max(1, prof.machines || 1);
+        const crew = Math.max(1, prof.crew || 1);
+        const availabilityHours = Math.max(shiftHoursStandard, Math.min(24, parseNum(prof.availabilityHours) || 24));
+        profMachineZones[prof.id] = [];
+        for (let m = 0; m < numMonths; m++) {
+          const laborHours = hoursByProf[prof.id][m];
+          const hoursPerMachine = (laborHours / crew) / machines;
+          profMachineZones[prof.id].push(classifyMachineLoad(hoursPerMachine, { ...caps, availabilityHours }));
+        }
+      });
+
+      // Штат выделенных постов НЕ считается через фонд времени (Fэф) — состав таких
+      // постов физически фиксирован (Звено на 1 станок × число станков) и не растягивается
+      // от того, что смена стала длиннее: на лазерную резку нельзя поставить полтора
+      // человека или "докупить" часть человека продлив смену. Пост либо простаивает
+      // (0 чел.), либо занят полным составом. Длина смены нужна станку, а не штату.
       const staffByProfSp = {};
       const staffByProfYav = {};
       data.professions.forEach(prof => {
-        const rawSp = hoursByProf[prof.id].map(h => h / (fEff * kVn));
-        // Минимальная численность выделенного поста: если участок используется в этом
-        // месяце (есть трудоёмкость > 0), но по расчёту требуется меньше people, чем
-        // физически необходимо для обслуживания поста (например, 0.1 сварщика) —
-        // ставим не расчётную дробь, а реальный минимум (задаётся в справочнике участков,
-        // поле "Мин. штат", по умолчанию 1 для выделенных постов). Раньше в детальной
-        // строке отображалась именно "сырая" дробь (0.1), а в итоговой сумме штата она
-        // уже незаметно округлялась вверх до 1 — эти два числа не совпадали друг с другом.
+        if (prof.pool === "universal") {
+          // Заполняется позже, в цикле по универсальному пулу.
+          staffByProfSp[prof.id] = new Array(numMonths).fill(0);
+          staffByProfYav[prof.id] = new Array(numMonths).fill(0);
+          return;
+        }
+        const machines = Math.max(1, prof.machines || 1);
+        const crew = Math.max(1, prof.crew || 1);
         const minCrew = parseNum(prof.minCrew) || 0;
-        staffByProfSp[prof.id] = rawSp.map(s => (s > 0 && minCrew > 0) ? Math.max(s, minCrew) : s);
-        staffByProfYav[prof.id] = hoursByProf[prof.id].map(h => h / (fNom * kVn));
+        const fixedComposition = Math.max(crew * machines, minCrew);
+        staffByProfSp[prof.id] = hoursByProf[prof.id].map(h => h > 0 ? fixedComposition : 0);
+        staffByProfYav[prof.id] = staffByProfSp[prof.id].slice();
       });
 
       const universalProfs = data.professions.filter(p => p.pool === "universal");
@@ -1855,66 +1927,106 @@
 
       const universalHoursTotal = new Array(numMonths).fill(0);
       const universalStaffSpTotal = new Array(numMonths).fill(0);
-      const universalBrigadesNeeded = new Array(numMonths).fill(0);
       const universalSchedules = [];
 
-      // Емкость 1 бригады и всего пула универсалов
-      const oneBrigadeCapacity = brigadeSize * fEff * kVn;
-      const totalPoolNominalCapacity = brigadesCount * oneBrigadeCapacity;
-      const totalPoolMaxWithOvertime = totalPoolNominalCapacity * (1 + maxOvertimePct / 100);
+      // Ёмкость всего универсального пула — раньше считалась ступенями "1 бригада /
+      // 2 бригады / все бригады", как будто часть бригад может простаивать. По факту
+      // все totalUniversalHeadcount человек всегда работают одновременно (график 5/2) —
+      // единственные реальные рычаги: длина смены (обычная/усиленная) и разовые
+      // сверхурочные (например, выход в субботу). Модель приведена в соответствие.
+      //
+      // ВАЖНО: сверхурочные допустимы ТОЛЬКО поверх обычной 8-часовой смены (реальная
+      // практика заказчика — доп. суббота). На усиленном режиме сверхурочные не
+      // применяются вовсе: если удлинённой смены (до жёсткого потолка 12ч) не хватает —
+      // единственный оставшийся рычаг — дополнительный штат, и система сразу считает,
+      // сколько человек/бригад нужно, а не предлагает вахты длиннее 12ч.
+      const HARD_SHIFT_CEILING = 12;
+      const poolCapacityNormal = totalUniversalHeadcount * fEff * kVn;
+      const poolCapacityNormalOT = poolCapacityNormal * (1 + maxOvertimePct / 100);
+      const fEffAtCeiling = workDaysPerMonth * HARD_SHIFT_CEILING * (1 - reserveOffPercent / 100);
+      const poolCapacityCeiling = totalUniversalHeadcount * fEffAtCeiling * kVn;
 
       for (let m = 0; m < numMonths; m++) {
         universalProfs.forEach(p => {
           universalHoursTotal[m] += hoursByProf[p.id][m];
         });
-        universalStaffSpTotal[m] = universalHoursTotal[m] / (fEff * kVn);
-        universalBrigadesNeeded[m] = universalHoursTotal[m] / oneBrigadeCapacity;
 
         const uHours = universalHoursTotal[m];
         let sched = {
-          mode: "1 смена (8ч, 5/2)",
-          brigadesActive: 1,
+          mode: `${shiftHoursStandard}ч/5-2 (норма)`,
           badgeClass: "badge-shift-1",
           overtimeHours: 0,
           statusZone: "green",
+          isExtendedShift: false,
+          recommendedShift: shiftHoursStandard,
+          trueNeededShift: shiftHoursStandard,
+          canApplyShift: null,
+          additionalHeadcount: 0,
           note: ""
         };
 
-        if (uHours <= oneBrigadeCapacity * 1.05) {
-          sched.mode = "1 смена (8ч, 5/2)";
-          sched.brigadesActive = 1;
+        if (uHours <= poolCapacityNormal) {
+          sched.mode = `${shiftHoursStandard}ч/5-2 (норма)`;
           sched.badgeClass = "badge-shift-1";
           sched.statusZone = "green";
-          sched.note = `Задействована 1 бригада (${brigadeSize} чел), ${brigadesCount - 1} бриг. в резерве`;
-        } else if (uHours <= oneBrigadeCapacity * 2 * 1.05) {
-          sched.mode = "2 смены (8ч, 5/2)";
-          sched.brigadesActive = Math.min(brigadesCount, 2);
-          sched.badgeClass = "badge-shift-2";
-          sched.statusZone = "green";
-          sched.note = `Задействовано 2 бригады (${brigadeSize * 2} чел) в 2 смены`;
-        } else if (uHours <= totalPoolNominalCapacity * 1.05) {
-          sched.mode = "2×12ч (2/2)";
-          sched.brigadesActive = brigadesCount;
-          sched.badgeClass = "badge-shift-12";
-          sched.statusZone = "green";
-          sched.note = `Все ${brigadesCount} бригады (${totalUniversalHeadcount} чел) в графике 2/2`;
-        } else if (uHours <= totalPoolMaxWithOvertime) {
-          sched.mode = "2×12ч (2/2) + сверхурочные";
-          sched.brigadesActive = brigadesCount;
+          sched.isExtendedShift = false;
+          sched.recommendedShift = shiftHoursStandard;
+          sched.note = `В пределах номинального фонда всех ${totalUniversalHeadcount} универсалов на графике 5/2 по ${shiftHoursStandard}ч`;
+        } else if (uHours <= poolCapacityNormalOT) {
+          sched.mode = `${shiftHoursStandard}ч/5-2 + сверхурочные`;
           sched.badgeClass = "badge-shift-overload";
           sched.statusZone = "yellow";
-          sched.overtimeHours = Math.round(uHours - totalPoolNominalCapacity);
+          sched.isExtendedShift = false;
+          sched.recommendedShift = shiftHoursStandard;
+          sched.overtimeHours = Math.round(uHours - poolCapacityNormal);
           const otPerWorker = (sched.overtimeHours / totalUniversalHeadcount).toFixed(1);
-          sched.note = `Перегруз закрывается сверхурочными: ${sched.overtimeHours} н-ч (+${otPerWorker} ч/чел)`;
+          const otPctOfLimit = maxOvertimePct > 0 ? Math.round((sched.overtimeHours / (poolCapacityNormal * maxOvertimePct / 100)) * 100) : 0;
+          sched.note = `Закрывается разовыми сверхурочными (например, суббота): +${sched.overtimeHours} н-ч (+${otPerWorker} ч/чел, ${otPctOfLimit}% от лимита сверхурочных). Переход на удлинённую смену не требуется`;
+        } else if (uHours <= poolCapacityCeiling) {
+          // Сколько часов смены нужно ФИЗИЧЕСКИ, чтобы закрыть месяц целиком без
+          // сверхурочных — чистая математика, зажатая жёстким потолком 12ч.
+          const neededShiftFull = Math.max(shiftHoursStandard, uHours / (totalUniversalHeadcount * kVn * workDaysPerMonth * (1 - reserveOffPercent / 100)));
+          const neededShiftRounded = Math.min(HARD_SHIFT_CEILING, Math.ceil(neededShiftFull * 2) / 2);
+          sched.trueNeededShift = neededShiftRounded;
+          sched.mode = `${neededShiftRounded}ч/5-2 (усиленный режим)`;
+          sched.badgeClass = "badge-shift-12";
+          sched.statusZone = "yellow";
+          sched.isExtendedShift = true;
+          sched.recommendedShift = neededShiftRounded;
+          sched.note = `Требуется перевести всех ${totalUniversalHeadcount} универсалов на смену ${neededShiftRounded}ч (график 5/2 сохраняется). Сверхурочные не применяются`;
+          if (neededShiftRounded !== extendedShiftHours) {
+            sched.canApplyShift = neededShiftRounded;
+          }
         } else {
+          // Даже смена 12ч (жёсткий потолок — дольше выводить людей не предлагаем)
+          // не закрывает объём. Единственный оставшийся рычаг — дополнительный штат,
+          // считаем сколько человек и сколько бригад нужно докупить/добавить.
+          const deficitHours = uHours - poolCapacityCeiling;
+          const additionalHeadcount = Math.ceil(deficitHours / (fEffAtCeiling * kVn));
+          const additionalBrigades = Math.ceil(additionalHeadcount / brigadeSize);
           sched.mode = "Критический дефицит мощности";
-          sched.brigadesActive = brigadesCount;
           sched.badgeClass = "badge-shift-overload";
           sched.statusZone = "red";
-          sched.overtimeHours = Math.round(uHours - totalPoolNominalCapacity);
-          const deficitPct = Math.round(((uHours - totalPoolMaxWithOvertime) / totalPoolNominalCapacity) * 100);
-          sched.note = `Превышение лимита переработок на +${deficitPct}%. Требуется доп. бригада или выравнивание`;
+          sched.isExtendedShift = true;
+          sched.recommendedShift = HARD_SHIFT_CEILING;
+          sched.trueNeededShift = HARD_SHIFT_CEILING;
+          sched.additionalHeadcount = additionalHeadcount;
+          sched.note = `Даже смены ${HARD_SHIFT_CEILING}ч (максимум) не хватает: дефицит +${Math.round(deficitHours)} н-ч. Нужно ещё как минимум <strong>${additionalHeadcount} чел.</strong> (≈${additionalBrigades} бригад(ы) по ${brigadeSize} чел.) сверх текущих ${totalUniversalHeadcount}, либо выравнивание плана`;
         }
+
+        // Штат считаем ОТ ТЕКУЩЕЙ НАСТРОЕННОЙ длины смены (Fэф / Fэф-усил.) — а не от
+        // рекомендации. Рекомендация — это подсказка рядом, а не то, что тихо
+        // подмешивается в официальную цифру ДО того, как её нажатием кнопки применили.
+        const fEffToUse = sched.isExtendedShift ? fEffExtended : fEff;
+        universalStaffSpTotal[m] = universalHoursTotal[m] / (fEffToUse * kVn);
+
+        // Разбивка штата по каждой профессии внутри пула — доля в общем фонде месяца,
+        // тем же фондом, что и у пула в целом (чтобы сумма строк сходилась с итогом).
+        universalProfs.forEach(p => {
+          staffByProfSp[p.id][m] = hoursByProf[p.id][m] / (fEffToUse * kVn);
+          staffByProfYav[p.id][m] = staffByProfSp[p.id][m];
+        });
+
         universalSchedules.push(sched);
       }
 
@@ -1940,22 +2052,6 @@
         return uniCeil + dedCeilSum + Math.ceil(auxStaffSpTotal[idx]);
       });
 
-      // Классификация загрузки каждого отдельного участка (станко-часы/машина) —
-      // считается один раз здесь и переиспользуется в таблице «Загрузка оборудования»
-      // и в общем статусе программы, чтобы не иметь двух независимых источников истины.
-      const caps = { workDaysPerMonth, shiftHoursStandard, cap1: machineCap1Shift, cap2: machineCap2Shift, cap3: machineCap3Tier };
-      const profMachineZones = {};
-      data.professions.forEach(prof => {
-        const machines = Math.max(1, prof.machines || 1);
-        const crew = Math.max(1, prof.crew || 1);
-        profMachineZones[prof.id] = [];
-        for (let m = 0; m < numMonths; m++) {
-          const laborHours = hoursByProf[prof.id][m];
-          const hoursPerMachine = (laborHours / crew) / machines;
-          profMachineZones[prof.id].push(classifyMachineLoad(hoursPerMachine, caps));
-        }
-      });
-
       // Единый статус программы (светофор) для executive summary — учитывает и
       // бригадный пул универсалов, и загрузку каждого отдельного (в т.ч. выделенного)
       // участка, чтобы локальный дефицит на одном станке не терялся на фоне общего баланса.
@@ -1973,45 +2069,58 @@
 
       return {
         numMonths, fNom, fEff, kVn,
+        extendedShiftHours, fNomExtended, fEffExtended,
         brigadesCount, brigadeSize, maxOvertimePct, totalUniversalHeadcount,
-        oneBrigadeCapacity, totalPoolNominalCapacity, totalPoolMaxWithOvertime,
-        workDaysPerMonth, shiftHoursStandard, thirdTierFactor,
-        machineCap1Shift, machineCap2Shift, machineCap3Tier, caps, profMachineZones,
+        oneBrigadeCapacity: poolCapacityNormal, totalPoolNominalCapacity: poolCapacityNormal, totalPoolMaxWithOvertime: poolCapacityCeiling,
+        poolCapacityNormal, poolCapacityNormalOT, poolCapacityCeiling, hardShiftCeiling: HARD_SHIFT_CEILING,
+        workDaysPerMonth, shiftHoursStandard, reserveOffPercent, caps, profMachineZones,
         productTotals, hoursByProf, hoursByProduct,
         totalHoursByMonth, staffByProfSp, staffByProfYav,
         universalProfs, dedicatedProfs, universalHoursTotal, universalStaffSpTotal,
-        universalBrigadesNeeded, universalSchedules, overallZone,
+        universalSchedules, overallZone,
         mainStaffSpTotal, auxStaffSpTotal, grandTotalStaff
       };
     }
 
-    // Единая классификация режима загрузки ОДНОГО станка/поста (в отличие от
-    // calc.universalSchedules, которая классифицирует пул целиком). Используется
-    // и внутри calculate() (для профиля каждого участка/месяца), и в таблице
-    // «Загрузка оборудования». Раньше пороги были захардкожены (168/336/462, 21 день) —
-    // теперь считаются из настраиваемых fEff/kVn/рабочих дней/длины смены/коэффициента 2×12ч.
-    //
-    // Основной показатель — % загрузки станка от календарных 24ч/сутки (наглядная
-    // физическая величина), режим смены (1/2/2×12ч) — вторичная подпись-рекомендация,
-    // выводимая из тех же порогов cap1/cap2/cap3.
+    // Округление рекомендуемой длины смены вверх до шага 0.5ч, зажатое в границах.
+    function ceilToHalfClamped(value, min, max) {
+      const rounded = Math.ceil(value * 2) / 2;
+      return Math.max(min, Math.min(max, rounded));
+    }
+
+    // Классификация загрузки ОДНОГО станка/поста. Раньше опиралась на бригадную ротацию
+    // ("1 смена/2 смены/2×12 ×2.75") — той же нереалистичной модели, что и универсальный
+    // пул. Теперь: считаем часов/сутки, нужных станку, и напрямую предлагаем длину смены
+    // с шагом 0.5ч в диапазоне [Смена-норма; min(Смена-усил., Доступность оборудования)].
+    // Основной показатель — % от 24ч (наглядная физическая величина), рекомендация смены —
+    // вторичная подпись.
     function classifyMachineLoad(hoursPerMachine, caps) {
-      const { workDaysPerMonth, shiftHoursStandard, cap1, cap2, cap3 } = caps;
+      const { workDaysPerMonth, shiftHoursStandard, availabilityHours } = caps;
+      const HARD_SHIFT_CEILING = 12; // единый жёсткий потолок рекомендаций по длине смены
       const hoursPerDay = hoursPerMachine / workDaysPerMonth;
       const pct24 = Math.round((hoursPerDay / 24) * 100);
+      const ceilingShift = Math.max(shiftHoursStandard, Math.min(HARD_SHIFT_CEILING, availabilityHours));
 
       if (hoursPerMachine <= 0) {
         return {
           badgeClass: "", statusZone: "none", pct24: 0, hoursPerDay: 0, tierLabel: "Простой",
-          plainLabel: "Простой",
+          plainLabel: "Простой", isExtendedShift: false, recommendedShift: shiftHoursStandard,
           label: `<span style="color:var(--text-muted); font-size:12px;">Простой</span>`
         };
       }
 
-      let statusZone, tierLabel;
-      if (hoursPerMachine <= cap1) { statusZone = "green"; tierLabel = `1 смена (${shiftHoursStandard}ч)`; }
-      else if (hoursPerMachine <= cap2) { statusZone = "green"; tierLabel = `2 смены (${shiftHoursStandard}ч)`; }
-      else if (hoursPerMachine <= cap3) { statusZone = "yellow"; tierLabel = "2×12ч (2/2)"; }
-      else { statusZone = "red"; tierLabel = "Перегруз"; }
+      let statusZone, tierLabel, isExtendedShift, recommendedShift = shiftHoursStandard;
+      if (hoursPerDay <= shiftHoursStandard) {
+        statusZone = "green"; tierLabel = `${shiftHoursStandard}ч (норма)`; isExtendedShift = false;
+      } else if (hoursPerDay <= ceilingShift) {
+        recommendedShift = ceilToHalfClamped(hoursPerDay, shiftHoursStandard, ceilingShift);
+        statusZone = "yellow"; tierLabel = `Рекомендована смена: ${recommendedShift}ч`; isExtendedShift = true;
+      } else {
+        recommendedShift = ceilingShift;
+        statusZone = "red";
+        tierLabel = `Перегруз (нужно ${hoursPerDay.toFixed(1)}ч, доступно ≤${ceilingShift}ч)`;
+        isExtendedShift = true;
+      }
 
       const zoneColor = { green: "var(--success)", yellow: "var(--warning)", red: "var(--danger)" }[statusZone];
       const zoneFill = { green: "#86efac", yellow: "#fde68a", red: "#fca5a5" }[statusZone];
@@ -2030,31 +2139,35 @@
         </div>
       `;
 
-      return { badgeClass: "", statusZone, pct24, hoursPerDay, tierLabel, plainLabel, label };
+      return { badgeClass: "", statusZone, pct24, hoursPerDay, tierLabel, plainLabel, isExtendedShift, recommendedShift, label };
     }
 
-    // Живой предпросчёт ёмкости станка/поста в панели настроек "Календарь и сменность" —
-    // те же формулы, что и в calculate()/classifyMachineLoad, но выводятся сразу при
-    // вводе параметров, без необходимости открывать вкладку "Аналитика", чтобы увидеть эффект.
+    // Живой предпросчёт в панели настроек "Календарь и сменность" — те же формулы,
+    // что и в calculate(), но выводятся сразу при вводе параметров.
     function updateCalendarCapacityPreview() {
       const data = getActiveData();
-      const workDaysPerMonth = Math.max(1, parseInt(document.getElementById("inputWorkDays").value) || 21);
       const shiftHoursStandard = parseNum(document.getElementById("inputShiftHours").value) || 8;
-      const thirdTierFactor = parseNum(document.getElementById("inputThirdTierFactor").value) || 2.75;
+      const extendedShiftHours = parseNum(document.getElementById("inputExtendedShiftHours").value) || 12;
       const kVn = parseNum(document.getElementById("inputKVn").value) || 1.0;
 
-      const cap1 = workDaysPerMonth * shiftHoursStandard * kVn;
-      const cap2 = cap1 * 2;
-      const cap3 = cap1 * thirdTierFactor;
-
-      const kvnPreviewEl = document.getElementById("calendarKVnPreview");
-      if (kvnPreviewEl) kvnPreviewEl.textContent = kVn.toFixed(2);
-
       const setTier = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
-      setTier("previewCap1", `до ${Math.round(cap1)} ч/мес`);
-      setTier("previewCap2", `до ${Math.round(cap2)} ч/мес`);
-      setTier("previewCap3", `до ${Math.round(cap3)} ч/мес`);
-      setTier("previewCap4", `от ${Math.round(cap3)} ч/мес`);
+      setTier("previewCap1", `до ${shiftHoursStandard}ч/сутки`);
+      setTier("previewCap2", `${shiftHoursStandard}–${extendedShiftHours}ч/сутки`);
+      setTier("previewCap3", `свыше ${extendedShiftHours}ч/сутки`);
+
+      const fEffEl = document.getElementById("inputFEff");
+      const fEffPreviewEl = document.getElementById("fEffWithKvnPreview");
+      if (fEffEl && fEffPreviewEl) {
+        const fEffVal = parseNum(fEffEl.value) || 0;
+        fEffPreviewEl.textContent = (fEffVal * kVn).toFixed(1) + " н-ч";
+      }
+
+      const fEffExtEl = document.getElementById("inputFEffExtended");
+      const ratioEl = document.getElementById("extendedFundRatioPreview");
+      if (fEffExtEl && ratioEl) {
+        const fEffExt = parseNum(fEffExtEl.value) || 0;
+        ratioEl.textContent = "×" + (kVn > 0 && fEffExt > 0 ? (fEffExt / (parseNum(document.getElementById("inputFEff").value) || 144)).toFixed(2) : "—");
+      }
     }
 
     function renderAll() {
@@ -2198,20 +2311,22 @@
 
       document.getElementById("inputFNom").value = data.settings.fNom;
       document.getElementById("inputFEff").value = data.settings.fEff;
+      document.getElementById("inputReserveOff").value = data.settings.reserveOffPercent !== undefined ? data.settings.reserveOffPercent : 14.3;
       document.getElementById("inputKVn").value = data.settings.kVn;
       document.getElementById("inputAuxOtk").value = data.settings.auxOtkPercent;
       document.getElementById("inputAuxSetup").value = data.settings.auxSetupPercent;
       document.getElementById("inputAuxFixed").value = data.settings.auxFixedPosts;
       document.getElementById("inputWorkDays").value = data.settings.workDaysPerMonth !== undefined ? data.settings.workDaysPerMonth : 21;
       document.getElementById("inputShiftHours").value = data.settings.shiftHoursStandard !== undefined ? data.settings.shiftHoursStandard : 8;
-      document.getElementById("inputThirdTierFactor").value = data.settings.thirdTierFactor !== undefined ? data.settings.thirdTierFactor : 2.75;
+      document.getElementById("inputExtendedShiftHours").value = data.settings.extendedShiftHours !== undefined ? data.settings.extendedShiftHours : 12;
+      document.getElementById("inputFNomExtended").value = data.settings.fNomExtended !== undefined ? data.settings.fNomExtended : 252;
+      document.getElementById("inputFEffExtended").value = data.settings.fEffExtended !== undefined ? data.settings.fEffExtended : 216;
       document.getElementById("inputCompanyName").value = data.settings.companyName || "";
       updateCalendarCapacityPreview();
 
       const profTbody = document.getElementById("professionsTableBody");
       profTbody.innerHTML = "";
       data.professions.forEach((prof, idx) => {
-        const isMachine = (prof.type === "machine");
         const poolType = prof.pool || "universal";
         const tr = document.createElement("tr");
         tr.setAttribute("data-index", idx);
@@ -2239,11 +2354,8 @@
           <td>
             <input type="number" min="0" step="1" class="input-control input-num prof-mincrew-input" data-prof-id="${prof.id}" value="${prof.minCrew !== undefined ? prof.minCrew : (poolType === 'dedicated' ? 1 : 0)}" title="0 — численность считается только по трудоёмкости, без минимума">
           </td>
-          <td style="text-align:center;">
-            <select class="input-control prof-type-select" data-prof-id="${prof.id}" style="font-size:12px; font-weight:600;">
-              <option value="machine" ${isMachine ? 'selected' : ''}>Станочный</option>
-              <option value="manual" ${!isMachine ? 'selected' : ''}>Ручной</option>
-            </select>
+          <td>
+            <input type="number" min="1" max="24" step="0.5" class="input-control input-num prof-availability-input" data-prof-id="${prof.id}" value="${prof.availabilityHours !== undefined ? prof.availabilityHours : 24}" title="24 = без специального ограничения (используется общий потолок из календаря)">
           </td>
           <td style="text-align: center;">
             <button class="btn btn-secondary btn-sm btn-del-prof" data-prof-id="${prof.id}" title="Удалить профессию">
@@ -2420,8 +2532,8 @@
           </div>
           <div class="method-item">
             <div class="method-item-title">3. Формула располагаемого фонда времени</div>
-            <div class="method-item-formula">Емкость 1 бригады = ${calc.brigadeSize} чел × ${calc.fEff}ч × ${calc.kVn} = ${calc.oneBrigadeCapacity.toFixed(1)} н-ч/мес</div>
-            <div class="method-item-desc">Суммарная номинальная емкость всех ${calc.brigadesCount} бригад составляет <strong>${calc.totalPoolNominalCapacity.toFixed(1)} н-ч/мес</strong>. С учётом лимита переработок ${calc.maxOvertimePct}% максимум равен <strong>${calc.totalPoolMaxWithOvertime.toFixed(1)} н-ч/мес</strong>.</div>
+            <div class="method-item-formula">Ёмкость пула (${calc.shiftHoursStandard}ч/5-2) = ${calc.totalUniversalHeadcount} чел × ${calc.fEff}ч × ${calc.kVn} = ${calc.poolCapacityNormal.toFixed(1)} н-ч/мес</div>
+            <div class="method-item-desc">При переходе всех универсалов на настроенный усиленный режим (${calc.extendedShiftHours}ч/5-2, тот же график 5/2, но длиннее смена): <strong>${(calc.totalUniversalHeadcount * calc.fEffExtended * calc.kVn).toFixed(1)} н-ч/мес</strong>. Сверхурочные применяются только поверх обычной ${calc.shiftHoursStandard}ч-смены (до +${calc.maxOvertimePct}%), на усиленном режиме — не используются. Жёсткий потолок рекомендаций по длине смены — ${calc.hardShiftCeiling}ч: выше него система предлагает не удлинять вахты, а считает потребность в дополнительном штате.</div>
           </div>
         `;
       }
@@ -2448,11 +2560,13 @@
       if (g4) {
         g4.innerHTML = `
           <div class="method-item" style="border-left-color:#2563eb; background:#eff6ff;">
-            <div class="method-item-title" style="color:#1e40af;">Шаг 1. 3 Зоны загрузки универсального пула</div>
+            <div class="method-item-title" style="color:#1e40af;">Шаг 1. Зоны загрузки универсального пула</div>
             <div class="method-item-desc">
-              • <strong>Зелёная зона (до ${calc.totalPoolNominalCapacity.toFixed(0)} н-ч):</strong> покрывается базовым фондом бригад без сверхурочных.<br>
-              • <strong>Жёлтая зона (до ${calc.totalPoolMaxWithOvertime.toFixed(0)} н-ч):</strong> компенсируется лимитом сверхурочных до +${calc.maxOvertimePct}%.<br>
-              • <strong>Красная зона (выше ${calc.totalPoolMaxWithOvertime.toFixed(0)} н-ч):</strong> требует выравнивания плана или ввода дополнительной бригады.
+              Все ${calc.totalUniversalHeadcount} универсалов всегда работают одновременно (график 5/2) — переменные это длина смены (не более ${calc.hardShiftCeiling}ч) и разовые сверхурочные (только поверх обычной ${calc.shiftHoursStandard}ч-смены):<br>
+              • <strong>Зелёная зона (до ${calc.poolCapacityNormal.toFixed(0)} н-ч):</strong> обычная смена ${calc.shiftHoursStandard}ч, без сверхурочных.<br>
+              • <strong>Жёлтая зона, сверхурочные (до ${calc.poolCapacityNormalOT.toFixed(0)} н-ч):</strong> закрывается разовыми сверхурочными (до +${calc.maxOvertimePct}%) на обычной смене.<br>
+              • <strong>Жёлтая зона, удлинённая смена (до ${calc.poolCapacityCeiling.toFixed(0)} н-ч):</strong> нужен переход на смену длиннее (до ${calc.hardShiftCeiling}ч, шаг 0.5ч), сверхурочные здесь не применяются.<br>
+              • <strong>Красная зона (выше ${calc.poolCapacityCeiling.toFixed(0)} н-ч):</strong> даже смены ${calc.hardShiftCeiling}ч не хватает — нужен дополнительный штат (система считает точное количество) или выравнивание плана.
             </div>
           </div>
           <div class="method-item">
@@ -2478,32 +2592,27 @@
 
       data.months.forEach((m, idx) => {
         const uHrs = calc.universalHoursTotal[idx];
-        const nomCap = calc.totalPoolNominalCapacity;
-        const maxCap = calc.totalPoolMaxWithOvertime;
+        const sched = calc.universalSchedules[idx];
 
-        if (uHrs > maxCap) {
-          const def = Math.round(uHrs - maxCap);
-          const defPct = Math.round(((uHrs - nomCap) / nomCap) * 100);
+        if (sched.statusZone === "red") {
           items.push({
             type: "alert-overload",
             month: m,
-            text: `В периоде <strong>${escapeHtml(m)}</strong> критический дефицит <strong>+${def} н-ч</strong> (+${defPct}% к штату). Превышен лимит переработок ${calc.maxOvertimePct}%.`,
+            text: `В периоде <strong>${escapeHtml(m)}</strong> критический дефицит: ${sched.note}`,
             actionLabel: `Выровнять план под ${calc.grandTotalStaff[idx]} чел.`,
             actionFn: () => { executeLevelLoading(calc.grandTotalStaff[idx]); }
           });
-          if (def > maxDeficitVal) { maxDeficitVal = def; maxDeficitMonth = m; }
-        } else if (uHrs > nomCap) {
-          const otHrs = Math.round(uHrs - nomCap);
-          const otPerMan = (otHrs / calc.totalUniversalHeadcount).toFixed(1);
+          if (sched.additionalHeadcount > maxDeficitVal) { maxDeficitVal = sched.additionalHeadcount; maxDeficitMonth = m; }
+        } else if (sched.statusZone === "yellow") {
           items.push({
             type: "alert-overtime",
             month: m,
-            text: `В периоде <strong>${escapeHtml(m)}</strong> перегруз <strong>+${otHrs} н-ч</strong>. Закрывается сверхурочными: <strong>+${otPerMan} ч/чел</strong> (в пределах лимита ${calc.maxOvertimePct}%).`,
-            actionLabel: `Перевести в 2/12 (2/2)`,
-            actionFn: () => { modalSystem.alert("Рекомендация графика", `Для периода ${escapeHtml(m)} рекомендуется задействовать все ${calc.brigadesCount} бригады по 12-часовому графику 2/2.`); }
+            text: `В периоде <strong>${escapeHtml(m)}</strong> требуется <strong>${escapeHtml(sched.mode)}</strong>. ${escapeHtml(sched.note)}`,
+            actionLabel: `Подробнее`,
+            actionFn: () => { modalSystem.alert("Рекомендация графика", `Период ${escapeHtml(m)}: ${escapeHtml(sched.note)}`); }
           });
-        } else if (uHrs < calc.oneBrigadeCapacity * 0.75 && uHrs > 0) {
-          const underPct = Math.round(((nomCap - uHrs) / nomCap) * 100);
+        } else if (uHrs < calc.poolCapacityNormal * 0.5 && uHrs > 0) {
+          const underPct = Math.round(((calc.poolCapacityNormal - uHrs) / calc.poolCapacityNormal) * 100);
           items.push({
             type: "alert-underload",
             month: m,
@@ -2519,7 +2628,7 @@
         badgeEl.style.color = "var(--success)";
         listEl.innerHTML = `
           <div class="advisor-item alert-optimal">
-            <span>✅ Все периоды производственной программы сбалансированы и укладываются в емкость <strong>${calc.brigadesCount} бригад</strong> (${calc.totalUniversalHeadcount} чел.) без критических перегрузок.</span>
+            <span>✅ Все периоды производственной программы сбалансированы и укладываются в ёмкость персонала (${calc.totalUniversalHeadcount} чел.) без критических перегрузок.</span>
           </div>
         `;
       } else {
@@ -2582,7 +2691,7 @@
       data.months.forEach((m, idx) => {
         const sched = calc.universalSchedules[idx];
         const uHrs = Math.round(calc.universalHoursTotal[idx]);
-        const bNeeded = calc.universalBrigadesNeeded[idx].toFixed(2);
+        const loadPct = Math.round((calc.universalHoursTotal[idx] / calc.poolCapacityNormal) * 100);
 
         schedHtml += `
           <div style="background:#f8fafc; border:1px solid var(--border-color); border-radius:6px; padding:8px 12px;">
@@ -2590,8 +2699,9 @@
               <strong>Период: ${escapeHtml(m)}</strong>
               <span class="${sched.badgeClass}">${sched.mode}</span>
             </div>
-            <div>Трудоемкость универсалов: <strong>${uHrs} н-ч</strong> (расчетно: <strong>${bNeeded} бриг.</strong>)</div>
+            <div>Трудоемкость универсалов: <strong>${uHrs} н-ч</strong> (${loadPct}% от нормы ${calc.shiftHoursStandard}ч/5-2)</div>
             <div style="font-size:11.5px; color:var(--text-muted); margin-top:2px;">${sched.note}</div>
+            ${sched.canApplyShift !== null ? `<button type="button" class="btn btn-secondary btn-sm apply-recommended-shift" data-shift="${sched.canApplyShift}" style="margin-top:8px;">Применить ${sched.canApplyShift}ч как усиленный режим</button>` : ""}
           </div>
         `;
       });
@@ -2692,6 +2802,7 @@
         <th class="col-sticky-name" style="min-width: 240px;">Участок / Оборудование</th>
         <th style="width: 65px; text-align: center;">Станков</th>
         <th style="width: 75px; text-align: center;">Звено</th>
+        <th style="width: 90px; text-align: center;" title="Максимально возможная длина смены для этого участка">Доступность</th>
         ${data.months.map(m => `<th style="text-align: center; min-width: 110px;">${escapeHtml(m)}</th>`).join("")}
       `;
 
@@ -2699,7 +2810,7 @@
       data.professions.forEach(prof => {
         const machines = Math.max(1, prof.machines || 1);
         const crew = Math.max(1, prof.crew || 1);
-        const isMachine = (prof.type === "machine");
+        const availabilityHours = Math.max(calc.shiftHoursStandard, Math.min(24, parseNum(prof.availabilityHours) || 24));
         const poolType = prof.pool || "universal";
         const tr = document.createElement("tr");
 
@@ -2711,15 +2822,15 @@
           <td class="col-sticky-name">
             <strong>${escapeHtml(prof.name)}</strong>
             <span class="${poolType === 'universal' ? 'badge-pool-universal' : 'badge-pool-dedicated'}" style="font-size:10px; margin-left:6px;">${poolType === 'universal' ? 'Универсал' : 'Выделенный'}</span>
-            <div style="font-size:11px; color:var(--text-muted);">${isMachine ? 'Станочный участок' : 'Ручной труд'}</div>
           </td>
           <td style="text-align: center; font-weight:600;">${machines}</td>
           <td style="text-align: center; font-weight:600; color:var(--text-secondary);">${crew} чел</td>
+          <td style="text-align: center; color:var(--text-secondary);">${availabilityHours === 24 ? 'не огранич.' : availabilityHours + 'ч/сут'}</td>
         `;
 
         // Классификация берётся из calc.profMachineZones — единожды посчитана в calculate()
-        // по настраиваемым параметрам (workDaysPerMonth/shiftHoursStandard/thirdTierFactor),
-        // а не задублирована здесь захардкоженными числами.
+        // по настраиваемым параметрам (workDaysPerMonth/shiftHoursStandard/extendedShiftHours
+        // и индивидуальной "Доступности" участка), а не задублирована здесь.
         data.months.forEach((_, mIdx) => {
           const zone = calc.profMachineZones[prof.id][mIdx];
           html += `<td style="text-align: center;">${zone.label}</td>`;
@@ -3293,6 +3404,9 @@
       // --- Штат ---
       html += `<div class="rpt-page"><div class="rpt-section-title">4. Расчёт потребного штата по пулам квалификации (чел.)</div><table class="rpt-table"><thead><tr><th>Пул / показатель</th>${data.months.map(m => `<th>${escapeHtml(m)}</th>`).join("")}</tr></thead><tbody>`;
       html += `<tr><td>Универсальный пул (${calc.brigadesCount}×${calc.brigadeSize} чел.)</td>${calc.universalStaffSpTotal.map(v => `<td>${v.toFixed(1)}</td>`).join("")}</tr>`;
+      calc.universalProfs.forEach(prof => {
+        html += `<tr><td style="padding-left:16px; color:#64748b;">↳ ${escapeHtml(prof.name)}</td>${calc.staffByProfSp[prof.id].map(v => `<td>${v.toFixed(1)}</td>`).join("")}</tr>`;
+      });
       calc.dedicatedProfs.forEach(prof => {
         html += `<tr><td>↳ ${escapeHtml(prof.name)} (выделенный)</td>${calc.staffByProfSp[prof.id].map(v => `<td>${v.toFixed(1)}</td>`).join("")}</tr>`;
       });
@@ -3305,7 +3419,7 @@
       data.professions.forEach(prof => {
         html += `<tr><td>${escapeHtml(prof.name)} <span style="font-size:9.5px; color:#64748b;">(${prof.pool === 'universal' ? 'Универсал' : 'Выделенный'})</span></td>${calc.profMachineZones[prof.id].map(z => `<td class="${zoneCellClass(z.statusZone)}">${escapeHtml(z.plainLabel) || "—"}</td>`).join("")}</tr>`;
       });
-      html += `</tbody></table><div class="rpt-footer-note">Пороги режимов рассчитаны при: ${calc.workDaysPerMonth} раб.дн./мес, смена ${calc.shiftHoursStandard}ч, Kвн=${calc.kVn}, коэфф. режима 2×12ч(2/2) = ${calc.thirdTierFactor}.</div></div>`;
+      html += `</tbody></table><div class="rpt-footer-note">Пороги режимов рассчитаны при: ${calc.workDaysPerMonth} раб.дн./мес, смена ${calc.shiftHoursStandard}ч (норма) / до ${calc.extendedShiftHours}ч (усиленный режим, шаг рекомендации 0.5ч), с учётом индивидуальной доступности оборудования по каждому участку.</div></div>`;
 
       // --- Нормы (реестр) ---
       const normEntries = data.normConfigs ? Object.values(data.normConfigs) : [];
@@ -3519,6 +3633,10 @@
       wsStaff.addRow(["Пул / показатель", ...data.months]).eachCell(c => { c.font = { bold: true }; c.fill = headerFill; });
       wsStaff.columns = [{ width: 32 }, ...data.months.map(() => ({ width: 12 }))];
       wsStaff.addRow([`Универсальный пул (${calc.brigadesCount}×${calc.brigadeSize} чел.)`, ...calc.universalStaffSpTotal.map(v => Math.round(v * 10) / 10)]);
+      calc.universalProfs.forEach(prof => {
+        const row = wsStaff.addRow([`↳ ${prof.name}`, ...calc.staffByProfSp[prof.id].map(v => Math.round(v * 10) / 10)]);
+        row.getCell(1).font = { italic: true, color: { argb: "FF64748B" } };
+      });
       calc.dedicatedProfs.forEach(prof => {
         wsStaff.addRow([`↳ ${prof.name} (выделенный)`, ...calc.staffByProfSp[prof.id].map(v => Math.round(v * 10) / 10)]);
       });
@@ -4080,6 +4198,8 @@
           p.crew = Math.max(1, parseInt(e.target.value) || 1);
         } else if (e.target.classList.contains("prof-mincrew-input")) {
           p.minCrew = Math.max(0, parseInt(e.target.value) || 0);
+        } else if (e.target.classList.contains("prof-availability-input")) {
+          p.availabilityHours = Math.max(1, Math.min(24, parseNum(e.target.value) || 24));
         }
         saveToStorage();
         renderDynamicGuides();
@@ -4100,12 +4220,7 @@
           renderDictionaries();
           renderAnalytics();
           renderDynamicGuides();
-        } else if (e.target.classList.contains("prof-type-select")) {
-          p.type = e.target.value;
-          saveToStorage();
-          renderAnalytics();
-          renderDynamicGuides();
-        } else if (e.target.classList.contains("prof-machines-input") || e.target.classList.contains("prof-crew-input")) {
+        } else if (e.target.classList.contains("prof-machines-input") || e.target.classList.contains("prof-crew-input") || e.target.classList.contains("prof-availability-input")) {
           renderAnalytics();
           renderDynamicGuides();
         }
@@ -4154,29 +4269,72 @@
       });
 
       // Settings Inputs Handlers
-      ["inputBrigadesCount", "inputBrigadeSize", "inputMaxOvertime", "inputFNom", "inputFEff", "inputKVn", "inputAuxOtk", "inputAuxSetup", "inputAuxFixed", "inputWorkDays", "inputShiftHours", "inputThirdTierFactor"].forEach(id => {
+      ["inputBrigadesCount", "inputBrigadeSize", "inputMaxOvertime", "inputFNom", "inputFEff", "inputReserveOff", "inputKVn", "inputAuxOtk", "inputAuxSetup", "inputAuxFixed", "inputWorkDays", "inputShiftHours", "inputExtendedShiftHours", "inputFNomExtended", "inputFEffExtended"].forEach(id => {
         document.getElementById(id).addEventListener("input", () => {
           const data = getActiveData();
           data.settings.brigadesCount = Math.max(1, parseInt(document.getElementById("inputBrigadesCount").value) || 3);
           data.settings.brigadeSize = Math.max(1, parseInt(document.getElementById("inputBrigadeSize").value) || 6);
-          data.settings.maxOvertimePercent = Math.max(0, Math.min(30, parseNum(document.getElementById("inputMaxOvertime").value) || 15));
+          data.settings.maxOvertimePercent = Math.max(0, Math.min(30, parseNum(document.getElementById("inputMaxOvertime").value)));
           
           document.getElementById("calcUniversalHeadcount").textContent = `${data.settings.brigadesCount * data.settings.brigadeSize} чел. (${data.settings.brigadesCount} бриг. по ${data.settings.brigadeSize} чел.)`;
 
           data.settings.fNom = parseNum(document.getElementById("inputFNom").value) || 168;
           data.settings.fEff = parseNum(document.getElementById("inputFEff").value) || 144;
+          data.settings.reserveOffPercent = Math.max(0, Math.min(50, parseNum(document.getElementById("inputReserveOff").value)));
           data.settings.kVn = parseNum(document.getElementById("inputKVn").value) || 1.0;
           data.settings.auxOtkPercent = parseNum(document.getElementById("inputAuxOtk").value);
           data.settings.auxSetupPercent = parseNum(document.getElementById("inputAuxSetup").value);
           data.settings.auxFixedPosts = parseNum(document.getElementById("inputAuxFixed").value);
           data.settings.workDaysPerMonth = Math.max(1, parseInt(document.getElementById("inputWorkDays").value) || 21);
           data.settings.shiftHoursStandard = parseNum(document.getElementById("inputShiftHours").value) || 8;
-          data.settings.thirdTierFactor = parseNum(document.getElementById("inputThirdTierFactor").value) || 2.75;
+          data.settings.extendedShiftHours = Math.max(data.settings.shiftHoursStandard || 8, Math.min(12, parseNum(document.getElementById("inputExtendedShiftHours").value) || 12));
+          data.settings.fNomExtended = parseNum(document.getElementById("inputFNomExtended").value) || (data.settings.fNom * data.settings.extendedShiftHours / data.settings.shiftHoursStandard);
+          data.settings.fEffExtended = parseNum(document.getElementById("inputFEffExtended").value) || (data.settings.fEff * data.settings.extendedShiftHours / data.settings.shiftHoursStandard);
 
           saveToStorage();
           updateCalendarCapacityPreview();
           renderAll();
         });
+      });
+
+      // Кнопки "пересчитать" — только предлагают значение по формуле, ничего не блокируют:
+      // после нажатия поле остаётся обычным редактируемым input, который можно тут же
+      // поправить вручную, если реальность отличается от формулы.
+      document.getElementById("btnRecalcFEff").addEventListener("click", () => {
+        const data = getActiveData();
+        const reserve = parseNum(document.getElementById("inputReserveOff").value);
+        const fNomVal = parseNum(document.getElementById("inputFNom").value) || 168;
+        const suggested = Math.round(fNomVal * (1 - reserve / 100) * 10) / 10;
+        document.getElementById("inputFEff").value = suggested;
+        data.settings.fEff = suggested;
+        saveToStorage();
+        updateCalendarCapacityPreview();
+        renderAll();
+      });
+
+      document.getElementById("btnRecalcFNomExtended").addEventListener("click", () => {
+        const data = getActiveData();
+        const fNomVal = parseNum(document.getElementById("inputFNom").value) || 168;
+        const shiftStd = parseNum(document.getElementById("inputShiftHours").value) || 8;
+        const extH = parseNum(document.getElementById("inputExtendedShiftHours").value) || 12;
+        const suggested = Math.round((fNomVal * extH / shiftStd) * 10) / 10;
+        document.getElementById("inputFNomExtended").value = suggested;
+        data.settings.fNomExtended = suggested;
+        saveToStorage();
+        updateCalendarCapacityPreview();
+        renderAll();
+      });
+
+      document.getElementById("btnRecalcFEffExtended").addEventListener("click", () => {
+        const data = getActiveData();
+        const reserve = parseNum(document.getElementById("inputReserveOff").value);
+        const fNomExtVal = parseNum(document.getElementById("inputFNomExtended").value) || 252;
+        const suggested = Math.round(fNomExtVal * (1 - reserve / 100) * 10) / 10;
+        document.getElementById("inputFEffExtended").value = suggested;
+        data.settings.fEffExtended = suggested;
+        saveToStorage();
+        updateCalendarCapacityPreview();
+        renderAll();
       });
 
       document.getElementById("inputCompanyName").addEventListener("input", () => {
@@ -4185,32 +4343,84 @@
         saveToStorage();
       });
 
-      // Ссылка "изменить →" рядом с read-only показателем Kвн — прокручивает
-      // к реальному полю в блоке "Параметры бригад..." и подсвечивает его,
-      // чтобы не заводить второе редактируемое поле для одного и того же параметра.
-      document.getElementById("btnJumpToKVn").addEventListener("click", () => {
-        const target = document.getElementById("inputKVn");
-        if (typeof target.scrollIntoView === "function") {
-          target.scrollIntoView({ behavior: "smooth", block: "center" });
+      // Kвн теперь редактируется прямо в этой же панели (рядом с Fном/Fэф, которые
+      // от него зависят) — отдельная ссылка "перейти к полю" больше не нужна.
+
+      document.getElementById("btnRecalcFNom").addEventListener("click", () => {
+        const data = getActiveData();
+        const workDays = Math.max(1, parseInt(document.getElementById("inputWorkDays").value) || 21);
+        const shiftStd = parseNum(document.getElementById("inputShiftHours").value) || 8;
+        const suggested = Math.round(workDays * shiftStd * 10) / 10;
+        document.getElementById("inputFNom").value = suggested;
+        data.settings.fNom = suggested;
+        saveToStorage();
+        updateCalendarCapacityPreview();
+        renderAll();
+      });
+
+      // Одна кнопка каскадно пересчитывает всю цепочку от календаря:
+      // Fном ← календарь → Fэф ← Fном+резерв → Fном(усил.) ← календарь(усил.) → Fэф(усил.)
+      // Кнопка "Применить Xч как усиленный режим" — появляется в карточке месяца, когда
+      // точный расчёт отличается от уже настроенной "Смена, усиленный режим" — в обе
+      // стороны: можно как понизить (если настроенного хватает с запасом), так и
+      // поднять (если настроенного не хватает даже со сверхурочными). Перед применением
+      // проверяем остальные месяцы: если для кого-то из них это значение окажется
+      // недостаточным — предупреждаем, но не блокируем.
+      document.getElementById("brigadeScheduleBox").addEventListener("click", (e) => {
+        const btn = e.target.closest(".apply-recommended-shift");
+        if (!btn) return;
+        const newShift = parseNum(btn.getAttribute("data-shift"));
+        const data = getActiveData();
+        const calc = calculate();
+
+        const conflicts = [];
+        data.months.forEach((m, idx) => {
+          const sched = calc.universalSchedules[idx];
+          if (sched.isExtendedShift && sched.trueNeededShift > newShift) {
+            conflicts.push(`${m} (нужно ${sched.trueNeededShift}ч)`);
+          }
+        });
+
+        const applyFn = () => {
+          document.getElementById("inputExtendedShiftHours").value = newShift;
+          data.settings.extendedShiftHours = newShift;
+          document.getElementById("btnRecalcFNomExtended").click();
+          document.getElementById("btnRecalcFEffExtended").click();
+          saveToStorage();
+          renderAll();
+        };
+
+        if (conflicts.length > 0) {
+          modalSystem.confirm(
+            "Проверьте другие периоды",
+            `Вы применяете смену <strong>${newShift}ч</strong>. Но в других месяцах усиленного режима требуется больше: ${conflicts.join(", ")}. Если применить ${newShift}ч как общий предел — эти месяцы окажутся недогружены по расчёту (может показать дефицит там, где раньше его не было). Применить всё равно?`,
+            applyFn
+          );
+        } else {
+          applyFn();
         }
-        target.classList.remove("field-flash");
-        void target.offsetWidth;
-        target.classList.add("field-flash");
-        setTimeout(() => target.focus(), 300);
+      });
+
+      document.getElementById("btnSyncAllFunds").addEventListener("click", () => {
+        document.getElementById("btnRecalcFNom").click();
+        document.getElementById("btnRecalcFEff").click();
+        document.getElementById("btnRecalcFNomExtended").click();
+        document.getElementById("btnRecalcFEffExtended").click();
+        modalSystem.alert("Фонд синхронизирован", "Fном, Fэф и их значения для усиленного режима пересчитаны от текущих параметров календаря и резерва на отсутствия.");
       });
 
       document.getElementById("btnResetCalendarDefaults").addEventListener("click", () => {
         modalSystem.confirm(
           "Сбросить параметры календаря",
-          "Вернуть «Рабочих дней в месяце» → 21, «Смена» → 8ч, «Коэфф. режима 2×12ч» → 2.75? Это изменит пороги в таблице загрузки оборудования для текущего сценария.",
+          "Вернуть «Рабочих дней в месяце» → 21, «Смена» → 8ч, «Смена, усиленный режим» → 12ч? Это изменит пороги в таблице загрузки оборудования для текущего сценария.",
           () => {
             const data = getActiveData();
             data.settings.workDaysPerMonth = 21;
             data.settings.shiftHoursStandard = 8;
-            data.settings.thirdTierFactor = 2.75;
+            data.settings.extendedShiftHours = 12;
             document.getElementById("inputWorkDays").value = 21;
             document.getElementById("inputShiftHours").value = 8;
-            document.getElementById("inputThirdTierFactor").value = 2.75;
+            document.getElementById("inputExtendedShiftHours").value = 12;
             saveToStorage();
             updateCalendarCapacityPreview();
             renderAll();
