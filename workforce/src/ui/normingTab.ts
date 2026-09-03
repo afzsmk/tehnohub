@@ -9,7 +9,7 @@ let currentMethod: 'stat' | 'chrono' = 'stat';
 export function setupNormingTab(
   data: ScenarioData,
   onNormPushed: (prodId: string, profId: string, norm: number, entry: NormConfigEntry) => void,
-  onConfigDeleted: (key: string) => void
+  onConfigDeleted?: (key: string) => void
 ): void {
   const prodSel = document.getElementById("normProdSelect") as HTMLSelectElement;
   const profSel = document.getElementById("normProfSelect") as HTMLSelectElement;
@@ -123,7 +123,7 @@ export function setupNormingTab(
   populateDropdowns();
   loadSavedConfigIntoInputs(data, prodSel?.value, profSel?.value);
   recalc();
-  renderSavedNormsRegistry(data, onConfigDeleted);
+  renderSavedNormsRegistry(data, onConfigDeleted || (() => {}));
 }
 
 function loadSavedConfigIntoInputs(data: ScenarioData, prodId: string, profId: string) {
