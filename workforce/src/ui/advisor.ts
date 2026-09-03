@@ -4,10 +4,11 @@ import { ScenarioData, CalculationResult } from '../types';
 export function renderExecutiveSummary(calc: CalculationResult, data: ScenarioData): void {
   const pillEl = document.getElementById("execStatusPill");
   if (pillEl) {
-    const zoneLabels = {
+    const zoneLabels: Record<string, { text: string; cls: string; icon: string }> = {
       green: { text: "Программа выполнима", cls: "status-zone-green", icon: "✓" },
       yellow: { text: "Выполнима с оговорками", cls: "status-zone-yellow", icon: "!" },
-      red: { text: "Требует пересмотра", cls: "status-zone-red", icon: "✕" }
+      red: { text: "Требует пересмотра", cls: "status-zone-red", icon: "✕" },
+      none: { text: "Не определено", cls: "", icon: "—" }
     };
     const z = zoneLabels[calc.overallZone] || zoneLabels.green;
     pillEl.className = `status-pill ${z.cls}`;
