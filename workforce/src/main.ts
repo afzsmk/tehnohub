@@ -91,7 +91,7 @@ function renderAll() {
 
   renderDynamicGuides(calc, data);
 
-  renderPlanTable(
+ renderPlanTable(
     data, calc,
     (prodId, mIdx, val) => {
       if (!data.plan[prodId]) data.plan[prodId] = [];
@@ -102,6 +102,26 @@ function renderAll() {
     (mIdx, name) => {
       data.months[mIdx] = name;
       storageService.saveState(state);
+    },
+    (fromIdx, toIdx) => {
+      // Сдвиг месяца влево / вправо вместе со значениями плана
+      [data.months[fromIdx], data.months[toIdx]] = [data.months[toIdx], data.months[fromIdx]];
+      data.products.forEach(p => {
+        if (data.plan[p.id]) {
+          [data.plan[p.id][fromIdx], data.plan[p.id][toIdx]] = [data.plan[p.id][toIdx], data.plan[p.id][fromIdx]];
+        }
+      });
+      storageService.saveState(state);
+      renderAll();
+    },
+    (idx) => {
+      // Удаление месяца
+      data.months.splice(idx, 1);
+      data.products.forEach(p => {
+        if (data.plan[p.id]) data.plan[p.id].splice(idx, 1);
+      });
+      storageService.saveState(state);
+      renderAll();
     }
   );
 
