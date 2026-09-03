@@ -1,4 +1,5 @@
 // src/main.ts
+import './styles/main.css';
 import html2canvas from 'html2canvas';
 import { AppState, ScenarioData } from './types';
 import { calculateProgram } from './core/engine';
