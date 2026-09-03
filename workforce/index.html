@@ -53,31 +53,15 @@
   <div class="control-subbar">
     <div class="scenario-controls">
       <label style="font-size: 11.5px; color: #94a3b8; font-weight: 600;">СЦЕНАРИЙ:</label>
-      <select id="scenarioSelector" class="input-control" style="width: 260px; padding: 5px 8px; background:#0f172a; color:#fff; border-color:#334155; font-weight: 600;"></select>
-      <button class="btn btn-dark btn-sm" id="btnSaveScenario" title="Сохранить изменения в браузере">
-        <svg class="icon"><use href="#icon-save"></use></svg> Сохранить
-      </button>
-      <!-- ИНДИКАТОР ОБЛАКА SUPABASE -->
-      <span id="cloudSyncStatus" style="font-size: 11.5px; margin-left: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
-        <span style="color:#94a3b8;">○</span> Подключение...
-      </span>    
-      <button class="btn btn-dark btn-sm" id="btnExportJson" title="Выгрузить файл .JSON">
-        <svg class="icon"><use href="#icon-download"></use></svg> Экспорт
-      </button>
-      <button class="btn btn-dark btn-sm" id="btnImportJson" title="Загрузить .JSON файл">
-        <svg class="icon"><use href="#icon-upload"></use></svg> Импорт
-      </button>
-      <button class="btn btn-dark btn-sm" id="btnNewScenario" title="Создать копию сценария">
-        <svg class="icon"><use href="#icon-plus"></use></svg> Новый
-      </button>
-      <button class="btn btn-dark btn-sm" id="btnDeleteScenario" title="Удалить сценарий">
-        <svg class="icon"><use href="#icon-trash"></use></svg>
-      </button>
-      <button class="btn btn-dark btn-sm" id="btnResetData" title="Сброс к эталонным планам">
-        <svg class="icon"><use href="#icon-refresh"></use></svg>
-      </button>
+      <select id="scenarioSelector" class="input-control" style="width: 240px; padding: 5px 8px; background:#0f172a; color:#fff; border-color:#334155; font-weight: 600;"></select>
+      <button class="btn btn-dark btn-sm" id="btnSaveScenario" title="Сохранить изменения"><svg class="icon"><use href="#icon-save"></use></svg> Сохранить</button>
+      <button class="btn btn-dark btn-sm" id="btnExportJson" title="Выгрузить файл .JSON"><svg class="icon"><use href="#icon-download"></use></svg> Экспорт</button>
+      <button class="btn btn-dark btn-sm" id="btnImportJson" title="Загрузить .JSON файл"><svg class="icon"><use href="#icon-upload"></use></svg> Импорт</button>
+      <button class="btn btn-dark btn-sm" id="btnNewScenario" title="Создать копию сценария"><svg class="icon"><use href="#icon-plus"></use></svg> Новый</button>
+      <button class="btn btn-dark btn-sm" id="btnDeleteScenario" title="Удалить сценарий"><svg class="icon"><use href="#icon-trash"></use></svg></button>
+      <button class="btn btn-dark btn-sm" id="btnResetData" title="Сброс к эталонным планам"><svg class="icon"><use href="#icon-refresh"></use></svg></button>
+      <span id="cloudSyncStatus" style="font-size: 11.5px; margin-left: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;"><span style="color:#94a3b8;">○</span> Подключение...</span>
     </div>
-
     <div style="display:flex; align-items:center; gap:8px;">
       <button class="btn btn-level btn-sm" id="btnLevelToggle" title="Автоматически распределить объёмы под фиксированное количество людей">
         <svg class="icon"><use href="#icon-sliders"></use></svg> Выровнять план под штат
@@ -108,31 +92,23 @@
     <span class="qf-item">Номенклатура: <strong id="kpiTotalProducts">0 поз.</strong></span>
     <span class="qf-item">Трудоёмкость программы: <strong id="kpiTotalHours">0 н-ч</strong></span>
     <span class="qf-item">Среднесписочная численность: <strong id="kpiAvgStaff">0 чел.</strong></span>
-    <span class="qf-item" title="Во сколько раз пиковая потребность в штате превышает среднюю">Неравномерность плана (пик/среднее): <strong id="kpiVolatility">×1.0</strong></span>
+    <span class="qf-item" title="Во сколько раз пик превышает среднее">Неравномерность плана (пик/среднее): <strong id="kpiVolatility">×1.0</strong></span>
   </div>
 
   <nav class="tab-navigation">
-    <button class="tab-button active" data-tab="tab-plan">
-      <svg class="icon"><use href="#icon-plan"></use></svg> 1. Производственный план
-    </button>
-    <button class="tab-button" data-tab="tab-dictionaries">
-      <svg class="icon"><use href="#icon-dict"></use></svg> 2. Справочники, нормы и посты
-    </button>
-    <button class="tab-button" data-tab="tab-norming">
-      <svg class="icon"><use href="#icon-timer"></use></svg> 3. Модуль нормирования (Калькулятор н-ч)
-    </button>
-    <button class="tab-button" data-tab="tab-analytics">
-      <svg class="icon"><use href="#icon-analytics"></use></svg> 4. Аналитика и результаты
-    </button>
+    <button class="tab-button active" data-tab="tab-plan"><svg class="icon"><use href="#icon-plan"></use></svg> 1. Производственный план</button>
+    <button class="tab-button" data-tab="tab-dictionaries"><svg class="icon"><use href="#icon-dict"></use></svg> 2. Справочники, нормы и посты</button>
+    <button class="tab-button" data-tab="tab-norming"><svg class="icon"><use href="#icon-timer"></use></svg> 3. Модуль нормирования (Калькулятор н-ч)</button>
+    <button class="tab-button" data-tab="tab-analytics"><svg class="icon"><use href="#icon-analytics"></use></svg> 4. Аналитика и результаты</button>
   </nav>
 
   <main>
-    <!-- ВКЛАДКА 1 -->
+    <!-- ВКЛАДКА 1: ПЛАН -->
     <section id="tab-plan" class="tab-content active">
       <div class="collapsible-box">
         <div class="collapsible-header" id="toggleGuideTab1">
           <div style="font-size: 13.5px; font-weight: 700; color: #1e3a8a; display: flex; align-items: center; gap: 8px;">
-            <svg class="icon"><use href="#icon-info"></use></svg> Справка: Руководство по работе с производственным планом
+            <svg class="icon"><use href="#icon-info"></use></svg> Справка: Руководство по работе с производственным планом (нажмите, чтобы развернуть)
           </div>
           <svg class="icon chevron-icon" id="chevronGuideTab1"><use href="#icon-chevron-down"></use></svg>
         </div>
@@ -143,24 +119,19 @@
 
       <div class="panel">
         <div class="panel-header">
-          <div class="panel-title">
-            <svg class="icon"><use href="#icon-plan"></use></svg> Матрица производственного плана (помесячно)
-          </div>
+          <div class="panel-title"><svg class="icon"><use href="#icon-plan"></use></svg> Матрица производственного плана (помесячно)</div>
           <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-            <button class="btn btn-secondary btn-sm" id="btnDownloadPlanTemplate">
-              <svg class="icon"><use href="#icon-download"></use></svg> Шаблон Excel
-            </button>
-            <button class="btn btn-secondary btn-sm" id="btnUploadPlanTemplate">
-              <svg class="icon"><use href="#icon-upload"></use></svg> Загрузить из Excel
-            </button>
+            <button class="btn btn-secondary btn-sm" id="btnDownloadPlanTemplate" title="Выгрузить текущий план в Excel"><svg class="icon"><use href="#icon-download"></use></svg> Шаблон Excel</button>
+            <button class="btn btn-secondary btn-sm" id="btnUploadPlanTemplate" title="Загрузить объёмы из Excel"><svg class="icon"><use href="#icon-upload"></use></svg> Загрузить из Excel</button>
             <input type="file" id="planExcelFileInput" accept=".xlsx" style="display:none;">
-            <button class="btn btn-secondary btn-sm" id="btnAddMonth">
-              <svg class="icon"><use href="#icon-plus"></use></svg> Добавить месяц
-            </button>
+            <button class="btn btn-secondary btn-sm" id="btnAddMonth"><svg class="icon"><use href="#icon-plus"></use></svg> Добавить месяц в конец</button>
             <button class="btn btn-secondary btn-sm" id="btnClearPlan">Очистить объёмы</button>
           </div>
         </div>
         <div class="panel-body">
+          <p style="font-size:12px; color:var(--text-secondary); margin: -4px 0 10px;">
+            Большой план быстрее заполнять вставкой из Excel: скопируйте диапазон чисел, кликните на ячейку ниже и нажмите Ctrl+V — значения заполнятся вправо и вниз от точки вставки.
+          </p>
           <div class="table-container">
             <table class="data-table" id="planTable">
               <thead><tr id="planTableHeader"></tr></thead>
@@ -172,11 +143,23 @@
       </div>
     </section>
 
-    <!-- ВКЛАДКА 2 -->
+    <!-- ВКЛАДКА 2: СПРАВОЧНИКИ И НАСТРОЙКИ -->
     <section id="tab-dictionaries" class="tab-content">
+      <div class="collapsible-box">
+        <div class="collapsible-header" id="toggleGuideTab2">
+          <div style="font-size: 13.5px; font-weight: 700; color: #1e3a8a; display: flex; align-items: center; gap: 8px;">
+            <svg class="icon"><use href="#icon-info"></use></svg> Справка: Настройка норм, постов и параметров бригад (нажмите, чтобы развернуть)
+          </div>
+          <svg class="icon chevron-icon" id="chevronGuideTab2"><use href="#icon-chevron-down"></use></svg>
+        </div>
+        <div class="collapsible-content" id="contentGuideTab2">
+          <div class="method-grid" id="guideTab2Dynamic"></div>
+        </div>
+      </div>
+
       <div class="panel">
         <div class="panel-header">
-          <div class="panel-title"><svg class="icon"><use href="#icon-dict"></use></svg> Справочник продукции и норм времени</div>
+          <div class="panel-title"><svg class="icon"><use href="#icon-dict"></use></svg> Справочник продукции и технологических норм времени (н-ч / ед.)</div>
           <button class="btn btn-primary btn-sm" id="btnAddProduct"><svg class="icon"><use href="#icon-plus"></use></svg> Добавить изделие</button>
         </div>
         <div class="panel-body">
@@ -192,7 +175,7 @@
       <div class="grid-2">
         <div class="panel">
           <div class="panel-header">
-            <div class="panel-title">Участки и посты</div>
+            <div class="panel-title">Технологические участки, оборудование и пулы</div>
             <button class="btn btn-secondary btn-sm" id="btnAddProfession"><svg class="icon"><use href="#icon-plus"></use></svg> Добавить</button>
           </div>
           <div class="panel-body">
@@ -206,8 +189,8 @@
                     <th style="width: 65px; text-align: right;">Станков</th>
                     <th style="width: 75px; text-align: right;">Звено</th>
                     <th style="width: 85px; text-align: right;">Мин. штат</th>
-                    <th style="width: 100px; text-align: right;">Доступность</th>
-                    <th style="width: 40px;"></th>
+                    <th style="width: 100px; text-align: right;">Доступность (ч/сут)</th>
+                    <th style="width: 40px; text-align: center;"></th>
                   </tr>
                 </thead>
                 <tbody id="professionsTableBody"></tbody>
@@ -217,33 +200,164 @@
         </div>
 
         <div class="panel">
-          <div class="panel-header"><div class="panel-title">Штат универсалов</div></div>
+          <div class="panel-header"><div class="panel-title">Штат и организация труда универсалов</div></div>
           <div class="panel-body">
             <div class="grid-2" style="gap: 12px;">
               <div>
-                <label style="font-size: 11.5px; font-weight:700; color:var(--accent);">БРИГАД УНИВЕРСАЛОВ:</label>
+                <label style="font-size: 11.5px; font-weight:700; color:var(--accent);">КОЛ-ВО БРИГАД (Nбриг):</label>
                 <input type="number" min="1" max="10" id="inputBrigadesCount" class="input-control input-num" value="3">
               </div>
               <div>
-                <label style="font-size: 11.5px; font-weight:700; color:var(--accent);">ЧЕЛОВЕК В БРИГАДЕ:</label>
+                <label style="font-size: 11.5px; font-weight:700; color:var(--accent);">ЧЕЛОВЕК В БРИГАДЕ (Nчел):</label>
                 <input type="number" min="1" max="25" id="inputBrigadeSize" class="input-control input-num" value="6">
               </div>
               <div>
                 <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);">ШТАТ УНИВЕРСАЛОВ:</label>
-                <div style="font-size:15px; font-weight:800; color:var(--accent);" id="calcUniversalHeadcount">18 чел.</div>
+                <div style="font-size:15px; font-weight:800; color:var(--accent); padding:4px 0;" id="calcUniversalHeadcount">18 чел.</div>
               </div>
               <div>
                 <label style="font-size: 11.5px; font-weight:700; color:#b45309;">ЛИМИТ СВЕРХУРОЧНЫХ (%):</label>
                 <input type="number" min="0" max="30" id="inputMaxOvertime" class="input-control input-num" value="15">
               </div>
+              <div>
+                <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);">ОТК И ЛОГИСТИКА (% от осн.):</label>
+                <input type="text" id="inputAuxOtk" class="input-control input-num" value="8">
+              </div>
+              <div>
+                <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);">НАЛАДКА ОБОРУДОВАНИЯ (%):</label>
+                <input type="text" id="inputAuxSetup" class="input-control input-num" value="5">
+              </div>
+              <div>
+                <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);">ДЕЖУРНЫЕ СЛУЖБЫ (фикс. чел):</label>
+                <input type="text" id="inputAuxFixed" class="input-control input-num" value="3">
+              </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ВОССТАНОВЛЕННАЯ ПАНЕЛЬ: КАЛЕНДАРЬ, ФОНД ВРЕМЕНИ И СМЕННОСТЬ -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Календарь, фонд рабочего времени и сменность участков</div>
+          <div style="display:flex; gap:8px;">
+            <button type="button" class="btn btn-primary btn-sm" id="btnSyncAllFunds" title="Пересчитать все фонды">↺ Синхронизировать весь фонд</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="btnResetCalendarDefaults">Сбросить к типовым</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="settings-subhead">Календарь месяца</div>
+          <div class="grid-4" style="gap: 12px;">
+            <div>
+              <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);">РАБОЧИХ ДНЕЙ В МЕСЯЦЕ:</label>
+              <input type="number" min="1" max="31" id="inputWorkDays" class="input-control input-num" value="21">
+            </div>
+            <div>
+              <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);">СМЕНА, ОБЫЧНЫЙ РЕЖИМ (ч):</label>
+              <input type="number" min="1" max="24" step="0.5" id="inputShiftHours" class="input-control input-num" value="8">
+            </div>
+            <div>
+              <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);">СМЕНА, УСИЛЕННЫЙ РЕЖИМ (ч):</label>
+              <input type="number" min="1" max="12" step="0.5" id="inputExtendedShiftHours" class="input-control input-num" value="12">
+            </div>
+            <div>
+              <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);">ВЫПОЛНЕНИЕ НОРМ (Kвн):</label>
+              <input type="text" id="inputKVn" class="input-control input-num" value="1.05">
+            </div>
+          </div>
+
+          <div class="settings-subhead">Фонд времени одного человека (штат)</div>
+          <div class="grid-4" style="gap: 12px; align-items: end;">
+            <div>
+              <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);">РЕЗЕРВ НА ОТСУТСТВИЯ (%):</label>
+              <input type="number" min="0" max="50" step="0.1" id="inputReserveOff" class="input-control input-num" value="14.3">
+            </div>
+            <div>
+              <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);">Fном, ч/мес:</label>
+              <div style="display:flex; gap:6px;">
+                <input type="text" id="inputFNom" class="input-control input-num" value="168" style="flex:1;">
+                <button type="button" class="btn btn-secondary btn-sm" id="btnRecalcFNom">↺</button>
+              </div>
+            </div>
+            <div>
+              <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);">Fэф, ч/мес:</label>
+              <div style="display:flex; gap:6px;">
+                <input type="text" id="inputFEff" class="input-control input-num" value="144" style="flex:1;">
+                <button type="button" class="btn btn-secondary btn-sm" id="btnRecalcFEff">↺</button>
+              </div>
+            </div>
+            <div>
+              <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);">Один человек в месяц даёт:</label>
+              <div style="font-size:15px; font-weight:800; color:var(--accent); padding:8px 0;" id="fEffWithKvnPreview">151.2 н-ч</div>
+            </div>
+          </div>
+
+          <div class="settings-subhead">Фонд времени в усиленном режиме</div>
+          <div class="grid-4" style="gap: 12px; align-items: end;">
+            <div>
+              <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);">Fном (усил.), ч/мес:</label>
+              <div style="display:flex; gap:6px;">
+                <input type="text" id="inputFNomExtended" class="input-control input-num" value="252" style="flex:1;">
+                <button type="button" class="btn btn-secondary btn-sm" id="btnRecalcFNomExtended">↺</button>
+              </div>
+            </div>
+            <div>
+              <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);">Fэф (усил.), ч/мес:</label>
+              <div style="display:flex; gap:6px;">
+                <input type="text" id="inputFEffExtended" class="input-control input-num" value="216" style="flex:1;">
+                <button type="button" class="btn btn-secondary btn-sm" id="btnRecalcFEffExtended">↺</button>
+              </div>
+            </div>
+            <div>
+              <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);">Прирост к обычному Fэф:</label>
+              <div style="font-size:15px; font-weight:800; color:var(--accent); padding:8px 0;" id="extendedFundRatioPreview">×1.50</div>
+            </div>
+          </div>
+
+          <div class="settings-subhead">Пороги рекомендации сменности для оборудования</div>
+          <div class="capacity-preview" style="max-width:480px;">
+            <div class="capacity-tier-row">
+              <span><span class="capacity-tier-dot" style="background:#86efac;"></span>Норма, без изменений</span>
+              <strong id="previewCap1">до 8ч/сутки</strong>
+            </div>
+            <div class="capacity-tier-row">
+              <span><span class="capacity-tier-dot" style="background:#fde68a;"></span>Рекомендация смены (шаг 0.5ч)</span>
+              <strong id="previewCap2">8–12ч/сутки</strong>
+            </div>
+            <div class="capacity-tier-row">
+              <span><span class="capacity-tier-dot" style="background:#fca5a5;"></span>Перегруз — не хватает поста</span>
+              <strong id="previewCap3">свыше 12ч/сутки</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ВОССТАНОВЛЕННАЯ ПАНЕЛЬ: РЕКВИЗИТЫ ОРГАНИЗАЦИИ -->
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">Реквизиты для отчётов (PDF / Excel)</div></div>
+        <div class="panel-body">
+          <div style="max-width: 420px;">
+            <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);">НАЗВАНИЕ ОРГАНИЗАЦИИ / ЦЕХА:</label>
+            <input type="text" id="inputCompanyName" class="input-control" value="ООО «ЗСМК»">
           </div>
         </div>
       </div>
     </section>
 
-    <!-- ВКЛАДКА 3 -->
+    <!-- ВКЛАДКА 3: НОРМИРОВАНИЕ -->
     <section id="tab-norming" class="tab-content">
+      <div class="collapsible-box">
+        <div class="collapsible-header" id="toggleGuideTab3">
+          <div style="font-size: 13.5px; font-weight: 700; color: #1e3a8a; display: flex; align-items: center; gap: 8px;">
+            <svg class="icon"><use href="#icon-info"></use></svg> Справка: Инженерный расчет норм времени и обоснование (нажмите, чтобы развернуть)
+          </div>
+          <svg class="icon chevron-icon" id="chevronGuideTab3"><use href="#icon-chevron-down"></use></svg>
+        </div>
+        <div class="collapsible-content" id="contentGuideTab3">
+          <div class="method-grid" id="guideTab3Dynamic"></div>
+        </div>
+      </div>
+
       <div class="panel norm-calc-panel">
         <div class="panel-header">
           <div class="panel-title"><svg class="icon"><use href="#icon-calc"></use></svg> Нормирование операции</div>
@@ -258,7 +372,7 @@
         <div class="panel-body">
           <div class="grid-2">
             <div>
-              <label style="font-size:11.5px; font-weight:600;">ИЗДЕЛИЕ:</label>
+              <label style="font-size:11.5px; font-weight:600;">ИЗДЕЛИЕ ИЗ СПРАВОЧНИКА:</label>
               <select id="normProdSelect" class="input-control"></select>
             </div>
             <div>
@@ -266,69 +380,103 @@
               <select id="normProfSelect" class="input-control"></select>
             </div>
           </div>
-          <!-- Контейнеры полей нормирования -->
-          <div id="normFieldsStat" style="margin-top: 10px;">
+
+          <div id="normFieldsStat" style="margin-top:10px;">
             <div class="grid-4">
-              <div><label>ВЫПУСК ЗА СМЕНУ (Q):</label><input type="text" id="normStatOutput" class="input-control input-num" value="50"></div>
-              <div><label>РАБОЧИХ (Nраб):</label><input type="text" id="normStatWorkers" class="input-control input-num" value="3"></div>
-              <div><label>СМЕНА (часов):</label><input type="text" id="normStatShiftHours" class="input-control input-num" value="8.0"></div>
-              <div><label>ПЕРЕРЫВЫ (мин):</label><input type="text" id="normStatBreaks" class="input-control input-num" value="40"></div>
+              <div><label style="font-size:11.5px; font-weight:600;">ВЫПУСК ЗА СМЕНУ (Q):</label><input type="text" id="normStatOutput" class="input-control input-num" value="50"></div>
+              <div><label style="font-size:11.5px; font-weight:600;">РАБОЧИХ (Nраб):</label><input type="text" id="normStatWorkers" class="input-control input-num" value="3"></div>
+              <div><label style="font-size:11.5px; font-weight:600;">СМЕНА (часов):</label><input type="text" id="normStatShiftHours" class="input-control input-num" value="8.0"></div>
+              <div><label style="font-size:11.5px; font-weight:600;">ПЕРЕРЫВЫ (мин/чел):</label><input type="text" id="normStatBreaks" class="input-control input-num" value="40"></div>
             </div>
           </div>
-          <div id="normFieldsChrono" style="display:none; margin-top: 10px;">
+
+          <div id="normFieldsChrono" style="display:none; margin-top:10px;">
             <div class="grid-4">
-              <div><label>ОСНОВНОЕ (мин):</label><input type="text" id="normChronoTOsn" class="input-control input-num" value="12.0"></div>
-              <div><label>ВСПОМОГ. (мин):</label><input type="text" id="normChronoTVsp" class="input-control input-num" value="4.0"></div>
-              <div><label>ЗВЕНО (чел):</label><input type="text" id="normChronoCrew" class="input-control input-num" value="2"></div>
-              <div><label>ПЗ НА ПАРТИЮ (мин):</label><input type="text" id="normChronoTPz" class="input-control input-num" value="30"></div>
+              <div><label style="font-size:11.5px; font-weight:600;">ОСНОВНОЕ (Tосн, мин):</label><input type="text" id="normChronoTOsn" class="input-control input-num" value="12.0"></div>
+              <div><label style="font-size:11.5px; font-weight:600;">ВСПОМОГ. (Tвсп, мин):</label><input type="text" id="normChronoTVsp" class="input-control input-num" value="4.0"></div>
+              <div><label style="font-size:11.5px; font-weight:600;">ЗВЕНО (чел):</label><input type="text" id="normChronoCrew" class="input-control input-num" value="2"></div>
+              <div><label style="font-size:11.5px; font-weight:600;">ПЗ НА ПАРТИЮ (мин):</label><input type="text" id="normChronoTPz" class="input-control input-num" value="30"></div>
             </div>
           </div>
-          <div class="norm-action-box" id="normActionBox" style="margin-top:14px; padding:12px; background:#f8fafc; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
+
+          <div class="norm-action-box" style="margin-top:14px; padding:12px; background:#f8fafc; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
             <div>
-              <span style="font-size: 11px; color:var(--text-muted);">РАСЧЁТНАЯ НОРМА:</span>
-              <div style="font-size: 20px; font-weight: 800; color: var(--accent);" id="normResultText">0.000 н-ч / ед</div>
+              <span style="font-size:11px; color:var(--text-muted); font-weight:600;">РАСЧЁТНАЯ НОРМА / В МАТРИЦЕ:</span>
+              <div style="display:flex; align-items:baseline; gap:8px;">
+                <div style="font-size:20px; font-weight:800; color:var(--accent);" id="normResultText">0.000 н-ч / ед</div>
+                <div style="font-size:12px; color:var(--text-muted);" id="normMatrixValText">(в матрице: 0.000)</div>
+              </div>
             </div>
-            <button class="btn btn-primary btn-sm" id="btnPushNormToMatrix">
-              <svg class="icon"><use href="#icon-save"></use></svg> Перенести в матрицу норм
-            </button>
+            <button class="btn btn-primary btn-sm" id="btnPushNormToMatrix"><svg class="icon"><use href="#icon-save"></use></svg> Перенести в матрицу норм</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ВОССТАНОВЛЕННЫЙ РЕЕСТР ОБОСНОВАННЫХ НОРМ -->
+      <div class="collapsible-box" style="margin-top: 6px;">
+        <div class="collapsible-header" id="toggleSavedNormsRegistry">
+          <div style="font-size: 13.5px; font-weight: 700; color: #1e3a8a; display: flex; align-items: center; gap: 8px;">
+            <svg class="icon"><use href="#icon-dict"></use></svg> Реестр обоснованных технологических норм (<span id="savedNormsCount">0</span> записей)
+          </div>
+          <svg class="icon chevron-icon rotated" id="chevronSavedNorms"><use href="#icon-chevron-down"></use></svg>
+        </div>
+        <div class="collapsible-content expanded" id="contentSavedNorms">
+          <div class="table-container">
+            <table class="data-table" id="savedNormsTable">
+              <thead>
+                <tr>
+                  <th>Изделие</th>
+                  <th>Технологический участок</th>
+                  <th style="width: 140px; text-align: center;">Метод</th>
+                  <th style="width: 120px; text-align: right;">Норма (н-ч/ед)</th>
+                  <th style="width: 140px; text-align: center;">Дата фиксации</th>
+                  <th style="width: 90px; text-align: center;">Действия</th>
+                </tr>
+              </thead>
+              <tbody id="savedNormsTableBody"></tbody>
+            </table>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- ВКЛАДКА 4 -->
+    <!-- ВКЛАДКА 4: АНАЛИТИКА -->
     <section id="tab-analytics" class="tab-content">
       <div style="display:flex; justify-content:flex-end; gap:8px; margin-bottom: 14px; flex-wrap: wrap;">
         <button class="btn btn-primary" id="btnExportXlsx"><svg class="icon"><use href="#icon-download"></use></svg> Экспорт в Excel (.xlsx)</button>
         <button class="btn btn-secondary" id="btnPrintPdf"><svg class="icon"><use href="#icon-print"></use></svg> Печать / Отчёт PDF</button>
         <button class="btn btn-secondary" id="btnDownloadAnalyticsImage"><svg class="icon"><use href="#icon-image"></use></svg> Снимок аналитики (PNG)</button>
+        <button class="btn btn-secondary" id="btnExportCSV"><svg class="icon"><use href="#icon-download"></use></svg> CSV</button>
       </div>
 
       <div id="analyticsCaptureArea">
+        <!-- ВОССТАНОВЛЕННАЯ СВОДКА ДЛЯ РУКОВОДИТЕЛЯ -->
+        <div class="summary-card">
+          <div class="summary-title"><svg class="icon"><use href="#icon-analytics"></use></svg> Аналитическое резюме производственной программы</div>
+          <ul class="summary-points" id="summaryBulletPoints"></ul>
+        </div>
+
         <div class="advisor-box" id="advisorBox">
           <div class="advisor-header">
             <div style="display:flex; align-items:center; gap:8px;">
               <svg class="icon" style="color:var(--accent);"><use href="#icon-zap"></use></svg>
-              <span>Анализ мощностей и рекомендации</span>
+              <span>Анализ баланса мощностей и рекомендации по переработкам</span>
             </div>
-            <span id="advisorStatusBadge">Статус</span>
+            <span id="advisorStatusBadge">Статус программы</span>
           </div>
           <div id="advisorList"></div>
         </div>
 
-        <div class="grid-2" style="margin-bottom: 18px;">
-          <div class="panel">
-            <div class="panel-header"><div class="panel-title">Штатная численность по пулам (чел.)</div></div>
-            <div class="panel-body"><div class="chart-box"><canvas id="chartStaffMonthly"></canvas></div></div>
+        <!-- ВОССТАНОВЛЕННЫЙ БЛОК БРИГАДНОГО БАЛАНСА -->
+        <div class="schedule-box" id="brigadeScheduleBox">
+          <div class="schedule-header">
+            <svg class="icon"><use href="#icon-sliders"></use></svg> Бригадный баланс универсалов (<span id="txtBrigadesCount">3</span> бригады по <span id="txtBrigadeSize">6</span> чел) и режим работы завода
           </div>
-          <div class="panel">
-            <div class="panel-header"><div class="panel-title">Структура трудоёмкости по продукции</div></div>
-            <div class="panel-body"><div class="chart-box"><canvas id="chartProductsShare"></canvas></div></div>
-          </div>
+          <div id="brigadeScheduleDetails" style="font-size:12.5px; color:var(--text-secondary); line-height:1.6;"></div>
         </div>
 
         <div class="panel">
-          <div class="panel-header"><div class="panel-title">Сменность и загрузка станков (% от 24ч/сут)</div></div>
+          <div class="panel-header"><div class="panel-title"><svg class="icon"><use href="#icon-cpu"></use></svg> Загрузка оборудования и постов (% от 24ч/сутки)</div></div>
           <div class="panel-body">
             <div class="table-container">
               <table class="data-table" id="shiftScheduleTable">
@@ -339,8 +487,19 @@
           </div>
         </div>
 
+        <div class="grid-2" style="margin-bottom: 18px;">
+          <div class="panel">
+            <div class="panel-header"><div class="panel-title">Динамика штатной численности по пулам (чел.)</div></div>
+            <div class="panel-body"><div class="chart-box"><canvas id="chartStaffMonthly"></canvas></div></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><div class="panel-title">Структура трудоёмкости по продукции</div></div>
+            <div class="panel-body"><div class="chart-box"><canvas id="chartProductsShare"></canvas></div></div>
+          </div>
+        </div>
+
         <div class="panel">
-          <div class="panel-header"><div class="panel-title">Сводная ведомость потребности в персонале</div></div>
+          <div class="panel-header"><div class="panel-title">Сводная ведомость потребности в персонале по пулам квалификации (помесячно)</div></div>
           <div class="panel-body">
             <div class="table-container">
               <table class="data-table" id="resultsTable">
@@ -354,21 +513,17 @@
     </section>
   </main>
 
-  <!-- Модальное окно -->
   <div id="customModalOverlay" class="modal-overlay">
     <div class="modal-card">
       <div class="modal-header"><div class="modal-title" id="modalTitle">Диалог</div></div>
       <div class="modal-body" id="modalBody">Содержимое</div>
-      <div style="padding: 0 20px 12px 20px; display:none;" id="modalInputWrap">
-        <input type="text" id="modalInput" class="input-control" />
-      </div>
+      <div style="padding: 0 20px 12px 20px; display:none;" id="modalInputWrap"><input type="text" id="modalInput" class="input-control" /></div>
       <div class="modal-footer" id="modalFooter"></div>
     </div>
   </div>
 
   <div id="printReportRoot"></div>
 
-  <!-- ЕДИНСТВЕННАЯ ТОЧКА ПОДКЛЮЧЕНИЯ СКРИПТА -->
   <script type="module" src="./src/main.ts"></script>
 </body>
 </html>
