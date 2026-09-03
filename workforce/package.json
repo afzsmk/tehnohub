@@ -10,6 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.48.0",
     "chart.js": "^4.4.7",
     "exceljs": "^4.4.0",
     "html2canvas": "^1.4.1"
