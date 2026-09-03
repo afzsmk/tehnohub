@@ -2,14 +2,17 @@
 import html2canvas from 'html2canvas';
 import { AppState, ScenarioData } from './types';
 import { calculateProgram } from './core/engine';
-import { parseNum } from './core/funds';
 import { levelLoadPlan } from './core/levelLoading';
-import { calculateStatNorm, calculateChronoNorm } from './core/norming';
 import { storageService } from './services/storage/storageService';
-import { exportToExcel, downloadPlanTemplate, parsePlanExcel } from './services/excelService';
+import { exportToExcel, downloadPlanTemplate } from './services/excelService';
 import { buildPrintReportHtml } from './services/reportService';
 import { modalSystem } from './ui/modal';
 import { renderCharts } from './ui/charts';
+import { renderPlanTable, attachPlanPasteHandler } from './ui/tables/planTable';
+import { renderProfessionsTable, renderProductsTable } from './ui/tables/dictionariesTable';
+import { renderShiftScheduleTable, renderResultsTable } from './ui/tables/resultsTable';
+import { renderExecutiveSummary, renderSmartAdvisor, renderDynamicGuides } from './ui/advisor';
+import { setupNormingTab, openNormingFor } from './ui/normingTab';
 
 let state: AppState;
 
@@ -22,7 +25,26 @@ async function init() {
   state = await storageService.loadState();
   renderScenarioSelector();
   setupTabs();
-  attachEvents();
+  attachGlobalEvents();
+  
+  const data = getActiveData();
+  attachPlanPasteHandler(data, () => {
+    storageService.saveState(state);
+    renderAll();
+  });
+
+  setupNormingTab(data, (prodId, profId, norm, entry) => {
+    const p = data.products.find(x => x.id === prodId);
+    if (p) {
+      p.norms[profId] = norm;
+      if (!data.normConfigs) data.normConfigs = {};
+      data.normConfigs[`${prodId}___${profId}`] = entry;
+      storageService.saveState(state);
+      renderAll();
+      modalSystem.alert("Успешно", `Норма ${norm} н-ч перенесена в матрицу.`);
+    }
+  });
+
   renderAll();
 }
 
@@ -30,72 +52,43 @@ function renderAll() {
   const data = getActiveData();
   const calc = calculateProgram(data);
 
-  renderKPIs(calc, data);
-  renderPlanTable(data, calc);
+  // Отрисовка всех модулей
+  renderExecutiveSummary(calc, data);
+  renderSmartAdvisor(calc, data, (headcount) => {
+    const res = levelLoadPlan(data, headcount);
+    data.plan = res.updatedPlan;
+    storageService.saveState(state);
+    renderAll();
+    modalSystem.alert("План выровнен", `Успешно перераспределено под ${headcount} чел.`);
+  });
+  renderDynamicGuides(calc, data);
+
+  renderPlanTable(
+    data, calc,
+    (prodId, mIdx, val) => { data.plan[prodId][mIdx] = val; storageService.saveState(state); renderAll(); },
+    (mIdx, name) => { data.months[mIdx] = name; storageService.saveState(state); }
+  );
+
+  renderProfessionsTable(data, () => { storageService.saveState(state); renderAll(); });
+  renderProductsTable(data, () => { storageService.saveState(state); renderAll(); }, (pId, prId) => openNormingFor(pId, prId));
+
+  renderShiftScheduleTable(calc, data);
+  renderResultsTable(calc, data);
   renderCharts(calc, data);
 }
 
 function renderScenarioSelector() {
   const selector = document.getElementById("scenarioSelector") as HTMLSelectElement;
   if (!selector) return;
-  selector.innerHTML = "";
-  Object.keys(state.scenarios).forEach(name => {
-    const opt = document.createElement("option");
-    opt.value = name;
-    opt.textContent = name;
-    if (name === state.currentScenario) opt.selected = true;
-    selector.appendChild(opt);
-  });
-}
+  selector.innerHTML = Object.keys(state.scenarios).map(name => `
+    <option value="${name}" ${name === state.currentScenario ? 'selected' : ''}>${name}</option>
+  `).join("");
 
-function renderKPIs(calc: any, data: ScenarioData) {
-  const totalHours = calc.totalHoursByMonth.reduce((a: number, b: number) => a + b, 0);
-  const peakStaff = Math.max(...calc.grandTotalStaff);
-  const avgStaff = (calc.grandTotalStaff.reduce((a: number, b: number) => a + b, 0) / calc.grandTotalStaff.length).toFixed(1);
-
-  document.getElementById("kpiTotalProducts")!.textContent = `${data.products.length} поз.`;
-  document.getElementById("kpiTotalHours")!.textContent = `${Math.round(totalHours).toLocaleString()} н-ч`;
-  document.getElementById("kpiAvgStaff")!.textContent = `${avgStaff} чел.`;
-  document.getElementById("execPeakValue")!.textContent = `${peakStaff} чел.`;
-
-  const pill = document.getElementById("execStatusPill")!;
-  pill.className = `status-pill status-zone-${calc.overallZone}`;
-  pill.textContent = calc.overallZone === 'green' ? "✓ Программа выполнима" : "⚠ Требует внимания";
-}
-
-function renderPlanTable(data: ScenarioData, calc: any) {
-  const header = document.getElementById("planTableHeader")!;
-  header.innerHTML = `
-    <th class="col-sticky-name">Изделие</th>
-    <th style="width:75px; text-align:center;">Ед.</th>
-    ${data.months.map(m => `<th style="text-align:center;">${m}</th>`).join("")}
-    <th style="text-align:right;">Итого</th>
-  `;
-
-  const tbody = document.getElementById("planTableBody")!;
-  tbody.innerHTML = data.products.map(p => {
-    const row = data.plan[p.id] || [];
-    const total = row.reduce((sum, v) => sum + parseNum(v), 0);
-    return `
-      <tr>
-        <td class="col-sticky-name"><strong>${p.name}</strong></td>
-        <td style="text-align:center;">${p.unit}</td>
-        ${data.months.map((_, idx) => `
-          <td><input type="text" class="input-control input-num plan-val" data-prod="${p.id}" data-month="${idx}" value="${row[idx] || 0}"></td>
-        `).join("")}
-        <td style="text-align:right; font-weight:700;">${total.toLocaleString()}</td>
-      </tr>
-    `;
-  }).join("");
-
-  const tfoot = document.getElementById("planTableFooter")!;
-  tfoot.innerHTML = `
-    <tr style="font-weight:700; background:#f8fafc;">
-      <td colspan="2">ИТОГО ТРУДОЁМКОСТЬ:</td>
-      ${calc.totalHoursByMonth.map((h: number) => `<td style="text-align:right;">${Math.round(h).toLocaleString()}</td>`).join("")}
-      <td style="text-align:right; color:var(--accent);">${Math.round(calc.totalHoursByMonth.reduce((a: number, b: number) => a + b, 0)).toLocaleString()} н-ч</td>
-    </tr>
-  `;
+  selector.onchange = () => {
+    state.currentScenario = selector.value;
+    storageService.saveState(state);
+    renderAll();
+  };
 }
 
 function setupTabs() {
@@ -110,30 +103,14 @@ function setupTabs() {
   });
 }
 
-function attachEvents() {
-  // Выравнивание плана под штат
-  document.getElementById("btnLevelToggle")?.addEventListener("click", () => {
-    const data = getActiveData();
-    modalSystem.prompt("Выравнивание плана", "Укажите целевую численность (чел.):", "25", (val) => {
-      const target = parseInt(val);
-      if (target > 0) {
-        const res = levelLoadPlan(data, target);
-        data.plan = res.updatedPlan;
-        storageService.saveState(state);
-        renderAll();
-        modalSystem.alert("Успешно", `План перераспределен под ${target} чел. Сдвинуто ${Math.round(res.totalShiftedHours)} н-ч.`);
-      }
-    });
-  });
-
+function attachGlobalEvents() {
   // Экспорт Excel
   document.getElementById("btnExportXlsx")?.addEventListener("click", () => {
     const data = getActiveData();
-    const calc = calculateProgram(data);
-    exportToExcel(state.currentScenario, data, calc);
+    exportToExcel(state.currentScenario, data, calculateProgram(data));
   });
 
-  // Скачать шаблон плана
+  // Шаблон плана
   document.getElementById("btnDownloadPlanTemplate")?.addEventListener("click", () => {
     downloadPlanTemplate(state.currentScenario, getActiveData());
   });
@@ -141,30 +118,36 @@ function attachEvents() {
   // Печать PDF
   document.getElementById("btnPrintPdf")?.addEventListener("click", () => {
     const data = getActiveData();
-    const calc = calculateProgram(data);
     const root = document.getElementById("printReportRoot")!;
-    root.innerHTML = buildPrintReportHtml(state.currentScenario, data, calc);
+    root.innerHTML = buildPrintReportHtml(state.currentScenario, data, calculateProgram(data));
     document.body.classList.add("report-mode");
     window.print();
     document.body.classList.remove("report-mode");
   });
 
-  // Сохранить сценарий
+  // Сохранить сценарий вручную
   document.getElementById("btnSaveScenario")?.addEventListener("click", async () => {
     await storageService.saveState(state);
-    modalSystem.alert("Сохранено", "Изменения успешно зафиксированы в хранилище.");
+    modalSystem.alert("Сохранено", "Сценарий сохранён в браузере.");
   });
 
-  // Изменение ячейки в таблице плана
-  document.getElementById("planTable")?.addEventListener("input", (e) => {
-    const target = e.target as HTMLInputElement;
-    if (target.classList.contains("plan-val")) {
-      const prodId = target.getAttribute("data-prod")!;
-      const monthIdx = parseInt(target.getAttribute("data-month")!);
+  // Добавить месяц
+  document.getElementById("btnAddMonth")?.addEventListener("click", () => {
+    const data = getActiveData();
+    data.months.push(`М ${data.months.length + 1}`);
+    data.products.forEach(p => { (data.plan[p.id] ||= []).push(0); });
+    storageService.saveState(state);
+    renderAll();
+  });
+
+  // Очистить объемы
+  document.getElementById("btnClearPlan")?.addEventListener("click", () => {
+    modalSystem.confirm("Очистить", "Обнулить весь план выпуска?", () => {
       const data = getActiveData();
-      data.plan[prodId][monthIdx] = parseNum(target.value);
+      data.products.forEach(p => { data.plan[p.id] = new Array(data.months.length).fill(0); });
+      storageService.saveState(state);
       renderAll();
-    }
+    });
   });
 }
 
