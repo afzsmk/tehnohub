@@ -26,7 +26,6 @@ export function renderPlanTable(
   const tfoot = document.getElementById("planTableFooter");
   if (!headerRow || !tbody || !tfoot) return;
 
-  // ОРИГИНАЛЬНАЯ ШАПКА С SVG-ИКОНКАМИ
   headerRow.innerHTML = `
     <th class="col-sticky-name" style="min-width: 240px; vertical-align: bottom;">Наименование продукции</th>
     <th style="width: 75px; text-align: center; vertical-align: bottom;">Ед. изм.</th>
@@ -78,17 +77,26 @@ export function renderPlanTable(
     </tr>
   `;
 
-  // Обработчик редактирования ячеек
+  // ТОЧЕЧНЫЙ ВВОД БЕЗ ПОТЕРИ ФОКУСА
   tbody.oninput = (e) => {
     const target = e.target as HTMLInputElement;
     if (target.classList.contains("plan-input")) {
       const pId = target.getAttribute("data-product-id")!;
       const mIdx = parseInt(target.getAttribute("data-month-idx")!);
-      onCellChange(pId, mIdx, parseNum(target.value));
+      const val = parseNum(target.value);
+      onCellChange(pId, mIdx, val);
+
+      // Локально обновляем сумму строки
+      const tr = target.closest("tr");
+      if (tr && data.plan[pId]) {
+        const sum = data.plan[pId].reduce((s, v) => s + parseNum(v), 0);
+        const pObj = data.products.find(x => x.id === pId);
+        const lastTd = tr.querySelector("td:last-child");
+        if (lastTd) lastTd.textContent = `${sum.toLocaleString()} ${pObj?.unit || 'м²'}`;
+      }
     }
   };
 
-  // Обработчик переименования месяца
   headerRow.oninput = (e) => {
     const target = e.target as HTMLInputElement;
     if (target.classList.contains("month-name-input")) {
@@ -97,7 +105,6 @@ export function renderPlanTable(
     }
   };
 
-  // ОБРАБОТЧИКИ КЛИКОВ: СДВИГ МЕСЯЦЕВ И УДАЛЕНИЕ
   headerRow.onclick = (e) => {
     const target = e.target as HTMLElement;
     const btnLeft = target.closest(".btn-move-left");
