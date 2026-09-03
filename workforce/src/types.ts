@@ -8,7 +8,7 @@ export interface Profession {
   id: string;
   name: string;
   pool: PoolType;
-  machines: number;
+  machines?: number; // ❗️ Добавлен знак вопроса: machines?: number
   crew: number;
   minCrew?: number;
   availabilityHours?: number;
