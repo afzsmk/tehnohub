@@ -8,9 +8,9 @@ export const PRELOADED_STATE: AppState = {
       professions: [
         { id: "p1", name: "AluRanger", pool: "universal", type: "machine", crew: 3, machines: 3 },
         { id: "p2", name: "Холодная склейка", pool: "universal", machines: 1, crew: 5, type: "machine" },
-        { id: "p3", name: "Брикеты", pool: "universal", type: "machine", crew: 3 },
-        { id: "p4", name: "Горячая склейка", pool: "universal", type: "machine", crew: 6 },
-        { id: "p5", name: "Участок обработки алюминия", pool: "universal", crew: 6, type: "machine" },
+        { id: "p3", name: "Брикеты", pool: "universal", type: "machine", crew: 3, machines: 1 },
+        { id: "p4", name: "Горячая склейка", pool: "universal", type: "machine", crew: 6, machines: 1 },
+        { id: "p5", name: "Участок обработки алюминия", pool: "universal", crew: 6, type: "machine", machines: 1 },
         { id: "p6", name: "Сборочный пост", pool: "universal", machines: 4, crew: 4, type: "manual" },
         { id: "p7", name: "Подсобный рабочий", pool: "universal", machines: 2, crew: 4, type: "manual" },
         { id: "p1787298927652", name: "Ламинатор", pool: "universal", machines: 1, crew: 5, type: "machine" },
