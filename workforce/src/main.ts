@@ -16,7 +16,7 @@ import { renderPlanTable, attachPlanPasteHandler } from './ui/tables/planTable';
 import { renderProfessionsTable, renderProductsTable } from './ui/tables/dictionariesTable';
 import { renderShiftScheduleTable, renderResultsTable } from './ui/tables/resultsTable';
 import { renderExecutiveSummary, renderSmartAdvisor, renderDynamicGuides, renderSummaryBullets, renderBrigadeSchedule } from './ui/advisor';
-import { setupNormingTab, openNormingFor, renderSavedNormsRegistry } from './ui/normingTab';
+import { setupNormingTab, openNormingFor, renderSavedNormsRegistry, refreshNormingDropdowns } from './ui/normingTab';
 
 let state: AppState;
 
@@ -90,19 +90,33 @@ function renderAll() {
   });
 
   renderDynamicGuides(calc, data);
+  renderSavedNormsRegistry(data, (key) => {
+    if (data.normConfigs) {
+      delete data.normConfigs[key];
+      storageService.saveState(state);
+      renderAll();
+    }
+  });
 
-  // Вызов рендеринга плана с сохранением фокуса ввода
+  // Рендеринг таблицы плана без потери фокуса
   renderPlanTable(
     data, calc,
     (prodId, mIdx, val) => {
       if (!data.plan[prodId]) data.plan[prodId] = [];
       data.plan[prodId][mIdx] = val;
       storageService.saveState(state);
-      // Обновляем только KPI и советник, не перерисовывая саму таблицу ввода
       const freshCalc = calculateProgram(data);
       renderKPIs(freshCalc, data);
       renderExecutiveSummary(freshCalc, data);
       renderDynamicGuides(freshCalc, data);
+      // Обновляем итог месяца в подвале без перерисовки таблицы
+      const tfootTds = document.querySelectorAll("#planTableFooter td");
+      if (tfootTds && tfootTds[mIdx + 1]) {
+        tfootTds[mIdx + 1].textContent = Math.round(freshCalc.totalHoursByMonth[mIdx]).toLocaleString();
+      }
+      const grandTotalHours = freshCalc.totalHoursByMonth.reduce((a, b) => a + b, 0);
+      const lastFooterTd = document.querySelector("#planTableFooter td:last-child");
+      if (lastFooterTd) lastFooterTd.textContent = `${Math.round(grandTotalHours).toLocaleString()} н-ч`;
     },
     (mIdx, name) => {
       data.months[mIdx] = name;
@@ -128,8 +142,29 @@ function renderAll() {
     }
   );
 
-  renderProfessionsTable(data, () => { storageService.saveState(state); renderAll(); });
-  renderProductsTable(data, () => { storageService.saveState(state); renderAll(); }, (pId, prId) => openNormingFor(pId, prId));
+  // Рендеринг справочников без потери фокуса
+  renderProfessionsTable(
+    data,
+    () => { storageService.saveState(state); renderAll(); },
+    () => {
+      storageService.saveState(state);
+      const freshCalc = calculateProgram(data);
+      renderKPIs(freshCalc, data);
+      renderExecutiveSummary(freshCalc, data);
+    }
+  );
+
+  renderProductsTable(
+    data,
+    () => { storageService.saveState(state); renderAll(); },
+    () => {
+      storageService.saveState(state);
+      const freshCalc = calculateProgram(data);
+      renderKPIs(freshCalc, data);
+      renderExecutiveSummary(freshCalc, data);
+    },
+    (pId, prId) => openNormingFor(pId, prId, data)
+  );
 
   renderShiftScheduleTable(calc, data);
   renderResultsTable(calc, data);
@@ -161,7 +196,10 @@ function renderDictionariesInputs() {
 
   const setVal = (id: string, val: any) => {
     const el = document.getElementById(id) as HTMLInputElement | null;
-    if (el) el.value = String(val ?? '');
+    // НЕ перезаписываем поле, если пользователь прямо сейчас в нём печатает!
+    if (el && document.activeElement !== el) {
+      el.value = String(val ?? '');
+    }
   };
 
   setVal("inputBrigadesCount", s.brigadesCount);
@@ -235,6 +273,7 @@ function renderScenarioSelector() {
   selector.onchange = () => {
     state.currentScenario = selector.value;
     storageService.saveState(state);
+    refreshNormingDropdowns(getActiveData());
     renderAll();
   };
 }
@@ -248,7 +287,10 @@ function setupTabs() {
       const tab = btn.getAttribute("data-tab");
       if (tab) {
         document.getElementById(tab)?.classList.add("active");
-        if (tab === "tab-analytics") renderAll();
+        if (tab === "tab-analytics" || tab === "tab-norming") {
+          renderAll();
+          if (tab === "tab-norming") refreshNormingDropdowns(getActiveData());
+        }
       }
     });
   });
@@ -539,7 +581,12 @@ function attachGlobalEvents() {
       const data = getActiveData();
       (data.settings as any)[prop] = isNum ? parseNum(e.target.value) : e.target.value;
       storageService.saveState(state);
-      renderAll();
+      // При вводе в настройки обновляем аналитику, не трогая курсор текущего поля
+      const freshCalc = calculateProgram(data);
+      renderKPIs(freshCalc, data);
+      renderExecutiveSummary(freshCalc, data);
+      renderDynamicGuides(freshCalc, data);
+      renderDictionariesInputs();
     });
   };
 
