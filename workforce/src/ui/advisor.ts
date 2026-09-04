@@ -128,24 +128,25 @@ export function renderSmartAdvisor(calc: CalculationResult, data: ScenarioData, 
     const uHrs = calc.universalHoursTotal[idx];
     const sched = calc.universalSchedules[idx];
 
+    // ТЕКСТ ОБЁРНУТ В <div style="flex:1;"> — СЛОВА БОЛЬШЕ НЕ РАЗЛЕТАЮТСЯ ПО ЭКРАНУ!
     if (sched.statusZone === 'red') {
       items.push(
-        '<div class="advisor-item alert-overload" style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; margin-top:6px; background:#fee2e2; border-radius:6px; border:1px solid #fca5a5; color:#991b1b;">' +
-          '<span>В периоде <strong>' + escapeHtml(m) + '</strong> дефицит: ' + sched.note + '</span>' +
+        '<div class="advisor-item alert-overload" style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; margin-top:6px; background:#fee2e2; border-radius:6px; border:1px solid #fca5a5; color:#991b1b; gap:12px;">' +
+          '<div style="flex:1;">В периоде <strong>' + escapeHtml(m) + '</strong> дефицит: ' + sched.note + '</div>' +
           '<button class="btn btn-secondary btn-sm" onclick="window._advisorLevel(' + calc.grandTotalStaff[idx] + ')">Выровнять под ' + calc.grandTotalStaff[idx] + ' чел.</button>' +
         '</div>'
       );
     } else if (sched.statusZone === 'yellow') {
       items.push(
         '<div class="advisor-item alert-overtime" style="padding:8px 12px; margin-top:6px; background:#fef3c7; border-radius:6px; border:1px solid #fde68a; color:#92400e;">' +
-          'В периоде <strong>' + escapeHtml(m) + '</strong> требуется <strong>' + escapeHtml(sched.mode) + '</strong>. ' + escapeHtml(sched.note) +
+          '<div>В периоде <strong>' + escapeHtml(m) + '</strong> требуется <strong>' + escapeHtml(sched.mode) + '</strong>. ' + escapeHtml(sched.note) + '</div>' +
         '</div>'
       );
     } else if (uHrs < calc.poolCapacityNormal * 0.5 && uHrs > 0) {
       const underPct = Math.round(((calc.poolCapacityNormal - uHrs) / calc.poolCapacityNormal) * 100);
       items.push(
-        '<div class="advisor-item alert-underload" style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; margin-top:6px; background:#e0f2fe; border-radius:6px; border:1px solid #bae6fd; color:#0369a1;">' +
-          '<span>В периоде <strong>' + escapeHtml(m) + '</strong> недозагрузка универсалов <strong>' + underPct + '%</strong> (объём всего ' + Math.round(uHrs) + ' н-ч).</span>' +
+        '<div class="advisor-item alert-underload" style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; margin-top:6px; background:#e0f2fe; border-radius:6px; border:1px solid #bae6fd; color:#0369a1; gap:12px;">' +
+          '<div style="flex:1;">В периоде <strong>' + escapeHtml(m) + '</strong> недозагрузка универсалов <strong>' + underPct + '%</strong> (объём всего ' + Math.round(uHrs) + ' н-ч).</div>' +
           '<button class="btn btn-secondary btn-sm btn-underload-act" data-month="' + escapeHtml(m) + '">Направить на опережение</button>' +
         '</div>'
       );
@@ -176,7 +177,6 @@ export function renderSmartAdvisor(calc: CalculationResult, data: ScenarioData, 
 export function renderDynamicGuides(calc: CalculationResult, data: ScenarioData): void {
   const totalHours = calc.totalHoursByMonth.reduce((a, b) => a + b, 0);
 
-  // Справка Вкладка 1
   const g1 = document.getElementById("guideTab1Dynamic");
   if (g1) {
     g1.innerHTML = `
@@ -191,7 +191,6 @@ export function renderDynamicGuides(calc: CalculationResult, data: ScenarioData)
     `;
   }
 
-  // Справка Вкладка 2 (Все 3 пункта!)
   const g2 = document.getElementById("guideTab2Dynamic");
   if (g2) {
     const uHoursSum = calc.universalHoursTotal.reduce((a, b) => a + b, 0);
@@ -212,7 +211,6 @@ export function renderDynamicGuides(calc: CalculationResult, data: ScenarioData)
     `;
   }
 
-  // Справка Вкладка 3
   const g3 = document.getElementById("guideTab3Dynamic");
   if (g3) {
     g3.innerHTML = `
@@ -229,7 +227,6 @@ export function renderDynamicGuides(calc: CalculationResult, data: ScenarioData)
     `;
   }
 
-  // Справка Вкладка 4 (Аналитика)
   const g4 = document.getElementById("guideTab4Dynamic");
   if (g4) {
     g4.innerHTML = `
