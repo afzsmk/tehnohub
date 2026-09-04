@@ -1,7 +1,8 @@
 // src/ui/normingTab.ts
-import { ScenarioData, NormConfigEntry } from '../types';
+import { ScenarioData, NormConfigEntry, AppState } from '../types';
 import { parseNum } from '../core/funds';
 import { calculateStatNorm, calculateChronoNorm } from '../core/norming';
+import { storageService } from '../services/storage/storageService';
 import { modalSystem } from './modal';
 
 let currentMethod: 'stat' | 'chrono' = 'stat';
@@ -17,9 +18,9 @@ function escapeHtml(val: unknown): string {
 }
 
 export function setupNormingTab(
-  data: ScenarioData,
-  onNormPushed: (prodId: string, profId: string, norm: number, entry: NormConfigEntry) => void,
-  onConfigDeleted?: (key: string) => void
+  getData: () => ScenarioData,
+  getState: () => AppState,
+  onAfterUpdate: () => void
 ): void {
   const prodSel = document.getElementById("normProdSelect") as HTMLSelectElement | null;
   const profSel = document.getElementById("normProfSelect") as HTMLSelectElement | null;
@@ -30,11 +31,11 @@ export function setupNormingTab(
   btnChrono?.addEventListener("click", () => setMethod('chrono'));
 
   prodSel?.addEventListener("change", () => {
-    loadSavedConfigIntoInputs(data, prodSel.value, profSel?.value || "");
+    loadSavedConfigIntoInputs(getData(), prodSel.value, profSel?.value || "");
     recalc();
   });
   profSel?.addEventListener("change", () => {
-    loadSavedConfigIntoInputs(data, prodSel?.value || "", profSel.value);
+    loadSavedConfigIntoInputs(getData(), prodSel?.value || "", profSel.value);
     recalc();
   });
 
@@ -44,47 +45,65 @@ export function setupNormingTab(
     btnChrono?.classList.toggle("active", method === 'chrono');
     const fStat = document.getElementById("normFieldsStat");
     const fChrono = document.getElementById("normFieldsChrono");
+    const aStat = document.getElementById("normActionStat");
+    const aChrono = document.getElementById("normActionChrono");
+
     if (fStat) fStat.style.display = method === 'stat' ? 'block' : 'none';
     if (fChrono) fChrono.style.display = method === 'chrono' ? 'block' : 'none';
+    if (aStat) aStat.style.display = method === 'stat' ? 'flex' : 'none';
+    if (aChrono) aChrono.style.display = method === 'chrono' ? 'flex' : 'none';
+
     recalc();
   }
 
   function recalc(): number {
-    let norm = 0;
-    if (currentMethod === 'stat') {
-      norm = calculateStatNorm({
-        output: parseNum((document.getElementById("normStatOutput") as HTMLInputElement)?.value),
-        workers: parseNum((document.getElementById("normStatWorkers") as HTMLInputElement)?.value),
-        shiftHours: parseNum((document.getElementById("normStatShiftHours") as HTMLInputElement)?.value),
-        breaks: parseNum((document.getElementById("normStatBreaks") as HTMLInputElement)?.value),
-        kEff: 0.95
-      });
-    } else {
-      norm = calculateChronoNorm({
-        tOsn: parseNum((document.getElementById("normChronoTOsn") as HTMLInputElement)?.value),
-        tVsp: parseNum((document.getElementById("normChronoTVsp") as HTMLInputElement)?.value),
-        crew: parseNum((document.getElementById("normChronoCrew") as HTMLInputElement)?.value),
-        kObs: 5,
-        kOtl: 6,
-        tPz: parseNum((document.getElementById("normChronoTPz") as HTMLInputElement)?.value),
-        batchSize: 50
-      });
-    }
+    const data = getData();
+    const q = parseNum((document.getElementById("normStatOutput") as HTMLInputElement)?.value) || 1;
+    const w = parseNum((document.getElementById("normStatWorkers") as HTMLInputElement)?.value) || 1;
+    const h = parseNum((document.getElementById("normStatShiftHours") as HTMLInputElement)?.value) || 8;
+    const b = parseNum((document.getElementById("normStatBreaks") as HTMLInputElement)?.value) || 0;
+    const kEff = parseNum((document.getElementById("normStatKEff") as HTMLInputElement)?.value) || 0.95;
 
-    const resEl = document.getElementById("normResultText");
-    if (resEl) resEl.textContent = `${norm.toFixed(3)} н-ч / ед`;
+    const netHours = Math.max(0, h - (b / 60));
+    const statNorm = (w * netHours * kEff) / q;
+
+    const tOsn = parseNum((document.getElementById("normChronoTOsn") as HTMLInputElement)?.value);
+    const tVsp = parseNum((document.getElementById("normChronoTVsp") as HTMLInputElement)?.value);
+    const crew = parseNum((document.getElementById("normChronoCrew") as HTMLInputElement)?.value) || 1;
+    const kObs = parseNum((document.getElementById("normChronoKObs") as HTMLInputElement)?.value);
+    const kOtl = parseNum((document.getElementById("normChronoKOtl") as HTMLInputElement)?.value);
+    const tPz = parseNum((document.getElementById("normChronoTPz") as HTMLInputElement)?.value);
+    const batchSize = parseNum((document.getElementById("normChronoBatchSize") as HTMLInputElement)?.value) || 50;
+
+    const tOp = tOsn + tVsp;
+    const pieceCycle = (tOp * (1 + (kObs + kOtl) / 100)) + (tPz / batchSize);
+    const chronoNorm = (pieceCycle * crew) / 60;
+
+    const activeNorm = currentMethod === 'stat' ? statNorm : chronoNorm;
+
+    // Обновляем результаты для обоих методов
+    const statResEl = document.getElementById("normStatResult");
+    const chronoResEl = document.getElementById("normChronoResult");
+    const genericResEl = document.getElementById("normResultText");
+    if (statResEl) statResEl.textContent = `${statNorm.toFixed(3)} н-ч / ед`;
+    if (chronoResEl) chronoResEl.textContent = `${chronoNorm.toFixed(3)} н-ч / ед`;
+    if (genericResEl) genericResEl.textContent = `${activeNorm.toFixed(3)} н-ч / ед`;
 
     const pId = prodSel?.value;
     const prId = profSel?.value;
     const prod = data.products.find(p => p.id === pId);
     const matrixVal = (prod?.norms && prId && prod.norms[prId] !== undefined) ? parseNum(prod.norms[prId]) : 0;
 
-    const matrixValEl = document.getElementById("normMatrixValText");
-    if (matrixValEl) matrixValEl.textContent = `(в матрице: ${matrixVal.toFixed(3)})`;
+    const statMatEl = document.getElementById("normStatMatrixVal");
+    const chronoMatEl = document.getElementById("normChronoMatrixVal");
+    const genericMatEl = document.getElementById("normMatrixValText");
+    if (statMatEl) statMatEl.textContent = `(в матрице: ${matrixVal.toFixed(3)})`;
+    if (chronoMatEl) chronoMatEl.textContent = `(в матрице: ${matrixVal.toFixed(3)})`;
+    if (genericMatEl) genericMatEl.textContent = `(в матрице: ${matrixVal.toFixed(3)})`;
 
     const badge = document.getElementById("normSyncBadge");
     if (badge) {
-      if (Math.abs(matrixVal - norm) < 0.001 && norm > 0) {
+      if (Math.abs(matrixVal - activeNorm) < 0.001 && activeNorm > 0) {
         badge.className = "badge-sync-ok";
         badge.textContent = "Синхронизировано";
       } else {
@@ -93,57 +112,95 @@ export function setupNormingTab(
       }
     }
 
-    return norm;
+    return activeNorm;
   }
 
   document.querySelectorAll("#normFieldsStat input, #normFieldsChrono input").forEach(inp => {
     inp.addEventListener("input", () => recalc());
   });
 
-  // КЛИК: ПЕРЕНЕСТИ В МАТРИЦУ НОРМ
-  document.getElementById("btnPushNormToMatrix")?.addEventListener("click", () => {
+  // ЕДИНЫЙ ОБРАБОТЧИК КЛИКА: ПЕРЕНОС В МАТРИЦУ И В РЕЕСТР
+  const executePushNorm = () => {
+    const data = getData();
+    const state = getState();
     if (!prodSel || !profSel) return;
+
     const prodId = prodSel.value;
     const profId = profSel.value;
+    if (!prodId || !profId) return;
+
     const normVal = parseFloat(recalc().toFixed(3));
     const prod = data.products.find(p => p.id === prodId);
     const prof = data.professions.find(pr => pr.id === profId);
 
     if (prod && prof) {
+      // 1. Записываем норму в изделие (в матрицу продукции на Вкладке 2)
+      if (!prod.norms) prod.norms = {};
+      prod.norms[profId] = normVal;
+
+      // 2. Создаем детальную запись для реестра
+      const isStat = currentMethod === 'stat';
       const entry: NormConfigEntry = {
         prodId, profId,
         prodName: prod.name, profName: prof.name,
         method: currentMethod,
         norm: normVal,
-        stat: currentMethod === 'stat' ? {
+        stat: isStat ? {
           output: parseNum((document.getElementById("normStatOutput") as HTMLInputElement)?.value),
           workers: parseNum((document.getElementById("normStatWorkers") as HTMLInputElement)?.value),
           shiftHours: parseNum((document.getElementById("normStatShiftHours") as HTMLInputElement)?.value),
           breaks: parseNum((document.getElementById("normStatBreaks") as HTMLInputElement)?.value),
-          kEff: 0.95
+          kEff: parseNum((document.getElementById("normStatKEff") as HTMLInputElement)?.value) || 0.95
         } : undefined,
-        chrono: currentMethod === 'chrono' ? {
+        chrono: !isStat ? {
           tOsn: parseNum((document.getElementById("normChronoTOsn") as HTMLInputElement)?.value),
           tVsp: parseNum((document.getElementById("normChronoTVsp") as HTMLInputElement)?.value),
           crew: parseNum((document.getElementById("normChronoCrew") as HTMLInputElement)?.value),
-          kObs: 5,
-          kOtl: 6,
+          kObs: parseNum((document.getElementById("normChronoKObs") as HTMLInputElement)?.value),
+          kOtl: parseNum((document.getElementById("normChronoKOtl") as HTMLInputElement)?.value),
           tPz: parseNum((document.getElementById("normChronoTPz") as HTMLInputElement)?.value),
-          batchSize: 50
+          batchSize: parseNum((document.getElementById("normChronoBatchSize") as HTMLInputElement)?.value) || 50
         } : undefined,
         updatedAt: new Date().toLocaleString("ru-RU", { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
       };
 
-      onNormPushed(prodId, profId, normVal, entry);
-      recalc();
-      renderSavedNormsRegistry(data, onConfigDeleted || (() => {}));
-    }
-  });
+      // 3. Сохраняем в реестр сценария
+      if (!data.normConfigs) data.normConfigs = {};
+      data.normConfigs[`${prodId}___${profId}`] = entry;
 
-  refreshNormingDropdowns(data);
-  loadSavedConfigIntoInputs(data, prodSel?.value || "", profSel?.value || "");
+      // 4. Отправляем в Supabase и LocalStorage
+      storageService.saveState(state);
+
+      // 5. Перерисовываем реестр и все зависимые таблицы
+      recalc();
+      renderSavedNormsRegistry(data, (delKey) => {
+        if (data.normConfigs) delete data.normConfigs[delKey];
+        storageService.saveState(state);
+        onAfterUpdate();
+      });
+      onAfterUpdate();
+
+      modalSystem.alert(
+        "Норма сохранена",
+        `Норма <strong>${normVal.toFixed(3)} н-ч</strong> для «${prod.name}» (участок: ${prof.name}) записана в матрицу норм и зафиксирована в реестре.`
+      );
+    }
+  };
+
+  // Слушаем ВСЕ возможные кнопки переноса нормы в DOM
+  document.getElementById("btnPushStatNormToRouting")?.addEventListener("click", executePushNorm);
+  document.getElementById("btnPushChronoNormToRouting")?.addEventListener("click", executePushNorm);
+  document.getElementById("btnPushNormToMatrix")?.addEventListener("click", executePushNorm);
+
+  refreshNormingDropdowns(getData());
+  loadSavedConfigIntoInputs(getData(), prodSel?.value || "", profSel?.value || "");
   recalc();
-  renderSavedNormsRegistry(data, onConfigDeleted || (() => {}));
+  renderSavedNormsRegistry(getData(), (key) => {
+    const d = getData();
+    if (d.normConfigs) delete d.normConfigs[key];
+    storageService.saveState(getState());
+    onAfterUpdate();
+  });
 }
 
 export function refreshNormingDropdowns(data: ScenarioData): void {
@@ -163,24 +220,29 @@ export function loadSavedConfigIntoInputs(data: ScenarioData, prodId: string, pr
 
   if (cfg) {
     if (cfg.method === 'stat' && cfg.stat) {
-      (document.getElementById("normStatOutput") as HTMLInputElement).value = String(cfg.stat.output);
-      (document.getElementById("normStatWorkers") as HTMLInputElement).value = String(cfg.stat.workers);
-      (document.getElementById("normStatShiftHours") as HTMLInputElement).value = String(cfg.stat.shiftHours);
-      (document.getElementById("normStatBreaks") as HTMLInputElement).value = String(cfg.stat.breaks);
+      (document.getElementById("normStatOutput") as HTMLInputElement).value = String(cfg.stat.output ?? 50);
+      (document.getElementById("normStatWorkers") as HTMLInputElement).value = String(cfg.stat.workers ?? 3);
+      (document.getElementById("normStatShiftHours") as HTMLInputElement).value = String(cfg.stat.shiftHours ?? 8.0);
+      (document.getElementById("normStatBreaks") as HTMLInputElement).value = String(cfg.stat.breaks ?? 40);
+      (document.getElementById("normStatKEff") as HTMLInputElement).value = String(cfg.stat.kEff ?? 0.95);
       document.getElementById("btnNormMethodStat")?.click();
     } else if (cfg.method === 'chrono' && cfg.chrono) {
-      (document.getElementById("normChronoTOsn") as HTMLInputElement).value = String(cfg.chrono.tOsn);
-      (document.getElementById("normChronoTVsp") as HTMLInputElement).value = String(cfg.chrono.tVsp);
-      (document.getElementById("normChronoCrew") as HTMLInputElement).value = String(cfg.chrono.crew);
-      (document.getElementById("normChronoTPz") as HTMLInputElement).value = String(cfg.chrono.tPz);
+      (document.getElementById("normChronoTOsn") as HTMLInputElement).value = String(cfg.chrono.tOsn ?? 12.0);
+      (document.getElementById("normChronoTVsp") as HTMLInputElement).value = String(cfg.chrono.tVsp ?? 4.0);
+      (document.getElementById("normChronoCrew") as HTMLInputElement).value = String(cfg.chrono.crew ?? 2);
+      (document.getElementById("normChronoKObs") as HTMLInputElement).value = String(cfg.chrono.kObs ?? 5);
+      (document.getElementById("normChronoKOtl") as HTMLInputElement).value = String(cfg.chrono.kOtl ?? 6);
+      (document.getElementById("normChronoTPz") as HTMLInputElement).value = String(cfg.chrono.tPz ?? 30);
+      (document.getElementById("normChronoBatchSize") as HTMLInputElement).value = String(cfg.chrono.batchSize ?? 50);
       document.getElementById("btnNormMethodChrono")?.click();
     }
   } else {
-    // Дефолтные значения при отсутствии сохранённой нормы
+    // Дефолтные числа при отсутствии сохранённой нормы
     (document.getElementById("normStatOutput") as HTMLInputElement).value = "50";
     (document.getElementById("normStatWorkers") as HTMLInputElement).value = "3";
     (document.getElementById("normStatShiftHours") as HTMLInputElement).value = "8.0";
     (document.getElementById("normStatBreaks") as HTMLInputElement).value = "40";
+    (document.getElementById("normStatKEff") as HTMLInputElement).value = "0.95";
   }
 }
 
@@ -207,7 +269,7 @@ export function renderSavedNormsRegistry(data: ScenarioData, onDelete: (key: str
   countEl.textContent = String(keys.length);
 
   if (keys.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:16px;">В реестре пока нет зафиксированных норм. Рассчитайте норму и нажмите «Перенести в матрицу норм».</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:16px;">В реестре пока нет зафиксированных технологических расчетов. Рассчитайте норму и нажмите «Перенести в матрицу норм».</td></tr>`;
     return;
   }
 
@@ -239,7 +301,7 @@ export function renderSavedNormsRegistry(data: ScenarioData, onDelete: (key: str
           <button class="btn btn-secondary btn-sm btn-load-norm-cfg" data-prod="${item.prodId}" data-prof="${item.profId}" title="Загрузить параметры в калькулятор">
             <svg class="icon"><use href="#icon-external"></use></svg>
           </button>
-          <button class="btn btn-secondary btn-sm btn-del-norm-cfg" data-key="${key}" title="Удалить запись">
+          <button class="btn btn-secondary btn-sm btn-del-norm-cfg" data-key="${key}" title="Удалить обоснование">
             <svg class="icon"><use href="#icon-trash"></use></svg>
           </button>
         </td>
@@ -256,10 +318,10 @@ export function renderSavedNormsRegistry(data: ScenarioData, onDelete: (key: str
       const prodId = btnLoad.getAttribute("data-prod")!;
       const profId = btnLoad.getAttribute("data-prof")!;
       openNormingFor(prodId, profId, data);
-      modalSystem.alert("Загружено", "Параметры успешно восстановлены в окне калькулятора.");
+      modalSystem.alert("Загружено", "Параметры успешно восстановлены в окне калькулятора!");
     } else if (btnDel) {
       const key = btnDel.getAttribute("data-key")!;
-      modalSystem.confirm("Удаление нормы", "Удалить запись из реестра технологических расчётов?", () => {
+      modalSystem.confirm("Удаление обоснования", "Удалить запись из реестра технологических расчетов?", () => {
         onDelete(key);
       });
     }
