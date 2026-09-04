@@ -16,7 +16,7 @@ function escapeHtml(val: unknown): string {
     .replace(/'/g, "&#039;");
 }
 
-export function renderProfessionsTable(data: ScenarioData, onUpdated: () => void): void {
+export function renderProfessionsTable(data: ScenarioData, onStructuralChange: () => void, onDataChanged: () => void): void {
   const tbody = document.getElementById("professionsTableBody");
   if (!tbody) return;
 
@@ -49,6 +49,7 @@ export function renderProfessionsTable(data: ScenarioData, onUpdated: () => void
     `;
   }).join("");
 
+  // ТОЧЕЧНЫЙ ВВОД БЕЗ ПЕРЕРИСОВКИ ТАБЛИЦЫ (Фокус сохраняется!)
   tbody.oninput = (e) => {
     const target = e.target as HTMLInputElement;
     const id = target.getAttribute("data-id")!;
@@ -60,7 +61,7 @@ export function renderProfessionsTable(data: ScenarioData, onUpdated: () => void
     else if (target.classList.contains("prof-crew")) p.crew = Math.max(1, parseInt(target.value) || 1);
     else if (target.classList.contains("prof-mincrew")) p.minCrew = Math.max(0, parseInt(target.value) || 0);
     else if (target.classList.contains("prof-avail")) p.availabilityHours = Math.max(1, Math.min(24, parseNum(target.value) || 24));
-    onUpdated();
+    onDataChanged();
   };
 
   tbody.onchange = (e) => {
@@ -71,7 +72,7 @@ export function renderProfessionsTable(data: ScenarioData, onUpdated: () => void
       if (p) {
         p.pool = target.value as any;
         if (p.pool === "dedicated" && (!p.minCrew || p.minCrew === 0)) p.minCrew = 1;
-        onUpdated();
+        onStructuralChange();
       }
     }
   };
@@ -92,15 +93,13 @@ export function renderProfessionsTable(data: ScenarioData, onUpdated: () => void
         () => {
           data.professions = data.professions.filter(p => p.id !== profId);
           data.products.forEach(p => { delete p.norms[profId]; });
-          
-          // Безопасное удаление из реестра с фиксацией типа
           const cfgs = data.normConfigs;
           if (cfgs) {
             Object.keys(cfgs).forEach(k => {
               if (k.endsWith("___" + profId)) delete cfgs[k];
             });
           }
-          onUpdated();
+          onStructuralChange();
         }
       );
     }
@@ -109,11 +108,11 @@ export function renderProfessionsTable(data: ScenarioData, onUpdated: () => void
   initTableDragAndDrop("professionsTableBody", (fromIdx, toIdx) => {
     const item = data.professions.splice(fromIdx, 1)[0];
     data.professions.splice(toIdx, 0, item);
-    onUpdated();
+    onStructuralChange();
   });
 }
 
-export function renderProductsTable(data: ScenarioData, onUpdated: () => void, onJumpToNorm: (prodId: string, profId: string) => void): void {
+export function renderProductsTable(data: ScenarioData, onStructuralChange: () => void, onDataChanged: () => void, onJumpToNorm: (prodId: string, profId: string) => void): void {
   const thead = document.getElementById("productsTableHeader");
   const tbody = document.getElementById("productsTableBody");
   if (!thead || !tbody) return;
@@ -170,6 +169,7 @@ export function renderProductsTable(data: ScenarioData, onUpdated: () => void, o
     `;
   }).join("");
 
+  // ТОЧЕЧНЫЙ ВВОД В ИЗДЕЛИЯХ БЕЗ ПЕРЕРИСОВКИ ТАБЛИЦЫ
   tbody.oninput = (e) => {
     const target = e.target as HTMLInputElement;
     const pId = target.getAttribute("data-id") || target.getAttribute("data-prod");
@@ -182,7 +182,17 @@ export function renderProductsTable(data: ScenarioData, onUpdated: () => void, o
       const profId = target.getAttribute("data-prof")!;
       product.norms[profId] = parseNum(target.value);
     }
-    onUpdated();
+
+    // Обновляем сумму нормы в ячейке строки напрямую
+    let sumNorm = 0;
+    data.professions.forEach(pr => { sumNorm += parseNum(product.norms[pr.id]); });
+    const tr = target.closest("tr");
+    if (tr) {
+      const totalTd = tr.querySelector("td:nth-last-child(2)");
+      if (totalTd) totalTd.textContent = sumNorm.toFixed(2);
+    }
+
+    onDataChanged();
   };
 
   tbody.onchange = (e) => {
@@ -192,7 +202,7 @@ export function renderProductsTable(data: ScenarioData, onUpdated: () => void, o
       const product = data.products.find(p => p.id === pId);
       if (product) {
         product.unit = target.value;
-        onUpdated();
+        onDataChanged();
       }
     }
   };
@@ -220,15 +230,13 @@ export function renderProductsTable(data: ScenarioData, onUpdated: () => void, o
         () => {
           data.products = data.products.filter(p => p.id !== pId);
           delete data.plan[pId];
-          
-          // Безопасное удаление из реестра с фиксацией типа
           const cfgs = data.normConfigs;
           if (cfgs) {
             Object.keys(cfgs).forEach(k => {
               if (k.startsWith(pId + "___")) delete cfgs[k];
             });
           }
-          onUpdated();
+          onStructuralChange();
         }
       );
     }
@@ -237,6 +245,6 @@ export function renderProductsTable(data: ScenarioData, onUpdated: () => void, o
   initTableDragAndDrop("productsTableBody", (fromIdx, toIdx) => {
     const item = data.products.splice(fromIdx, 1)[0];
     data.products.splice(toIdx, 0, item);
-    onUpdated();
+    onStructuralChange();
   });
 }
