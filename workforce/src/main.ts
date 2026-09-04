@@ -50,29 +50,9 @@ async function init() {
   });
 
   setupNormingTab(
-    data,
-    (prodId, profId, norm, entry) => {
-      const p = data.products.find(x => x.id === prodId);
-      if (p) {
-        p.norms[profId] = norm;
-        if (!data.normConfigs) data.normConfigs = {};
-        data.normConfigs[`${prodId}___${profId}`] = entry;
-        storageService.saveState(state);
-        renderAll();
-        modalSystem.alert('Норма сохранена', `Норма <strong>${norm.toFixed(3)} н-ч</strong> для «${p.name}» записана в матрицу норм и зафиксирована в реестре.`);
-      }
-    },
-    (key) => {
-      if (data.normConfigs) {
-        delete data.normConfigs[key];
-        storageService.saveState(state);
-        renderSavedNormsRegistry(data, (k) => {
-          if (data.normConfigs) delete data.normConfigs[k];
-          storageService.saveState(state);
-          renderSavedNormsRegistry(data, () => {});
-        });
-      }
-    }
+    () => getActiveData(),
+    () => state,
+    () => renderAll()
   );
 
   renderAll();
