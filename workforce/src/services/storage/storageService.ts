@@ -4,23 +4,39 @@ import { PRELOADED_STATE } from './defaultState';
 import { normalizeScenario } from './validator';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 
+export type StorageMode = 'local' | 'cloud';
+
 export interface IStorageService {
+  getMode(): StorageMode;
+  setMode(mode: StorageMode): void;
   loadState(): Promise<AppState>;
   saveState(state: AppState): Promise<void>;
   saveScenario(name: string, data: ScenarioData): Promise<void>;
   deleteScenario(name: string): Promise<void>;
+  publishToCloud(scenarioName: string, data: ScenarioData): Promise<void>;
 }
 
-const STORAGE_KEY = 'prod_workforce_master_v18';
+const STORAGE_KEY_LOCAL = 'prod_workforce_local_v2';
+const STORAGE_KEY_CLOUD_CACHE = 'prod_workforce_cloud_cache_v2';
 
-export class HybridStorageService implements IStorageService {
+export class DualStorageService implements IStorageService {
+  private mode: StorageMode = 'local';
+
+  getMode(): StorageMode {
+    return this.mode;
+  }
+
+  setMode(mode: StorageMode): void {
+    this.mode = mode;
+  }
+
   async loadState(): Promise<AppState> {
-    // 1. Попытка загрузить из облака Supabase
-    if (isSupabaseConfigured() && supabase) {
+    if (this.mode === 'cloud' && isSupabaseConfigured() && supabase) {
       try {
         const { data, error } = await supabase
           .from('workforce_scenarios')
-          .select('id, data');
+          .select('id, data')
+          .order('updated_at', { ascending: false });
 
         if (!error && data && data.length > 0) {
           const scenarios: Record<string, ScenarioData> = {};
@@ -28,38 +44,43 @@ export class HybridStorageService implements IStorageService {
             scenarios[row.id] = normalizeScenario(row.data);
           });
 
-          // Читаем последний активный сценарий из локального кэша
-          const localRaw = localStorage.getItem(STORAGE_KEY);
           let currentScenario = data[0].id;
-          if (localRaw) {
+          const cached = localStorage.getItem(STORAGE_KEY_CLOUD_CACHE);
+          if (cached) {
             try {
-              const parsed = JSON.parse(localRaw);
+              const parsed = JSON.parse(cached);
               if (scenarios[parsed.currentScenario]) currentScenario = parsed.currentScenario;
-            } catch { /* игнорируем */ }
+            } catch { /* игнор */ }
           }
 
           const state: AppState = { currentScenario, scenarios };
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-          this.notifyStatus('cloud');
+          localStorage.setItem(STORAGE_KEY_CLOUD_CACHE, JSON.stringify(state));
           return state;
         }
 
-        // Если таблица в облаке пока пустая — инициализируем её эталонными сценариями
+        // Если в облаке пока пусто — загружаем эталоны
         if (!error && data && data.length === 0) {
           await this.seedCloudDefaults();
           return PRELOADED_STATE;
         }
       } catch (err) {
-        console.warn('Облако недоступно, переключаемся на локальный кэш:', err);
+        console.warn('Сбой связи с облаком, открываем резервный кэш:', err);
+      }
+
+      // Резервный кэш облака
+      const cachedRaw = localStorage.getItem(STORAGE_KEY_CLOUD_CACHE);
+      if (cachedRaw) {
+        try {
+          return JSON.parse(cachedRaw);
+        } catch { /* игнор */ }
       }
     }
 
-    // 2. Офлайн-режим (чтение из LocalStorage)
-    this.notifyStatus('local');
-    const raw = localStorage.getItem(STORAGE_KEY);
+    // Режим «Память браузера» (Local Sandbox)
+    const raw = localStorage.getItem(STORAGE_KEY_LOCAL);
     if (!raw) {
       const initial = JSON.parse(JSON.stringify(PRELOADED_STATE));
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(initial));
+      localStorage.setItem(STORAGE_KEY_LOCAL, JSON.stringify(initial));
       return initial;
     }
 
@@ -75,46 +96,56 @@ export class HybridStorageService implements IStorageService {
   }
 
   async saveState(state: AppState): Promise<void> {
-    // Всегда сохраняем в локальный кэш
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-
-    // И синхронизируем активный сценарий с Supabase
-    const active = state.scenarios[state.currentScenario];
-    if (active) {
-      await this.saveScenario(state.currentScenario, active);
+    if (this.mode === 'cloud') {
+      localStorage.setItem(STORAGE_KEY_CLOUD_CACHE, JSON.stringify(state));
+      const active = state.scenarios[state.currentScenario];
+      if (active) {
+        await this.saveScenario(state.currentScenario, active);
+      }
+    } else {
+      localStorage.setItem(STORAGE_KEY_LOCAL, JSON.stringify(state));
     }
   }
 
   async saveScenario(name: string, data: ScenarioData): Promise<void> {
-    if (isSupabaseConfigured() && supabase) {
-      this.notifyStatus('saving');
-      try {
-        await supabase
-          .from('workforce_scenarios')
-          .upsert({
-            id: name,
-            data: data,
-            updated_at: new Date().toISOString()
-          });
-        this.notifyStatus('cloud');
-      } catch (err) {
-        console.error('Ошибка сохранения в облако:', err);
-        this.notifyStatus('local');
+    if (this.mode === 'cloud' && isSupabaseConfigured() && supabase) {
+      const { error } = await supabase
+        .from('workforce_scenarios')
+        .upsert({
+          id: name,
+          data: data,
+          updated_at: new Date().toISOString()
+        });
+      if (error) {
+        console.error('Ошибка записи в Supabase:', error);
+        throw new Error(error.message);
       }
     }
   }
 
   async deleteScenario(name: string): Promise<void> {
-    if (isSupabaseConfigured() && supabase) {
-      try {
-        await supabase
-          .from('workforce_scenarios')
-          .delete()
-          .eq('id', name);
-      } catch (err) {
-        console.error('Ошибка удаления из облака:', err);
-      }
+    if (this.mode === 'cloud' && isSupabaseConfigured() && supabase) {
+      const { error } = await supabase
+        .from('workforce_scenarios')
+        .delete()
+        .eq('id', name);
+      if (error) throw new Error(error.message);
     }
+  }
+
+  // Опубликовать локальный черновик в официальное облако завода
+  async publishToCloud(scenarioName: string, data: ScenarioData): Promise<void> {
+    if (!isSupabaseConfigured() || !supabase) {
+      throw new Error('Supabase не подключен.');
+    }
+    const { error } = await supabase
+      .from('workforce_scenarios')
+      .upsert({
+        id: scenarioName,
+        data: data,
+        updated_at: new Date().toISOString()
+      });
+    if (error) throw new Error(error.message);
   }
 
   private async seedCloudDefaults(): Promise<void> {
@@ -125,23 +156,7 @@ export class HybridStorageService implements IStorageService {
       updated_at: new Date().toISOString()
     }));
     await supabase.from('workforce_scenarios').upsert(entries);
-    this.notifyStatus('cloud');
-  }
-
-  private notifyStatus(status: 'cloud' | 'local' | 'saving'): void {
-    const el = document.getElementById('cloudSyncStatus');
-    if (!el) return;
-    if (status === 'cloud') {
-      el.innerHTML = `<span style="color:#10b981;">●</span> Облако ЗСМК подключено`;
-      el.style.color = '#94a3b8';
-    } else if (status === 'saving') {
-      el.innerHTML = `<span style="color:#f59e0b;">●</span> Сохранение в облако...`;
-      el.style.color = '#f59e0b';
-    } else {
-      el.innerHTML = `<span style="color:#94a3b8;">○</span> Локальный режим`;
-      el.style.color = '#94a3b8';
-    }
   }
 }
 
-export const storageService: IStorageService = new HybridStorageService();
+export const storageService = new DualStorageService();
