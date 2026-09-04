@@ -94,25 +94,27 @@ export function renderBrigadeSchedule(calc: CalculationResult, data: ScenarioDat
 
   (window as any)._applyShiftFromBrigade = onApplyShift;
 
-  let html = `<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:10px;">`;
+  let html = '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:10px;">';
   data.months.forEach((m: string, idx: number) => {
     const sched = calc.universalSchedules[idx];
     const uHrs = Math.round(calc.universalHoursTotal[idx]);
     const loadPct = Math.round((calc.universalHoursTotal[idx] / calc.poolCapacityNormal) * 100);
 
-    html += `
-      <div style="background:#f8fafc; border:1px solid var(--border-color); border-radius:6px; padding:8px 12px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-          <strong>Период: ${escapeHtml(m)}</strong>
-          <span class="${sched.badgeClass}">${sched.mode}</span>
-        </div>
-        <div>Трудоёмкость универсалов: <strong>${uHrs} н-ч</strong> (${loadPct}% от нормы ${calc.shiftHoursStandard}ч/5-2)</div>
-        <div style="font-size:11.5px; color:var(--text-muted); margin-top:2px;">${sched.note}</div>
-        ${sched.canApplyShift !== null ? `<button type="button" class="btn btn-secondary btn-sm" onclick="window._applyShiftFromBrigade(${sched.canApplyShift})" style="margin-top:8px;">Применить ${sched.canApplyShift}ч как усиленный режим</button>` : ""}
-      </div>
-    `;
+    const btnHtml = sched.canApplyShift !== null
+      ? '<button type="button" class="btn btn-secondary btn-sm" onclick="window._applyShiftFromBrigade(' + sched.canApplyShift + ')" style="margin-top:8px;">Применить ' + sched.canApplyShift + 'ч как усиленный режим</button>'
+      : '';
+
+    html += '<div style="background:#f8fafc; border:1px solid var(--border-color); border-radius:6px; padding:8px 12px;">' +
+      '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">' +
+        '<strong>Период: ' + escapeHtml(m) + '</strong>' +
+        '<span class="' + sched.badgeClass + '">' + sched.mode + '</span>' +
+      '</div>' +
+      '<div>Трудоёмкость универсалов: <strong>' + uHrs + ' н-ч</strong> (' + loadPct + '% от нормы ' + calc.shiftHoursStandard + 'ч/5-2)</div>' +
+      '<div style="font-size:11.5px; color:var(--text-muted); margin-top:2px;">' + sched.note + '</div>' +
+      btnHtml +
+    '</div>';
   });
-  html += `</div>`;
+  html += '</div>';
   container.innerHTML = html;
 }
 
@@ -127,38 +129,43 @@ export function renderSmartAdvisor(calc: CalculationResult, data: ScenarioData, 
     const sched = calc.universalSchedules[idx];
 
     if (sched.statusZone === 'red') {
-      items.push(`
-        <div class="advisor-item alert-overload" style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; margin-top:6px; background:#fee2e2; border-radius:6px; border:1px solid #fca5a5; color:#991b1b;">
-          <span>В периоде <strong>${escapeHtml(m)}</strong> дефицит: ${sched.note}</span>
-          <button class="btn btn-secondary btn-sm" onclick="window._advisorLevel(${calc.grandTotalStaff[idx]})">Выровнять под ${calc.grandTotalStaff[idx]} чел.</button>
-        </div>
-      `);
+      items.push(
+        '<div class="advisor-item alert-overload" style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; margin-top:6px; background:#fee2e2; border-radius:6px; border:1px solid #fca5a5; color:#991b1b;">' +
+          '<span>В периоде <strong>' + escapeHtml(m) + '</strong> дефицит: ' + sched.note + '</span>' +
+          '<button class="btn btn-secondary btn-sm" onclick="window._advisorLevel(' + calc.grandTotalStaff[idx] + ')">Выровнять под ' + calc.grandTotalStaff[idx] + ' чел.</button>' +
+        '</div>'
+      );
     } else if (sched.statusZone === 'yellow') {
-      items.push(`
-        <div class="advisor-item alert-overtime" style="padding:8px 12px; margin-top:6px; background:#fef3c7; border-radius:6px; border:1px solid #fde68a; color:#92400e;">
-          В периоде <strong>${escapeHtml(m)}</strong> требуется <strong>${escapeHtml(sched.mode)}</strong>. ${escapeHtml(sched.note)}
-        </div>
-      `);
+      items.push(
+        '<div class="advisor-item alert-overtime" style="padding:8px 12px; margin-top:6px; background:#fef3c7; border-radius:6px; border:1px solid #fde68a; color:#92400e;">' +
+          'В периоде <strong>' + escapeHtml(m) + '</strong> требуется <strong>' + escapeHtml(sched.mode) + '</strong>. ' + escapeHtml(sched.note) +
+        '</div>'
+      );
     } else if (uHrs < calc.poolCapacityNormal * 0.5 && uHrs > 0) {
       const underPct = Math.round(((calc.poolCapacityNormal - uHrs) / calc.poolCapacityNormal) * 100);
-      items.push(`
-        <div class="advisor-item alert-underload" style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; margin-top:6px; background:#e0f2fe; border-radius:6px; border:1px solid #bae6fd; color:#0369a1;">
-          <span>В периоде <strong>${escapeHtml(m)}</strong> недозагрузка универсалов <strong>${underPct}%</strong> (объём всего ${Math.round(uHrs)} н-ч).</span>
-          <button class="btn btn-secondary btn-sm" onclick="window._advisorUnderloadAction('${escapeHtml(m)}')">Направить на опережение</button>
-        </div>
-      `);
+      items.push(
+        '<div class="advisor-item alert-underload" style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; margin-top:6px; background:#e0f2fe; border-radius:6px; border:1px solid #bae6fd; color:#0369a1;">' +
+          '<span>В периоде <strong>' + escapeHtml(m) + '</strong> недозагрузка универсалов <strong>' + underPct + '%</strong> (объём всего ' + Math.round(uHrs) + ' н-ч).</span>' +
+          '<button class="btn btn-secondary btn-sm btn-underload-act" data-month="' + escapeHtml(m) + '">Направить на опережение</button>' +
+        '</div>'
+      );
     }
   });
 
   (window as any)._advisorLevel = onLevelClick;
-  (window as any)._advisorUnderloadAction = (monthName: string) => {
-    modalSystem.alert("Рекомендация", `В период ${monthName} рекомендуется задействовать свободные бригады на опережающую заготовку панелей.`);
+
+  listEl.onclick = (e) => {
+    const btn = (e.target as HTMLElement).closest('.btn-underload-act');
+    if (btn) {
+      const mName = btn.getAttribute('data-month') || '';
+      modalSystem.alert("Рекомендация", `В период ${mName} рекомендуется задействовать свободные бригады на опережающую заготовку панелей.`);
+    }
   };
 
   if (items.length === 0) {
     badgeEl.textContent = "Баланс оптимален";
     badgeEl.style.color = "var(--success)";
-    listEl.innerHTML = `<div class="advisor-item alert-optimal" style="background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46; padding:8px 12px; border-radius:6px;">✅ Все периоды производственной программы сбалансированы и укладываются в ёмкость персонала (${calc.totalUniversalHeadcount} чел.) без критических перегрузок.</div>`;
+    listEl.innerHTML = '<div class="advisor-item alert-optimal" style="background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46; padding:8px 12px; border-radius:6px;">✅ Все периоды производственной программы сбалансированы и укладываются в ёмкость персонала (' + calc.totalUniversalHeadcount + ' чел.) без критических перегрузок.</div>';
   } else {
     badgeEl.textContent = `Обнаружено ${items.length} замечаний`;
     badgeEl.style.color = "var(--warning)";
@@ -198,4 +205,49 @@ export function renderDynamicGuides(calc: CalculationResult, data: ScenarioData)
         <div class="method-item-desc">К выделенным отнесено <strong>${calc.dedicatedProfs.length} постов</strong> (${calc.dedicatedProfs.map(p=>escapeHtml(p.name)).join(', ') || 'нет'}), где операторы не ротируются.</div>
       </div>
       <div class="method-item">
-        <div class="method-it
+        <div class="method-item-title">3. Формула располагаемого фонда времени</div>
+        <div class="method-item-formula">Ёмкость пула (${calc.shiftHoursStandard}ч/5-2) = ${calc.totalUniversalHeadcount} чел × ${calc.fEff}ч × ${calc.kVn} = ${calc.poolCapacityNormal.toFixed(1)} н-ч/мес</div>
+        <div class="method-item-desc">При переходе всех универсалов на усиленный режим (${calc.extendedShiftHours}ч/5-2): <strong>${(calc.totalUniversalHeadcount * calc.fEffExtended * calc.kVn).toFixed(1)} н-ч/мес</strong>. Сверхурочные применяются только поверх обычной ${calc.shiftHoursStandard}ч-смены (до +${calc.maxOvertimePct}%). Жёсткий потолок рекомендаций смены — ${calc.hardShiftCeiling}ч.</div>
+      </div>
+    `;
+  }
+
+  // Справка Вкладка 3
+  const g3 = document.getElementById("guideTab3Dynamic");
+  if (g3) {
+    g3.innerHTML = `
+      <div class="method-item">
+        <div class="method-item-title">1. Сменно-статистический расчёт</div>
+        <div class="method-item-formula">Норма = (Nраб × (Смена - Перерывы/60) × Kэф) / Q</div>
+        <div class="method-item-desc">Автоматически вычисляет фактическую норму по сдаче партии за смену и привязывает параметры к выбранной паре «Изделие + Участок».</div>
+      </div>
+      <div class="method-item">
+        <div class="method-item-title">2. Поэлементный хронометраж</div>
+        <div class="method-item-formula">Tшт = ((Tосн + Tвсп) × (1 + (Kобс + Kотд)/100) + Tпз/50) × Звено / 60</div>
+        <div class="method-item-desc">Инженерный расчёт штучного времени по секундомеру с учётом подготовительно-заключительного времени и размера звена.</div>
+      </div>
+    `;
+  }
+
+  // Справка Вкладка 4 (Аналитика)
+  const g4 = document.getElementById("guideTab4Dynamic");
+  if (g4) {
+    g4.innerHTML = `
+      <div class="method-item" style="border-left-color:#2563eb; background:#eff6ff;">
+        <div class="method-item-title" style="color:#1e40af;">Шаг 1. Зоны загрузки универсального пула</div>
+        <div class="method-item-desc">
+          Все ${calc.totalUniversalHeadcount} универсалов работают одновременно на 5/2:<br>
+          • <strong>Зелёная зона (до ${calc.poolCapacityNormal.toFixed(0)} н-ч):</strong> обычная смена ${calc.shiftHoursStandard}ч.<br>
+          • <strong>Жёлтая зона, сверхурочные (до ${calc.poolCapacityNormalOT.toFixed(0)} н-ч):</strong> закрывается разовыми переработками (до +${calc.maxOvertimePct}%).<br>
+          • <strong>Жёлтая зона, удлинённая смена (до ${calc.poolCapacityCeiling.toFixed(0)} н-ч):</strong> смена длиннее (до ${calc.hardShiftCeiling}ч, шаг 0.5ч).<br>
+          • <strong>Красная зона (выше ${calc.poolCapacityCeiling.toFixed(0)} н-ч):</strong> дефицит — требуется дополнительный штат или выравнивание плана.
+        </div>
+      </div>
+      <div class="method-item">
+        <div class="method-item-title">Шаг 2. Расчёт штата и пиковых нагрузок</div>
+        <div class="method-item-formula">Штат = Трудоёмкость / (${calc.fEff}ч × ${calc.kVn})</div>
+        <div class="method-item-desc">Один рабочий вырабатывает <strong>${(calc.fEff * calc.kVn).toFixed(1)} н-ч/мес</strong>. Пиковая нагрузка завода: <strong>${Math.max(...calc.grandTotalStaff)} чел.</strong>, средняя: <strong>${(calc.grandTotalStaff.reduce((a,b)=>a+b,0)/calc.grandTotalStaff.length).toFixed(1)} чел.</strong></div>
+      </div>
+    `;
+  }
+}
