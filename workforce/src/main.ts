@@ -365,7 +365,6 @@ function setupAuthAndStorageToggle() {
       btnModeCloud?.classList.toggle('active-cloud', isCloud);
       btnModeCloud?.classList.toggle('active', isCloud);
 
-      // Кнопка публикации видна только если мы авторизованы, но находимся в локальном режиме
       if (btnPublish) btnPublish.style.display = !isCloud ? 'inline-flex' : 'none';
     } else {
       if (guestWrap) guestWrap.style.display = 'inline-flex';
@@ -374,36 +373,32 @@ function setupAuthAndStorageToggle() {
     }
   };
 
-  // Переключение тумблера на Браузер
+  // МГНОВЕННОЕ ПЕРЕКЛЮЧЕНИЕ НА БРАУЗЕР
   btnModeLocal?.addEventListener('click', async () => {
-    if (storageService.getMode() === 'local') return;
     storageService.setMode('local');
     state = await storageService.loadState();
     renderScenarioSelector();
     renderAll();
     const user = await authService.getUser();
     updateUI(user);
-    modalSystem.alert('Режим хранилища', 'Переключено на <strong>Память браузера</strong> (Локальная песочница).');
+    modalSystem.alert('Режим хранилища', 'Включён режим <strong>Память браузера</strong> (Локальная песочница).');
   });
 
-  // Переключение тумблера на Облако
+  // МГНОВЕННОЕ ПЕРЕКЛЮЧЕНИЕ НА ОБЛАКО
   btnModeCloud?.addEventListener('click', async () => {
-    if (storageService.getMode() === 'cloud') return;
     storageService.setMode('cloud');
     state = await storageService.loadState();
     renderScenarioSelector();
     renderAll();
     const user = await authService.getUser();
     updateUI(user);
-    modalSystem.alert('Режим хранилища', 'Переключено на <strong>Единое облако ЗСМК</strong>. Все сохранения синхронизируются с базой завода.');
+    modalSystem.alert('Режим хранилища', 'Включено <strong>Единое облако ЗСМК</strong>. Данные синхронизируются с базой завода.');
   });
 
-  // Открыть диалог входа
   document.getElementById('btnOpenLoginModal')?.addEventListener('click', () => {
     openAuthModal();
   });
 
-  // Выйти из аккаунта
   document.getElementById('btnLogout')?.addEventListener('click', async () => {
     await authService.signOut();
     storageService.setMode('local');
@@ -414,12 +409,11 @@ function setupAuthAndStorageToggle() {
     modalSystem.alert('Выход', 'Вы вышли из аккаунта. Приложение вернулось в режим локальной песочницы.');
   });
 
-  // Публикация черновика в облако
   btnPublish?.addEventListener('click', () => {
     const data = getActiveData();
     modalSystem.confirm(
       'Публикация в Облако',
-      `Опубликовать сценарий <strong>«${state.currentScenario}»</strong> в единую облачную базу завода ЗСМК? Он станет доступен всем сотрудникам.`,
+      `Опубликовать сценарий <strong>«${state.currentScenario}»</strong> в единую базу завода ЗСМК? Он станет доступен всем сотрудникам.`,
       async () => {
         try {
           await storageService.publishToCloud(state.currentScenario, data);
