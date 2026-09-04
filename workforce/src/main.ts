@@ -15,8 +15,19 @@ import { renderCharts } from './ui/charts';
 import { renderPlanTable, attachPlanPasteHandler } from './ui/tables/planTable';
 import { renderProfessionsTable, renderProductsTable } from './ui/tables/dictionariesTable';
 import { renderShiftScheduleTable, renderResultsTable } from './ui/tables/resultsTable';
-import { renderExecutiveSummary, renderSmartAdvisor, renderDynamicGuides, renderSummaryBullets, renderBrigadeSchedule } from './ui/advisor';
-import { setupNormingTab, openNormingFor, renderSavedNormsRegistry, refreshNormingDropdowns } from './ui/normingTab';
+import {
+  renderExecutiveSummary,
+  renderSmartAdvisor,
+  renderDynamicGuides,
+  renderSummaryBullets,
+  renderBrigadeSchedule
+} from './ui/advisor';
+import {
+  setupNormingTab,
+  openNormingFor,
+  renderSavedNormsRegistry,
+  refreshNormingDropdowns
+} from './ui/normingTab';
 
 let state: AppState;
 
@@ -48,7 +59,7 @@ async function init() {
         data.normConfigs[`${prodId}___${profId}`] = entry;
         storageService.saveState(state);
         renderAll();
-        modalSystem.alert("Норма сохранена", `Норма <strong>${norm.toFixed(3)} н-ч</strong> для «${p.name}» записана в матрицу норм и зафиксирована в реестре.`);
+        modalSystem.alert('Норма сохранена', `Норма <strong>${norm.toFixed(3)} н-ч</strong> для «${p.name}» записана в матрицу норм и зафиксирована в реестре.`);
       }
     },
     (key) => {
@@ -75,7 +86,6 @@ function renderAll() {
   renderExecutiveSummary(calc, data);
   renderKPIs(calc, data);
   renderSummaryBullets(calc, data);
-  // ВОССТАНОВЛЕНА ПРОВЕРКА КОНФЛИКТОВ СМЕНЫ МЕЖДУ МЕСЯЦАМИ
   renderBrigadeSchedule(calc, data, (newShift: number) => {
     const conflicts: string[] = [];
     data.months.forEach((m, idx) => {
@@ -86,7 +96,7 @@ function renderAll() {
     });
 
     const applyFn = () => {
-      const extInput = document.getElementById("inputExtendedShiftHours") as HTMLInputElement | null;
+      const extInput = document.getElementById('inputExtendedShiftHours') as HTMLInputElement | null;
       if (extInput) extInput.value = String(newShift);
       data.settings.extendedShiftHours = newShift;
       data.settings.fNomExtended = calcExtendedFNom(data.settings.fNom, newShift, data.settings.shiftHoursStandard);
@@ -97,8 +107,8 @@ function renderAll() {
 
     if (conflicts.length > 0) {
       modalSystem.confirm(
-        "Проверьте другие периоды",
-        `Вы применяете смену <strong>${newShift}ч</strong>. Но в других месяцах усиленного режима требуется больше: ${conflicts.join(", ")}. Если применить ${newShift}ч как общий предел — эти месяцы окажутся недогружены. Применить всё равно?`,
+        'Проверьте другие периоды',
+        `Вы применяете смену <strong>${newShift}ч</strong>. Но в других месяцах усиленного режима требуется больше: ${conflicts.join(', ')}. Если применить ${newShift}ч как общий предел — эти месяцы окажутся недогружены. Применить всё равно?`,
         applyFn
       );
     } else {
@@ -120,7 +130,8 @@ function renderAll() {
   });
 
   renderPlanTable(
-    data, calc,
+    data,
+    calc,
     (prodId, mIdx, val) => {
       if (!data.plan[prodId]) data.plan[prodId] = [];
       data.plan[prodId][mIdx] = val;
@@ -129,12 +140,12 @@ function renderAll() {
       renderKPIs(freshCalc, data);
       renderExecutiveSummary(freshCalc, data);
       renderDynamicGuides(freshCalc, data);
-      const tfootTds = document.querySelectorAll("#planTableFooter td");
+      const tfootTds = document.querySelectorAll('#planTableFooter td');
       if (tfootTds && tfootTds[mIdx + 1]) {
         tfootTds[mIdx + 1].textContent = Math.round(freshCalc.totalHoursByMonth[mIdx]).toLocaleString();
       }
       const grandTotalHours = freshCalc.totalHoursByMonth.reduce((a, b) => a + b, 0);
-      const lastFooterTd = document.querySelector("#planTableFooter td:last-child");
+      const lastFooterTd = document.querySelector('#planTableFooter td:last-child');
       if (lastFooterTd) lastFooterTd.textContent = `${Math.round(grandTotalHours).toLocaleString()} н-ч`;
     },
     (mIdx, name) => {
@@ -197,10 +208,10 @@ function renderKPIs(calc: any, data: ScenarioData) {
   const avgStaff = calc.grandTotalStaff.length > 0 ? (staffSum / calc.grandTotalStaff.length) : 0;
   const volatility = avgStaff > 0 ? (peakStaff / avgStaff) : 1;
 
-  const pEl = document.getElementById("kpiTotalProducts");
-  const hEl = document.getElementById("kpiTotalHours");
-  const aEl = document.getElementById("kpiAvgStaff");
-  const vEl = document.getElementById("kpiVolatility");
+  const pEl = document.getElementById('kpiTotalProducts');
+  const hEl = document.getElementById('kpiTotalHours');
+  const aEl = document.getElementById('kpiAvgStaff');
+  const vEl = document.getElementById('kpiVolatility');
 
   if (pEl) pEl.textContent = `${data.products.length} поз.`;
   if (hEl) hEl.textContent = `${Math.round(totalHours).toLocaleString()} н-ч`;
@@ -219,51 +230,51 @@ function renderDictionariesInputs() {
     }
   };
 
-  setVal("inputBrigadesCount", s.brigadesCount);
-  setVal("inputBrigadeSize", s.brigadeSize);
-  setVal("inputMaxOvertime", s.maxOvertimePercent);
-  setVal("inputAuxOtk", s.auxOtkPercent);
-  setVal("inputAuxSetup", s.auxSetupPercent);
-  setVal("inputAuxFixed", s.auxFixedPosts);
-  setVal("inputWorkDays", s.workDaysPerMonth);
-  setVal("inputShiftHours", s.shiftHoursStandard);
-  setVal("inputExtendedShiftHours", s.extendedShiftHours);
-  setVal("inputKVn", s.kVn);
-  setVal("inputReserveOff", s.reserveOffPercent);
-  setVal("inputFNom", s.fNom);
-  setVal("inputFEff", s.fEff);
-  setVal("inputFNomExtended", s.fNomExtended);
-  setVal("inputFEffExtended", s.fEffExtended);
-  setVal("inputCompanyName", s.companyName || 'ООО "ЗСМК"');
+  setVal('inputBrigadesCount', s.brigadesCount);
+  setVal('inputBrigadeSize', s.brigadeSize);
+  setVal('inputMaxOvertime', s.maxOvertimePercent);
+  setVal('inputAuxOtk', s.auxOtkPercent);
+  setVal('inputAuxSetup', s.auxSetupPercent);
+  setVal('inputAuxFixed', s.auxFixedPosts);
+  setVal('inputWorkDays', s.workDaysPerMonth);
+  setVal('inputShiftHours', s.shiftHoursStandard);
+  setVal('inputExtendedShiftHours', s.extendedShiftHours);
+  setVal('inputKVn', s.kVn);
+  setVal('inputReserveOff', s.reserveOffPercent);
+  setVal('inputFNom', s.fNom);
+  setVal('inputFEff', s.fEff);
+  setVal('inputFNomExtended', s.fNomExtended);
+  setVal('inputFEffExtended', s.fEffExtended);
+  setVal('inputCompanyName', s.companyName || 'ООО "ЗСМК"');
 
   const bCount = parseInt(String(s.brigadesCount)) || 3;
   const bSize = parseInt(String(s.brigadeSize)) || 6;
-  const hEl = document.getElementById("calcUniversalHeadcount");
+  const hEl = document.getElementById('calcUniversalHeadcount');
   if (hEl) hEl.textContent = `${bCount * bSize} чел. (${bCount} бриг. по ${bSize} чел.)`;
 
-  const prev1 = document.getElementById("previewCap1");
-  const prev2 = document.getElementById("previewCap2");
-  const prev3 = document.getElementById("previewCap3");
+  const prev1 = document.getElementById('previewCap1');
+  const prev2 = document.getElementById('previewCap2');
+  const prev3 = document.getElementById('previewCap3');
   if (prev1) prev1.textContent = `до ${s.shiftHoursStandard}ч/сутки`;
   if (prev2) prev2.textContent = `${s.shiftHoursStandard}–${s.extendedShiftHours}ч/сутки`;
   if (prev3) prev3.textContent = `свыше ${s.extendedShiftHours}ч/сутки`;
 
-  const previewEff = document.getElementById("fEffWithKvnPreview");
+  const previewEff = document.getElementById('fEffWithKvnPreview');
   if (previewEff) previewEff.textContent = `${((s.fEff || 144) * (s.kVn || 1.05)).toFixed(1)} н-ч`;
 
-  const ratioEl = document.getElementById("extendedFundRatioPreview");
+  const ratioEl = document.getElementById('extendedFundRatioPreview');
   if (ratioEl) ratioEl.textContent = `×${((s.fEffExtended || 216) / (s.fEff || 144)).toFixed(2)}`;
 }
 
 function updateLevelToggleButton() {
-  const btn = document.getElementById("btnLevelToggle");
+  const btn = document.getElementById('btnLevelToggle');
   if (!btn) return;
   const data = getActiveData();
   if (data._planSnapshot) {
-    btn.className = "btn btn-warning btn-sm";
+    btn.className = 'btn btn-warning btn-sm';
     btn.innerHTML = `<svg class="icon"><use href="#icon-refresh"></use></svg> Откатить к исходному плану`;
   } else {
-    btn.className = "btn btn-level btn-sm";
+    btn.className = 'btn btn-level btn-sm';
     btn.innerHTML = `<svg class="icon"><use href="#icon-sliders"></use></svg> Выровнять план под штат`;
   }
 }
@@ -278,23 +289,22 @@ function executeLevelLoading(targetHeadcount: number) {
   storageService.saveState(state);
   renderAll();
 
-  // ВОССТАНОВЛЕНА ПРОВЕРКА ОСТАВШИХСЯ УЗКИХ МЕСТ ОБОРУДОВАНИЯ
   const freshCalc = calculateProgram(data);
   const stillBottlenecked: string[] = [];
   freshCalc.dedicatedProfs.forEach(prof => {
     freshCalc.profMachineZones[prof.id].forEach((zone, mIdx) => {
-      if (zone.statusZone === "red") stillBottlenecked.push(`${prof.name} (${data.months[mIdx]})`);
+      if (zone.statusZone === 'red') stillBottlenecked.push(`${prof.name} (${data.months[mIdx]})`);
     });
   });
 
-  let warningHtml = "";
+  let warningHtml = '';
   if (stillBottlenecked.length > 0) {
     warningHtml = `<br><br><div style="background:var(--danger-light); border:1px solid #fca5a5; border-radius:6px; padding:8px 10px; color:var(--danger); font-size:12.5px;">
       <strong>⚠ Внимание:</strong> выравнивание изменило только помесячное распределение объёмов — оно не увеличивает пропускную способность оборудования. Следующие посты остаются физически перегружены: <strong>${stillBottlenecked.join(', ')}</strong>. Для их разгрузки нужен доп. станок или снижение выпуска.
     </div>`;
   }
 
-  modalSystem.alert("План выровнен", `
+  modalSystem.alert('План выровнен', `
     Производственная программа перераспределена под целевой штат <strong>${targetHeadcount} чел.</strong><br><br>
     • Допустимая ёмкость месяца: <strong>${Math.round(res.maxMonthlyHours).toLocaleString()} н-ч</strong><br>
     • Перераспределено объёмов: <strong>${Math.round(res.totalShiftedHours).toLocaleString()} н-ч</strong><br><br>
@@ -304,11 +314,11 @@ function executeLevelLoading(targetHeadcount: number) {
 }
 
 function renderScenarioSelector() {
-  const selector = document.getElementById("scenarioSelector") as HTMLSelectElement | null;
+  const selector = document.getElementById('scenarioSelector') as HTMLSelectElement | null;
   if (!selector) return;
   selector.innerHTML = Object.keys(state.scenarios).map(name => `
     <option value="${name}" ${name === state.currentScenario ? 'selected' : ''}>${name}</option>
-  `).join("");
+  `).join('');
 
   selector.onchange = () => {
     state.currentScenario = selector.value;
@@ -319,17 +329,17 @@ function renderScenarioSelector() {
 }
 
 function setupTabs() {
-  document.querySelectorAll(".tab-button").forEach(btn => {
-    btn.addEventListener("click", () => {
-      document.querySelectorAll(".tab-button").forEach(b => b.classList.remove("active"));
-      document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
-      btn.classList.add("active");
-      const tab = btn.getAttribute("data-tab");
+  document.querySelectorAll('.tab-button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      const tab = btn.getAttribute('data-tab');
       if (tab) {
-        document.getElementById(tab)?.classList.add("active");
-        if (tab === "tab-analytics" || tab === "tab-norming") {
+        document.getElementById(tab)?.classList.add('active');
+        if (tab === 'tab-analytics' || tab === 'tab-norming') {
           renderAll();
-          if (tab === "tab-norming") refreshNormingDropdowns(getActiveData());
+          if (tab === 'tab-norming') refreshNormingDropdowns(getActiveData());
         }
       }
     });
@@ -338,26 +348,26 @@ function setupTabs() {
 
 function setupCollapsibles() {
   const collapsibles = [
-    { btn: "toggleGuideTab1", content: "contentGuideTab1", chevron: "chevronGuideTab1" },
-    { btn: "toggleGuideTab2", content: "contentGuideTab2", chevron: "chevronGuideTab2" },
-    { btn: "toggleGuideTab3", content: "contentGuideTab3", chevron: "chevronGuideTab3" },
-    { btn: "toggleMethodologyBtn", content: "methodologyContent", chevron: "methodChevron" },
-    { btn: "toggleSavedNormsRegistry", content: "contentSavedNorms", chevron: "chevronSavedNorms" }
+    { btn: 'toggleGuideTab1', content: 'contentGuideTab1', chevron: 'chevronGuideTab1' },
+    { btn: 'toggleGuideTab2', content: 'contentGuideTab2', chevron: 'chevronGuideTab2' },
+    { btn: 'toggleGuideTab3', content: 'contentGuideTab3', chevron: 'chevronGuideTab3' },
+    { btn: 'toggleMethodologyBtn', content: 'methodologyContent', chevron: 'methodChevron' },
+    { btn: 'toggleSavedNormsRegistry', content: 'contentSavedNorms', chevron: 'chevronSavedNorms' }
   ];
 
   collapsibles.forEach(c => {
-    document.getElementById(c.btn)?.addEventListener("click", () => {
-      document.getElementById(c.content)?.classList.toggle("expanded");
-      document.getElementById(c.chevron)?.classList.toggle("rotated");
+    document.getElementById(c.btn)?.addEventListener('click', () => {
+      document.getElementById(c.content)?.classList.toggle('expanded');
+      document.getElementById(c.chevron)?.classList.toggle('rotated');
     });
   });
 }
 
 function attachGlobalEvents() {
-  document.getElementById("btnLevelToggle")?.addEventListener("click", () => {
+  document.getElementById('btnLevelToggle')?.addEventListener('click', () => {
     const data = getActiveData();
     if (data._planSnapshot) {
-      modalSystem.confirm("Откат плана", "Вернуть производственный план к исходным объёмам до выравнивания?", () => {
+      modalSystem.confirm('Откат плана', 'Вернуть производственный план к исходным объёмам до выравнивания?', () => {
         data.plan = JSON.parse(JSON.stringify(data._planSnapshot));
         delete data._planSnapshot;
         storageService.saveState(state);
@@ -367,20 +377,20 @@ function attachGlobalEvents() {
       const calc = calculateProgram(data);
       const staffSum = calc.grandTotalStaff.reduce((a: number, b: number) => a + b, 0);
       const avg = calc.grandTotalStaff.length > 0 ? Math.round(staffSum / calc.grandTotalStaff.length) : 25;
-      modalSystem.prompt("Выравнивание плана", "Укажите целевую численность персонала (чел.):", String(avg), (val) => {
+      modalSystem.prompt('Выравнивание плана', 'Укажите целевую численность персонала (чел.):', String(avg), (val) => {
         const target = parseInt(val);
         if (target > 0) executeLevelLoading(target);
       });
     }
   });
 
-  document.getElementById("btnSaveScenario")?.addEventListener("click", async () => {
+  document.getElementById('btnSaveScenario')?.addEventListener('click', async () => {
     await storageService.saveState(state);
-    modalSystem.alert("Сохранено", `Сценарий «${state.currentScenario}» сохранён.`);
+    modalSystem.alert('Сохранено', `Сценарий «${state.currentScenario}» сохранён.`);
   });
 
-  document.getElementById("btnNewScenario")?.addEventListener("click", () => {
-    modalSystem.prompt("Новый сценарий", "Введите имя копии сценария:", `План ${new Date().toLocaleDateString()}`, (newName) => {
+  document.getElementById('btnNewScenario')?.addEventListener('click', () => {
+    modalSystem.prompt('Новый сценарий', 'Введите имя копии сценария:', `План ${new Date().toLocaleDateString()}`, (newName) => {
       if (newName?.trim()) {
         const clean = newName.trim();
         state.scenarios[clean] = JSON.parse(JSON.stringify(getActiveData()));
@@ -392,13 +402,13 @@ function attachGlobalEvents() {
     });
   });
 
-  document.getElementById("btnDeleteScenario")?.addEventListener("click", () => {
+  document.getElementById('btnDeleteScenario')?.addEventListener('click', () => {
     const keys = Object.keys(state.scenarios);
     if (keys.length <= 1) {
-      modalSystem.alert("Внимание", "Нельзя удалить единственный существующий сценарий.");
+      modalSystem.alert('Внимание', 'Нельзя удалить единственный существующий сценарий.');
       return;
     }
-    modalSystem.confirm("Удаление", `Удалить сценарий «${state.currentScenario}»?`, async () => {
+    modalSystem.confirm('Удаление', `Удалить сценарий «${state.currentScenario}»?`, async () => {
       const toDel = state.currentScenario;
       delete state.scenarios[toDel];
       state.currentScenario = Object.keys(state.scenarios)[0];
@@ -409,8 +419,8 @@ function attachGlobalEvents() {
     });
   });
 
-  document.getElementById("btnResetData")?.addEventListener("click", () => {
-    modalSystem.confirm("Сброс данных", "Сбросить сценарии к эталонным планам завода?", () => {
+  document.getElementById('btnResetData')?.addEventListener('click', () => {
+    modalSystem.confirm('Сброс данных', 'Сбросить сценарии к эталонным планам завода?', () => {
       state = JSON.parse(JSON.stringify(PRELOADED_STATE));
       storageService.saveState(state);
       renderScenarioSelector();
@@ -418,19 +428,19 @@ function attachGlobalEvents() {
     });
   });
 
-  document.getElementById("btnExportJson")?.addEventListener("click", () => {
-    const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
-    const link = document.createElement("a");
+  document.getElementById('btnExportJson')?.addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = `План_производства_${new Date().toISOString().slice(0, 10)}.json`;
     link.click();
   });
 
-  document.getElementById("btnImportJson")?.addEventListener("click", () => {
-    document.getElementById("fileJsonInput")?.click();
+  document.getElementById('btnImportJson')?.addEventListener('click', () => {
+    document.getElementById('fileJsonInput')?.click();
   });
 
-  document.getElementById("fileJsonInput")?.addEventListener("change", (e: any) => {
+  document.getElementById('fileJsonInput')?.addEventListener('change', (e: any) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
@@ -443,81 +453,81 @@ function attachGlobalEvents() {
           storageService.saveState(state);
           renderScenarioSelector();
           renderAll();
-          modalSystem.alert("Успешно", "Сценарии загружены из файла.");
+          modalSystem.alert('Успешно', 'Сценарии загружены из файла.');
         } else {
-          modalSystem.alert("Ошибка файла", errs.join("<br>"));
+          modalSystem.alert('Ошибка файла', errs.join('<br>'));
         }
       } catch (err: any) {
-        modalSystem.alert("Ошибка", "Не удалось прочитать JSON: " + err.message);
+        modalSystem.alert('Ошибка', 'Не удалось прочитать JSON: ' + err.message);
       }
     };
     reader.readAsText(file);
-    e.target.value = "";
+    e.target.value = '';
   });
 
-  document.getElementById("btnExportXlsx")?.addEventListener("click", () => {
+  document.getElementById('btnExportXlsx')?.addEventListener('click', () => {
     const data = getActiveData();
     exportToExcel(state.currentScenario, data, calculateProgram(data));
   });
 
-  document.getElementById("btnDownloadPlanTemplate")?.addEventListener("click", () => {
+  document.getElementById('btnDownloadPlanTemplate')?.addEventListener('click', () => {
     downloadPlanTemplate(state.currentScenario, getActiveData());
   });
 
-  document.getElementById("btnUploadPlanTemplate")?.addEventListener("click", () => {
-    document.getElementById("planExcelFileInput")?.click();
+  document.getElementById('btnUploadPlanTemplate')?.addEventListener('click', () => {
+    document.getElementById('planExcelFileInput')?.click();
   });
 
-  document.getElementById("planExcelFileInput")?.addEventListener("change", async (e: any) => {
+  document.getElementById('planExcelFileInput')?.addEventListener('change', async (e: any) => {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
       const res = await parsePlanExcel(file, getActiveData());
       storageService.saveState(state);
       renderAll();
-      modalSystem.alert("Импорт выполнен", `Обновлено ячеек: ${res.updatedCells}. Сопоставлено изделий: ${res.matchedRows}.`);
+      modalSystem.alert('Импорт выполнен', `Обновлено ячеек: ${res.updatedCells}. Сопоставлено изделий: ${res.matchedRows}.`);
     } catch (err: any) {
-      modalSystem.alert("Ошибка", err.message);
+      modalSystem.alert('Ошибка', err.message);
     }
-    e.target.value = "";
+    e.target.value = '';
   });
 
-  document.getElementById("btnPrintPdf")?.addEventListener("click", () => {
+  document.getElementById('btnPrintPdf')?.addEventListener('click', () => {
     const data = getActiveData();
-    const root = document.getElementById("printReportRoot")!;
+    const root = document.getElementById('printReportRoot')!;
     root.innerHTML = buildPrintReportHtml(state.currentScenario, data, calculateProgram(data));
-    document.body.classList.add("report-mode");
+    document.body.classList.add('report-mode');
     window.print();
-    document.body.classList.remove("report-mode");
+    document.body.classList.remove('report-mode');
   });
 
-  document.getElementById("btnDownloadAnalyticsImage")?.addEventListener("click", () => {
-    const area = document.getElementById("analyticsCaptureArea");
+  document.getElementById('btnDownloadAnalyticsImage')?.addEventListener('click', () => {
+    const area = document.getElementById('analyticsCaptureArea');
     if (!area) return;
     html2canvas(area, { scale: 2 }).then(canvas => {
-      const link = document.createElement("a");
+      const link = document.createElement('a');
       link.download = `Аналитика_${state.currentScenario}.png`;
-      link.href = canvas.toDataURL("image/png");
+      link.href = canvas.toDataURL('image/png');
       link.click();
     });
   });
 
-  document.getElementById("btnExportCSV")?.addEventListener("click", () => {
+  document.getElementById('btnExportCSV')?.addEventListener('click', () => {
     const data = getActiveData();
     const calc = calculateProgram(data);
-    let csv = "\uFEFF\"Показатель\";" + data.months.map(m => `"${m}"`).join(";") + ";\"Итого\"\n";
+    let csv = '\uFEFF"Показатель";' + data.months.map(m => `"${m}"`).join(';') + ';"Итого"\n';
     data.professions.forEach(prof => {
-      csv += `"${prof.name} (н-ч)";` + calc.hoursByProf[prof.id].map(h => Math.round(h)).join(";") + `;${Math.round(calc.hoursByProf[prof.id].reduce((a,b)=>a+b,0))}\n`;
+      csv += `"${prof.name} (н-ч)";` + calc.hoursByProf[prof.id].map(h => Math.round(h)).join(';') + `;${Math.round(calc.hoursByProf[prof.id].reduce((a,b)=>a+b,0))}\n`;
     });
-    csv += `"ИТОГО ОБЩИЙ ШТАТ (чел)";` + calc.grandTotalStaff.join(";") + `;${Math.max(...calc.grandTotalStaff)}\n`;
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
+    csv += '"ИТОГО ОБЩИЙ ШТАТ (чел)";' + calc.grandTotalStaff.join(';') + `;${Math.max(...calc.grandTotalStaff)}\n`;
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = `Ведомость_персонала_${state.currentScenario}.csv`;
     link.click();
   });
 
-  document.getElementById("btnAddMonth")?.addEventListener("click", () => {
+  document.getElementById('btnAddMonth')?.addEventListener('click', () => {
     const data = getActiveData();
     data.months.push(`М ${data.months.length + 1}`);
     data.products.forEach(p => {
@@ -528,8 +538,8 @@ function attachGlobalEvents() {
     renderAll();
   });
 
-  document.getElementById("btnClearPlan")?.addEventListener("click", () => {
-    modalSystem.confirm("Очистить", "Обнулить объёмы выпуска по всем месяцам?", () => {
+  document.getElementById('btnClearPlan')?.addEventListener('click', () => {
+    modalSystem.confirm('Очистить', 'Обнулить объёмы выпуска по всем месяцам?', () => {
       const data = getActiveData();
       data.products.forEach(p => { data.plan[p.id] = new Array(data.months.length).fill(0); });
       storageService.saveState(state);
@@ -537,14 +547,14 @@ function attachGlobalEvents() {
     });
   });
 
-  document.getElementById("btnAddProduct")?.addEventListener("click", () => {
-    modalSystem.prompt("Новое изделие", "Введите наименование:", "Новая позиция", (name) => {
+  document.getElementById('btnAddProduct')?.addEventListener('click', () => {
+    modalSystem.prompt('Новое изделие', 'Введите наименование:', 'Новая позиция', (name) => {
       if (name?.trim()) {
         const data = getActiveData();
-        const id = "pr" + Date.now();
+        const id = 'pr' + Date.now();
         const norms: Record<string, number> = {};
         data.professions.forEach(pr => { norms[pr.id] = 0; });
-        data.products.push({ id, name: name.trim(), unit: "м²", scrap: 2, norms });
+        data.products.push({ id, name: name.trim(), unit: 'м²', scrap: 2, norms });
         data.plan[id] = new Array(data.months.length).fill(0);
         storageService.saveState(state);
         renderAll();
@@ -552,12 +562,12 @@ function attachGlobalEvents() {
     });
   });
 
-  document.getElementById("btnAddProfession")?.addEventListener("click", () => {
-    modalSystem.prompt("Новый участок", "Наименование технологического участка:", "Новый участок", (name) => {
+  document.getElementById('btnAddProfession')?.addEventListener('click', () => {
+    modalSystem.prompt('Новый участок', 'Наименование технологического участка:', 'Новый участок', (name) => {
       if (name?.trim()) {
         const data = getActiveData();
-        const id = "p" + Date.now();
-        data.professions.push({ id, name: name.trim(), pool: "universal", machines: 1, crew: 1 });
+        const id = 'p' + Date.now();
+        data.professions.push({ id, name: name.trim(), pool: 'universal', machines: 1, crew: 1 });
         data.products.forEach(p => { p.norms[id] = 0; });
         storageService.saveState(state);
         renderAll();
@@ -565,35 +575,35 @@ function attachGlobalEvents() {
     });
   });
 
-  document.getElementById("btnRecalcFNom")?.addEventListener("click", () => {
+  document.getElementById('btnRecalcFNom')?.addEventListener('click', () => {
     const data = getActiveData();
     data.settings.fNom = calcFNom(data.settings.workDaysPerMonth, data.settings.shiftHoursStandard);
     storageService.saveState(state);
     renderAll();
   });
 
-  document.getElementById("btnRecalcFEff")?.addEventListener("click", () => {
+  document.getElementById('btnRecalcFEff')?.addEventListener('click', () => {
     const data = getActiveData();
     data.settings.fEff = calcFEff(data.settings.fNom, data.settings.reserveOffPercent);
     storageService.saveState(state);
     renderAll();
   });
 
-  document.getElementById("btnRecalcFNomExtended")?.addEventListener("click", () => {
+  document.getElementById('btnRecalcFNomExtended')?.addEventListener('click', () => {
     const data = getActiveData();
     data.settings.fNomExtended = calcExtendedFNom(data.settings.fNom, data.settings.extendedShiftHours, data.settings.shiftHoursStandard);
     storageService.saveState(state);
     renderAll();
   });
 
-  document.getElementById("btnRecalcFEffExtended")?.addEventListener("click", () => {
+  document.getElementById('btnRecalcFEffExtended')?.addEventListener('click', () => {
     const data = getActiveData();
     data.settings.fEffExtended = calcFEff(data.settings.fNomExtended, data.settings.reserveOffPercent);
     storageService.saveState(state);
     renderAll();
   });
 
-  document.getElementById("btnSyncAllFunds")?.addEventListener("click", () => {
+  document.getElementById('btnSyncAllFunds')?.addEventListener('click', () => {
     const data = getActiveData();
     const s = data.settings;
     s.fNom = calcFNom(s.workDaysPerMonth, s.shiftHoursStandard);
@@ -602,10 +612,10 @@ function attachGlobalEvents() {
     s.fEffExtended = calcFEff(s.fNomExtended, s.reserveOffPercent);
     storageService.saveState(state);
     renderAll();
-    modalSystem.alert("Синхронизировано", "Все фонды пересчитаны от текущего календаря.");
+    modalSystem.alert('Синхронизировано', 'Все фонды пересчитаны от текущего календаря.');
   });
 
-  document.getElementById("btnResetCalendarDefaults")?.addEventListener("click", () => {
+  document.getElementById('btnResetCalendarDefaults')?.addEventListener('click', () => {
     const data = getActiveData();
     data.settings.workDaysPerMonth = 21;
     data.settings.shiftHoursStandard = 8;
@@ -617,9 +627,10 @@ function attachGlobalEvents() {
   const bindInput = (id: string, prop: keyof Settings, isNum: boolean = true) => {
     const el = document.getElementById(id);
     if (!el) return;
-    el.addEventListener("input", (e: any) => {
+    el.addEventListener('input', (e: Event) => {
+      const target = e.target as HTMLInputElement;
       const data = getActiveData();
-      (data.settings as any)[prop] = isNum ? parseNum(e.target.value) : e.target.value;
+      (data.settings as any)[prop] = isNum ? parseNum(target.value) : target.value;
       storageService.saveState(state);
       const freshCalc = calculateProgram(data);
       renderKPIs(freshCalc, data);
@@ -629,18 +640,18 @@ function attachGlobalEvents() {
     });
   };
 
-  bindInput("inputBrigadesCount", "brigadesCount");
-  bindInput("inputBrigadeSize", "brigadeSize");
-  bindInput("inputMaxOvertime", "maxOvertimePercent");
-  bindInput("inputAuxOtk", "auxOtkPercent");
-  bindInput("inputAuxSetup", "auxSetupPercent");
-  bindInput("inputAuxFixed", "auxFixedPosts");
-  bindInput("inputWorkDays", "workDaysPerMonth");
-  bindInput("inputShiftHours", "shiftHoursStandard");
-  bindInput("inputExtendedShiftHours", "extendedShiftHours");
-  bindInput("inputKVn", "kVn");
-  bindInput("inputReserveOff", "reserveOffPercent");
-  bindInput("inputCompanyName", "companyName", false);
+  bindInput('inputBrigadesCount', 'brigadesCount');
+  bindInput('inputBrigadeSize', 'brigadeSize');
+  bindInput('inputMaxOvertime', 'maxOvertimePercent');
+  bindInput('inputAuxOtk', 'auxOtkPercent');
+  bindInput('inputAuxSetup', 'auxSetupPercent');
+  bindInput('inputAuxFixed', 'auxFixedPosts');
+  bindInput('inputWorkDays', 'workDaysPerMonth');
+  bindInput('inputShiftHours', 'shiftHoursStandard');
+  bindInput('inputExtendedShiftHours', 'extendedShiftHours');
+  bindInput('inputKVn', 'kVn');
+  bindInput('inputReserveOff', 'reserveOffPercent');
+  bindInput('inputCompanyName', 'companyName', false);
 }
 
-window.addEventListener("DOMContentLoaded", init);
+window.addEventListener('DOMContentLoaded', init);
