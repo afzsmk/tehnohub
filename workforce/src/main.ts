@@ -48,7 +48,7 @@ async function init() {
         data.normConfigs[`${prodId}___${profId}`] = entry;
         storageService.saveState(state);
         renderAll();
-        modalSystem.alert("Успешно", `Норма ${norm} н-ч перенесена в матрицу норм.`);
+        modalSystem.alert("Норма сохранена", `Норма <strong>${norm.toFixed(3)} н-ч</strong> для «${p.name}» записана в матрицу норм и зафиксирована в реестре.`);
       }
     },
     (key) => {
@@ -98,7 +98,6 @@ function renderAll() {
     }
   });
 
-  // Рендеринг таблицы плана без потери фокуса
   renderPlanTable(
     data, calc,
     (prodId, mIdx, val) => {
@@ -109,7 +108,6 @@ function renderAll() {
       renderKPIs(freshCalc, data);
       renderExecutiveSummary(freshCalc, data);
       renderDynamicGuides(freshCalc, data);
-      // Обновляем итог месяца в подвале без перерисовки таблицы
       const tfootTds = document.querySelectorAll("#planTableFooter td");
       if (tfootTds && tfootTds[mIdx + 1]) {
         tfootTds[mIdx + 1].textContent = Math.round(freshCalc.totalHoursByMonth[mIdx]).toLocaleString();
@@ -142,7 +140,6 @@ function renderAll() {
     }
   );
 
-  // Рендеринг справочников без потери фокуса
   renderProfessionsTable(
     data,
     () => { storageService.saveState(state); renderAll(); },
@@ -196,7 +193,6 @@ function renderDictionariesInputs() {
 
   const setVal = (id: string, val: any) => {
     const el = document.getElementById(id) as HTMLInputElement | null;
-    // НЕ перезаписываем поле, если пользователь прямо сейчас в нём печатает!
     if (el && document.activeElement !== el) {
       el.value = String(val ?? '');
     }
@@ -581,7 +577,6 @@ function attachGlobalEvents() {
       const data = getActiveData();
       (data.settings as any)[prop] = isNum ? parseNum(e.target.value) : e.target.value;
       storageService.saveState(state);
-      // При вводе в настройки обновляем аналитику, не трогая курсор текущего поля
       const freshCalc = calculateProgram(data);
       renderKPIs(freshCalc, data);
       renderExecutiveSummary(freshCalc, data);
