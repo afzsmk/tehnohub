@@ -6,6 +6,7 @@ import { calculateProgram } from './core/engine';
 import { parseNum, calcFNom, calcFEff, calcExtendedFNom } from './core/funds';
 import { levelLoadPlan } from './core/levelLoading';
 import { storageService } from './services/storage/storageService';
+import { authService } from './services/storage/authService';
 import { exportToExcel, downloadPlanTemplate, parsePlanExcel } from './services/excelService';
 import { buildPrintReportHtml } from './services/reportService';
 import { PRELOADED_STATE } from './services/storage/defaultState';
@@ -41,6 +42,7 @@ async function init() {
   renderScenarioSelector();
   setupTabs();
   setupCollapsibles();
+  setupAuthAndStorageToggle();
   attachGlobalEvents();
 
   const data = getActiveData();
@@ -343,6 +345,149 @@ function setupCollapsibles() {
   });
 }
 
+// УПРАВЛЕНИЕ АВТОРИЗАЦИЕЙ И СЛАЙДЕРОМ ХРАНИЛИЩА
+function setupAuthAndStorageToggle() {
+  const guestWrap = document.getElementById('guestAuthWrap');
+  const userWrap = document.getElementById('userAuthWrap');
+  const userEmailBadge = document.getElementById('userEmailBadge');
+  const btnModeLocal = document.getElementById('btnModeLocal');
+  const btnModeCloud = document.getElementById('btnModeCloud');
+  const btnPublish = document.getElementById('btnPublishToCloud');
+
+  const updateUI = (user: any) => {
+    const isCloud = storageService.getMode() === 'cloud';
+    if (user) {
+      if (guestWrap) guestWrap.style.display = 'none';
+      if (userWrap) userWrap.style.display = 'inline-flex';
+      if (userEmailBadge) userEmailBadge.textContent = `👤 ${user.email}`;
+
+      btnModeLocal?.classList.toggle('active', !isCloud);
+      btnModeCloud?.classList.toggle('active-cloud', isCloud);
+      btnModeCloud?.classList.toggle('active', isCloud);
+
+      // Кнопка публикации видна только если мы авторизованы, но находимся в локальном режиме
+      if (btnPublish) btnPublish.style.display = !isCloud ? 'inline-flex' : 'none';
+    } else {
+      if (guestWrap) guestWrap.style.display = 'inline-flex';
+      if (userWrap) userWrap.style.display = 'none';
+      if (btnPublish) btnPublish.style.display = 'none';
+    }
+  };
+
+  // Переключение тумблера на Браузер
+  btnModeLocal?.addEventListener('click', async () => {
+    if (storageService.getMode() === 'local') return;
+    storageService.setMode('local');
+    state = await storageService.loadState();
+    renderScenarioSelector();
+    renderAll();
+    const user = await authService.getUser();
+    updateUI(user);
+    modalSystem.alert('Режим хранилища', 'Переключено на <strong>Память браузера</strong> (Локальная песочница).');
+  });
+
+  // Переключение тумблера на Облако
+  btnModeCloud?.addEventListener('click', async () => {
+    if (storageService.getMode() === 'cloud') return;
+    storageService.setMode('cloud');
+    state = await storageService.loadState();
+    renderScenarioSelector();
+    renderAll();
+    const user = await authService.getUser();
+    updateUI(user);
+    modalSystem.alert('Режим хранилища', 'Переключено на <strong>Единое облако ЗСМК</strong>. Все сохранения синхронизируются с базой завода.');
+  });
+
+  // Открыть диалог входа
+  document.getElementById('btnOpenLoginModal')?.addEventListener('click', () => {
+    openAuthModal();
+  });
+
+  // Выйти из аккаунта
+  document.getElementById('btnLogout')?.addEventListener('click', async () => {
+    await authService.signOut();
+    storageService.setMode('local');
+    state = await storageService.loadState();
+    renderScenarioSelector();
+    renderAll();
+    updateUI(null);
+    modalSystem.alert('Выход', 'Вы вышли из аккаунта. Приложение вернулось в режим локальной песочницы.');
+  });
+
+  // Публикация черновика в облако
+  btnPublish?.addEventListener('click', () => {
+    const data = getActiveData();
+    modalSystem.confirm(
+      'Публикация в Облако',
+      `Опубликовать сценарий <strong>«${state.currentScenario}»</strong> в единую облачную базу завода ЗСМК? Он станет доступен всем сотрудникам.`,
+      async () => {
+        try {
+          await storageService.publishToCloud(state.currentScenario, data);
+          modalSystem.alert('Опубликовано', `Сценарий «${state.currentScenario}» успешно отправлен в облачную базу ЗСМК!`);
+        } catch (err: any) {
+          modalSystem.alert('Ошибка', 'Не удалось опубликовать: ' + err.message);
+        }
+      }
+    );
+  });
+
+  authService.onAuthStateChange((user) => {
+    updateUI(user);
+  });
+
+  authService.getUser().then(user => updateUI(user));
+}
+
+// ДИАЛОГ ВХОДА ПЛАНОВИКА
+function openAuthModal() {
+  const bodyHtml = `
+    <div style="display:flex; flex-direction:column; gap:12px;">
+      <p style="font-size:12.5px; color:var(--text-secondary);">Для записи в единую базу завода и переключения на официальные сценарии введите данные учётной записи:</p>
+      <div>
+        <label style="font-size:11.5px; font-weight:600; color:var(--text-muted);">EMAIL:</label>
+        <input type="email" id="authInputEmail" class="input-control" placeholder="planner@zsmk.ru" style="margin-top:2px;">
+      </div>
+      <div>
+        <label style="font-size:11.5px; font-weight:600; color:var(--text-muted);">ПАРОЛЬ:</label>
+        <input type="password" id="authInputPassword" class="input-control" placeholder="••••••••" style="margin-top:2px;">
+      </div>
+    </div>
+  `;
+
+  modalSystem.show(
+    '<svg class="icon"><use href="#icon-zap"></use></svg> Авторизация плановика',
+    bodyHtml,
+    false,
+    '',
+    [
+      { label: 'Отмена', class: 'btn-secondary' },
+      {
+        label: 'Войти',
+        class: 'btn-primary',
+        isPrimary: true,
+        action: async () => {
+          const email = (document.getElementById('authInputEmail') as HTMLInputElement)?.value.trim();
+          const pass = (document.getElementById('authInputPassword') as HTMLInputElement)?.value;
+          if (!email || !pass) {
+            modalSystem.alert('Ошибка', 'Заполните email и пароль.');
+            return;
+          }
+          const res = await authService.signIn(email, pass);
+          if (res.error) {
+            modalSystem.alert('Ошибка входа', res.error);
+          } else {
+            storageService.setMode('cloud');
+            state = await storageService.loadState();
+            renderScenarioSelector();
+            renderAll();
+            modalSystem.alert('Успешный вход', `Вы вошли как <strong>${res.user?.email}</strong>. Включён режим работы с облаком завода.`);
+          }
+        }
+      }
+    ]
+  );
+}
+
 function attachGlobalEvents() {
   document.getElementById('btnLevelToggle')?.addEventListener('click', () => {
     const data = getActiveData();
@@ -365,8 +510,13 @@ function attachGlobalEvents() {
   });
 
   document.getElementById('btnSaveScenario')?.addEventListener('click', async () => {
-    await storageService.saveState(state);
-    modalSystem.alert('Сохранено', `Сценарий «${state.currentScenario}» сохранён.`);
+    try {
+      await storageService.saveState(state);
+      const modeText = storageService.getMode() === 'cloud' ? 'в облачную базу ЗСМК' : 'в память вашего браузера';
+      modalSystem.alert('Сохранено', `Сценарий «${state.currentScenario}» сохранён ${modeText}.`);
+    } catch (err: any) {
+      modalSystem.alert('Ошибка сохранения', err.message);
+    }
   });
 
   document.getElementById('btnNewScenario')?.addEventListener('click', () => {
@@ -392,10 +542,14 @@ function attachGlobalEvents() {
       const toDel = state.currentScenario;
       delete state.scenarios[toDel];
       state.currentScenario = Object.keys(state.scenarios)[0];
-      await storageService.deleteScenario(toDel);
-      await storageService.saveState(state);
-      renderScenarioSelector();
-      renderAll();
+      try {
+        await storageService.deleteScenario(toDel);
+        await storageService.saveState(state);
+        renderScenarioSelector();
+        renderAll();
+      } catch (err: any) {
+        modalSystem.alert('Ошибка удаления', err.message);
+      }
     });
   });
 
