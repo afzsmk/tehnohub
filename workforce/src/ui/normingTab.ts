@@ -21,8 +21,8 @@ export function setupNormingTab(
   onNormPushed: (prodId: string, profId: string, norm: number, entry: NormConfigEntry) => void,
   onConfigDeleted?: (key: string) => void
 ): void {
-  const prodSel = document.getElementById("normProdSelect") as HTMLSelectElement;
-  const profSel = document.getElementById("normProfSelect") as HTMLSelectElement;
+  const prodSel = document.getElementById("normProdSelect") as HTMLSelectElement | null;
+  const profSel = document.getElementById("normProfSelect") as HTMLSelectElement | null;
   const btnStat = document.getElementById("btnNormMethodStat");
   const btnChrono = document.getElementById("btnNormMethodChrono");
 
@@ -30,21 +30,13 @@ export function setupNormingTab(
   btnChrono?.addEventListener("click", () => setMethod('chrono'));
 
   prodSel?.addEventListener("change", () => {
-    loadSavedConfigIntoInputs(data, prodSel.value, profSel.value);
+    loadSavedConfigIntoInputs(data, prodSel.value, profSel?.value || "");
     recalc();
   });
   profSel?.addEventListener("change", () => {
-    loadSavedConfigIntoInputs(data, prodSel.value, profSel.value);
+    loadSavedConfigIntoInputs(data, prodSel?.value || "", profSel.value);
     recalc();
   });
-
-  function populateDropdowns() {
-    if (!prodSel || !profSel) return;
-    const curProd = prodSel.value;
-    const curProf = profSel.value;
-    prodSel.innerHTML = data.products.map(p => `<option value="${p.id}" ${p.id === curProd ? 'selected' : ''}>${escapeHtml(p.name)} (${escapeHtml(p.unit || 'м²')})</option>`).join("");
-    profSel.innerHTML = data.professions.map(pr => `<option value="${pr.id}" ${pr.id === curProf ? 'selected' : ''}>${escapeHtml(pr.name)}</option>`).join("");
-  }
 
   function setMethod(method: 'stat' | 'chrono') {
     currentMethod = method;
@@ -85,7 +77,7 @@ export function setupNormingTab(
     const pId = prodSel?.value;
     const prId = profSel?.value;
     const prod = data.products.find(p => p.id === pId);
-    const matrixVal = prod?.norms[prId] ? parseNum(prod.norms[prId]) : 0;
+    const matrixVal = (prod?.norms && prId && prod.norms[prId] !== undefined) ? parseNum(prod.norms[prId]) : 0;
 
     const matrixValEl = document.getElementById("normMatrixValText");
     if (matrixValEl) matrixValEl.textContent = `(в матрице: ${matrixVal.toFixed(3)})`;
@@ -108,6 +100,7 @@ export function setupNormingTab(
     inp.addEventListener("input", () => recalc());
   });
 
+  // КЛИК: ПЕРЕНЕСТИ В МАТРИЦУ НОРМ
   document.getElementById("btnPushNormToMatrix")?.addEventListener("click", () => {
     if (!prodSel || !profSel) return;
     const prodId = prodSel.value;
@@ -140,46 +133,70 @@ export function setupNormingTab(
         } : undefined,
         updatedAt: new Date().toLocaleString("ru-RU", { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
       };
+
       onNormPushed(prodId, profId, normVal, entry);
       recalc();
+      renderSavedNormsRegistry(data, onConfigDeleted || (() => {}));
     }
   });
 
-  populateDropdowns();
-  loadSavedConfigIntoInputs(data, prodSel?.value, profSel?.value);
+  refreshNormingDropdowns(data);
+  loadSavedConfigIntoInputs(data, prodSel?.value || "", profSel?.value || "");
   recalc();
   renderSavedNormsRegistry(data, onConfigDeleted || (() => {}));
 }
 
-function loadSavedConfigIntoInputs(data: ScenarioData, prodId: string, profId: string) {
+export function refreshNormingDropdowns(data: ScenarioData): void {
+  const prodSel = document.getElementById("normProdSelect") as HTMLSelectElement | null;
+  const profSel = document.getElementById("normProfSelect") as HTMLSelectElement | null;
+  if (!prodSel || !profSel) return;
+
+  const curProd = prodSel.value;
+  const curProf = profSel.value;
+  prodSel.innerHTML = data.products.map(p => `<option value="${p.id}" ${p.id === curProd ? 'selected' : ''}>${escapeHtml(p.name)} (${escapeHtml(p.unit || 'м²')})</option>`).join("");
+  profSel.innerHTML = data.professions.map(pr => `<option value="${pr.id}" ${pr.id === curProf ? 'selected' : ''}>${escapeHtml(pr.name)}</option>`).join("");
+}
+
+export function loadSavedConfigIntoInputs(data: ScenarioData, prodId: string, profId: string): void {
   const key = `${prodId}___${profId}`;
   const cfg = data.normConfigs?.[key];
-  if (!cfg) return;
 
-  if (cfg.method === 'stat' && cfg.stat) {
-    (document.getElementById("normStatOutput") as HTMLInputElement).value = String(cfg.stat.output);
-    (document.getElementById("normStatWorkers") as HTMLInputElement).value = String(cfg.stat.workers);
-    (document.getElementById("normStatShiftHours") as HTMLInputElement).value = String(cfg.stat.shiftHours);
-    (document.getElementById("normStatBreaks") as HTMLInputElement).value = String(cfg.stat.breaks);
-  } else if (cfg.method === 'chrono' && cfg.chrono) {
-    (document.getElementById("normChronoTOsn") as HTMLInputElement).value = String(cfg.chrono.tOsn);
-    (document.getElementById("normChronoTVsp") as HTMLInputElement).value = String(cfg.chrono.tVsp);
-    (document.getElementById("normChronoCrew") as HTMLInputElement).value = String(cfg.chrono.crew);
-    (document.getElementById("normChronoTPz") as HTMLInputElement).value = String(cfg.chrono.tPz);
+  if (cfg) {
+    if (cfg.method === 'stat' && cfg.stat) {
+      (document.getElementById("normStatOutput") as HTMLInputElement).value = String(cfg.stat.output);
+      (document.getElementById("normStatWorkers") as HTMLInputElement).value = String(cfg.stat.workers);
+      (document.getElementById("normStatShiftHours") as HTMLInputElement).value = String(cfg.stat.shiftHours);
+      (document.getElementById("normStatBreaks") as HTMLInputElement).value = String(cfg.stat.breaks);
+      document.getElementById("btnNormMethodStat")?.click();
+    } else if (cfg.method === 'chrono' && cfg.chrono) {
+      (document.getElementById("normChronoTOsn") as HTMLInputElement).value = String(cfg.chrono.tOsn);
+      (document.getElementById("normChronoTVsp") as HTMLInputElement).value = String(cfg.chrono.tVsp);
+      (document.getElementById("normChronoCrew") as HTMLInputElement).value = String(cfg.chrono.crew);
+      (document.getElementById("normChronoTPz") as HTMLInputElement).value = String(cfg.chrono.tPz);
+      document.getElementById("btnNormMethodChrono")?.click();
+    }
+  } else {
+    // Дефолтные значения при отсутствии сохранённой нормы
+    (document.getElementById("normStatOutput") as HTMLInputElement).value = "50";
+    (document.getElementById("normStatWorkers") as HTMLInputElement).value = "3";
+    (document.getElementById("normStatShiftHours") as HTMLInputElement).value = "8.0";
+    (document.getElementById("normStatBreaks") as HTMLInputElement).value = "40";
   }
 }
 
-export function openNormingFor(prodId: string, profId: string): void {
-  const tabBtn = document.querySelector('.tab-button[data-tab="tab-norming"]') as HTMLButtonElement;
+export function openNormingFor(prodId: string, profId: string, data: ScenarioData): void {
+  const tabBtn = document.querySelector('.tab-button[data-tab="tab-norming"]') as HTMLButtonElement | null;
   tabBtn?.click();
 
-  const prodSel = document.getElementById("normProdSelect") as HTMLSelectElement;
-  const profSel = document.getElementById("normProfSelect") as HTMLSelectElement;
+  refreshNormingDropdowns(data);
+  const prodSel = document.getElementById("normProdSelect") as HTMLSelectElement | null;
+  const profSel = document.getElementById("normProfSelect") as HTMLSelectElement | null;
   if (prodSel) prodSel.value = prodId;
   if (profSel) profSel.value = profId;
+
+  loadSavedConfigIntoInputs(data, prodId, profId);
 }
 
-// ВОССТАНОВЛЕННЫЙ РЕЕСТР НОРМ С ПАРАМЕТРАМИ И КНОПКОЙ ЗАГРУЗКИ В КАЛЬКУЛЯТОР
 export function renderSavedNormsRegistry(data: ScenarioData, onDelete: (key: string) => void): void {
   const tbody = document.getElementById("savedNormsTableBody");
   const countEl = document.getElementById("savedNormsCount");
@@ -199,15 +216,15 @@ export function renderSavedNormsRegistry(data: ScenarioData, onDelete: (key: str
     const prod = data.products.find(p => p.id === item.prodId) || { name: item.prodName || item.prodId, unit: "м²" };
     const prof = data.professions.find(pr => pr.id === item.profId) || { name: item.profName || item.profId };
 
-    let methodBadge = item.method === 'chrono'
+    const methodBadge = item.method === 'chrono'
       ? `<span class="badge-shift-12" style="font-size:11px;">Хронометраж</span>`
       : `<span class="badge-shift-2" style="font-size:11px;">Статистика смены</span>`;
 
     let paramDesc = "";
     if (item.method === 'chrono' && item.chrono) {
-      paramDesc = `T<sub>осн</sub>=${item.chrono.tOsn}м, T<sub>всп</sub>=${item.chrono.tVsp}м, Звено=${item.chrono.crew} чел, ПЗ=${item.chrono.tPz}м/парт.${item.chrono.batchSize || 50}шт (обсл: ${item.chrono.kObs}%, отд: ${item.chrono.kOtl}%)`;
+      paramDesc = `T<sub>осн</sub>=${item.chrono.tOsn}м, T<sub>всп</sub>=${item.chrono.tVsp}м, Звено=${item.chrono.crew} чел, ПЗ=${item.chrono.tPz}м/парт.${item.chrono.batchSize || 50}шт (обсл: ${item.chrono.kObs || 5}%, отд: ${item.chrono.kOtl || 6}%)`;
     } else if (item.stat) {
-      paramDesc = `Q=${item.stat.output} ${escapeHtml(prod.unit || 'ед')}, N<sub>раб</sub>=${item.stat.workers} чел, Смена=${item.stat.shiftHours}ч, Перерывы=${item.stat.breaks}м, K<sub>эф</sub>=${item.stat.kEff}`;
+      paramDesc = `Q=${item.stat.output} ${escapeHtml(prod.unit || 'ед')}, N<sub>раб</sub>=${item.stat.workers} чел, Смена=${item.stat.shiftHours}ч, Перерывы=${item.stat.breaks}м, K<sub>эф</sub>=${item.stat.kEff || 0.95}`;
     }
 
     return `
@@ -219,7 +236,7 @@ export function renderSavedNormsRegistry(data: ScenarioData, onDelete: (key: str
         <td style="text-align:right; font-weight:700; color:var(--accent);">${item.norm.toFixed(3)}</td>
         <td style="text-align:center; font-size:11.5px; color:var(--text-muted);">${escapeHtml(item.updatedAt || '—')}</td>
         <td style="text-align:center;">
-          <button class="btn btn-secondary btn-sm btn-load-norm-cfg" data-prod="${item.prodId}" data-prof="${item.profId}" data-method="${item.method}" title="Загрузить параметры в калькулятор">
+          <button class="btn btn-secondary btn-sm btn-load-norm-cfg" data-prod="${item.prodId}" data-prof="${item.profId}" title="Загрузить параметры в калькулятор">
             <svg class="icon"><use href="#icon-external"></use></svg>
           </button>
           <button class="btn btn-secondary btn-sm btn-del-norm-cfg" data-key="${key}" title="Удалить запись">
@@ -238,8 +255,7 @@ export function renderSavedNormsRegistry(data: ScenarioData, onDelete: (key: str
     if (btnLoad) {
       const prodId = btnLoad.getAttribute("data-prod")!;
       const profId = btnLoad.getAttribute("data-prof")!;
-      openNormingFor(prodId, profId);
-      loadSavedConfigIntoInputs(data, prodId, profId);
+      openNormingFor(prodId, profId, data);
       modalSystem.alert("Загружено", "Параметры успешно восстановлены в окне калькулятора.");
     } else if (btnDel) {
       const key = btnDel.getAttribute("data-key")!;
