@@ -129,7 +129,7 @@
         </div>
         <div class="panel-body">
           <p style="font-size:12px; color:var(--text-secondary); margin: -4px 0 10px;">
-            Большой план быстрее заполнять вставкой из Excel: скопируйте диапазон чисел, кликните на ячейку ниже и нажмите Ctrl+V — значения заполнятся вправо и вниз от точки вставки.
+            Большой план быстрее заполнять вставкой из Excel: скопируйте диапазон чисел, кликните на нужную ячейку в таблице ниже и нажмите Ctrl+V — значения заполнятся вправо и вниз от точки вставки. Либо используйте кнопки «Шаблон Excel» выше для переноса плана офлайн.
           </p>
           <div class="table-container">
             <table class="data-table" id="planTable">
@@ -174,7 +174,7 @@
       <div class="grid-2">
         <div class="panel">
           <div class="panel-header">
-            <div class="panel-title">Технологические участки, оборудование и пулы</div>
+            <div class="panel-title">Технологические участки, оборудование и пулы квалификации</div>
             <button class="btn btn-secondary btn-sm" id="btnAddProfession"><svg class="icon"><use href="#icon-plus"></use></svg> Добавить</button>
           </div>
           <div class="panel-body">
@@ -184,7 +184,7 @@
                   <tr>
                     <th class="col-drag"></th>
                     <th>Наименование участка</th>
-                    <th style="width: 140px; text-align: center;">Пул</th>
+                    <th style="width: 140px; text-align: center;">Пул квалификации</th>
                     <th style="width: 65px; text-align: right;">Станков</th>
                     <th style="width: 75px; text-align: right;">Звено</th>
                     <th style="width: 85px; text-align: right;">Мин. штат</th>
@@ -201,9 +201,12 @@
         <div class="panel">
           <div class="panel-header"><div class="panel-title">Штат и организация труда универсалов</div></div>
           <div class="panel-body">
+            <p style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">
+              Сколько человек и в какой структуре — сколько часов даёт каждый из них, задаётся в панели «Календарь и фонд рабочего времени» ниже.
+            </p>
             <div class="grid-2" style="gap: 12px;">
               <div>
-                <label style="font-size: 11.5px; font-weight:700; color:var(--accent);">КОЛ-ВО БРИГАД (Nбриг):</label>
+                <label style="font-size: 11.5px; font-weight:700; color:var(--accent);">КОЛ-ВО БРИГАД УНИВЕРСАЛОВ (Nбриг):</label>
                 <input type="number" min="1" max="10" id="inputBrigadesCount" class="input-control input-num" value="3">
               </div>
               <div>
@@ -211,11 +214,11 @@
                 <input type="number" min="1" max="25" id="inputBrigadeSize" class="input-control input-num" value="6">
               </div>
               <div>
-                <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);">ШТАТ УНИВЕРСАЛОВ:</label>
+                <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);">ШТАТ УНИВЕРСАЛОВ (расчетно):</label>
                 <div style="font-size:15px; font-weight:800; color:var(--accent); padding:4px 0;" id="calcUniversalHeadcount">18 чел.</div>
               </div>
               <div>
-                <label style="font-size: 11.5px; font-weight:700; color:#b45309;">ЛИМИТ СВЕРХУРОЧНЫХ (%):</label>
+                <label style="font-size: 11.5px; font-weight:700; color:#b45309;">ЛИМИТ СВЕРХУРОЧНЫХ (% к фонду):</label>
                 <input type="number" min="0" max="30" id="inputMaxOvertime" class="input-control input-num" value="15">
               </div>
               <div>
@@ -223,11 +226,11 @@
                 <input type="text" id="inputAuxOtk" class="input-control input-num" value="8">
               </div>
               <div>
-                <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);">НАЛАДКА ОБОРУДОВАНИЯ (%):</label>
+                <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);">НАЛАДКА ОБОРУДОВАНИЯ (% от осн.):</label>
                 <input type="text" id="inputAuxSetup" class="input-control input-num" value="5">
               </div>
               <div>
-                <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);">ДЕЖУРНЫЕ СЛУЖБЫ (фикс. чел):</label>
+                <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);">ДЕЖУРНЫЕ СЛУЖБЫ (фикс. чел/мес):</label>
                 <input type="text" id="inputAuxFixed" class="input-control input-num" value="3">
               </div>
             </div>
@@ -239,11 +242,15 @@
         <div class="panel-header">
           <div class="panel-title">Календарь, фонд рабочего времени и сменность участков</div>
           <div style="display:flex; gap:8px;">
-            <button type="button" class="btn btn-primary btn-sm" id="btnSyncAllFunds" title="Пересчитать все фонды">↺ Синхронизировать весь фонд</button>
+            <button type="button" class="btn btn-primary btn-sm" id="btnSyncAllFunds" title="Пересчитать Fном → Fэф → Fном(усил.) → Fэф(усил.) от календаря">↺ Синхронизировать весь фонд</button>
             <button type="button" class="btn btn-secondary btn-sm" id="btnResetCalendarDefaults">Сбросить к типовым</button>
           </div>
         </div>
         <div class="panel-body">
+          <p style="font-size:12px; color:var(--text-secondary); margin-bottom:14px;">
+            Один и тот же календарь используется дважды: чтобы понять, сколько часов даёт <strong>один человек</strong> в месяц (фонд времени → штат) и сколько часов работает <strong>один станок/пост</strong> (загрузка оборудования, вкладка «Аналитика»). Изменение «Рабочих дней» или «Смены» здесь автоматически двигает предпросчёт обоих справа.
+          </p>
+
           <div class="settings-subhead">Календарь месяца</div>
           <div class="grid-4" style="gap: 12px;">
             <div>
@@ -290,7 +297,10 @@
             </div>
           </div>
 
-          <div class="settings-subhead">Фонд времени в усиленном режиме</div>
+          <div class="settings-subhead">Фонд времени в усиленном режиме (то же звено, длиннее вахта)</div>
+          <p style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">
+            Когда участок/бригада переходит на удлинённую смену (график 5/2 сохраняется) — человек физически даёт больше часов в месяц. Система применяет этот фонд вместо обычного именно для тех месяцев, где по трудоёмкости требуется усиленный режим — по конкретному участку и по пулу универсалов. Все поля остаются редактируемыми вручную — кнопки «↺» лишь предлагают значение.
+          </p>
           <div class="grid-4" style="gap: 12px; align-items: end;">
             <div>
               <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);">Fном (усил.), ч/мес:</label>
@@ -310,10 +320,15 @@
               <label style="font-size: 11.5px; font-weight:600; color:var(--text-muted);">Прирост к обычному Fэф:</label>
               <div style="font-size:15px; font-weight:800; color:var(--accent); padding:8px 0;" id="extendedFundRatioPreview">×1.50</div>
             </div>
+            <div></div>
           </div>
 
-          <div class="settings-subhead">Пороги рекомендации сменности для оборудования</div>
+          <div class="settings-subhead">Загрузка оборудования — правило рекомендации смены</div>
+          <p style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">
+            Для каждого станка/поста система сама считает, сколько часов в сутки он должен фактически отработать (с учётом «Станков» и «Звено» из справочника выше), и напрямую предлагает длину смены — с шагом 0.5ч, без промежуточных «1/2 смены». Потолок — минимум из «Смена, усиленный режим» (общий предел по усталости) и «Доступность оборудования» конкретного участка (задаётся в его строке справочника, по умолчанию 24ч — то есть без отдельного ограничения).
+          </p>
           <div class="capacity-preview" style="max-width:480px;">
+            <div class="capacity-preview-title">Пример при доступности станка 24ч (без спец. ограничения)</div>
             <div class="capacity-tier-row">
               <span><span class="capacity-tier-dot" style="background:#86efac;"></span>Норма, без изменений</span>
               <strong id="previewCap1">до 8ч/сутки</strong>
@@ -327,6 +342,9 @@
               <strong id="previewCap3">свыше 12ч/сутки</strong>
             </div>
           </div>
+          <p style="font-size:11px; color:var(--text-muted); margin-top:8px;">
+            Пересчитывается сразу при изменении параметров выше. Проверить, как это выглядит для конкретных участков — вкладка «Аналитика» → «Загрузка оборудования».
+          </p>
         </div>
       </div>
 
@@ -368,43 +386,72 @@
         </div>
         <div class="panel-body">
           <div class="grid-2">
-            <div>
-              <label style="font-size:11.5px; font-weight:600;">ИЗДЕЛИЕ ИЗ СПРАВОЧНИКА:</label>
+            <div style="margin-bottom:10px;">
+              <label style="font-size:11.5px; font-weight:600; color:var(--text-muted);">ИЗДЕЛИЕ ИЗ СПРАВОЧНИКА:</label>
               <select id="normProdSelect" class="input-control"></select>
             </div>
-            <div>
-              <label style="font-size:11.5px; font-weight:600;">ТЕХНОЛОГИЧЕСКИЙ УЧАСТОК:</label>
+            <div style="margin-bottom:10px;">
+              <label style="font-size:11.5px; font-weight:600; color:var(--text-muted);">ТЕХНОЛОГИЧЕСКИЙ УЧАСТОК:</label>
               <select id="normProfSelect" class="input-control"></select>
             </div>
           </div>
 
-          <div id="normFieldsStat" style="margin-top:10px;">
+          <!-- Метод 1: Сменно-статистический со всеми полями и Kэф -->
+          <div id="normFieldsStat">
             <div class="grid-4">
-              <div><label style="font-size:11.5px; font-weight:600;">ВЫПУСК ЗА СМЕНУ (Q):</label><input type="text" id="normStatOutput" class="input-control input-num" value="50"></div>
-              <div><label style="font-size:11.5px; font-weight:600;">РАБОЧИХ (Nраб):</label><input type="text" id="normStatWorkers" class="input-control input-num" value="3"></div>
-              <div><label style="font-size:11.5px; font-weight:600;">СМЕНА (часов):</label><input type="text" id="normStatShiftHours" class="input-control input-num" value="8.0"></div>
-              <div><label style="font-size:11.5px; font-weight:600;">ПЕРЕРЫВЫ (мин/чел):</label><input type="text" id="normStatBreaks" class="input-control input-num" value="40"></div>
+              <div style="margin-bottom:10px;"><label style="font-size:11.5px; font-weight:600; color:var(--text-muted);">ВЫПУСК ЗА СМЕНУ (Q):</label><input type="text" id="normStatOutput" class="input-control input-num" value="50"></div>
+              <div style="margin-bottom:10px;"><label style="font-size:11.5px; font-weight:600; color:var(--text-muted);">РАБОЧИХ (Nраб):</label><input type="text" id="normStatWorkers" class="input-control input-num" value="3"></div>
+              <div style="margin-bottom:10px;"><label style="font-size:11.5px; font-weight:600; color:var(--text-muted);">СМЕНА (часов):</label><input type="text" id="normStatShiftHours" class="input-control input-num" value="8.0"></div>
+              <div style="margin-bottom:10px;"><label style="font-size:11.5px; font-weight:600; color:var(--text-muted);">ПЕРЕРЫВЫ (мин/чел):</label><input type="text" id="normStatBreaks" class="input-control input-num" value="40"></div>
             </div>
-          </div>
-
-          <div id="normFieldsChrono" style="display:none; margin-top:10px;">
             <div class="grid-4">
-              <div><label style="font-size:11.5px; font-weight:600;">ОСНОВНОЕ (Tосн, мин):</label><input type="text" id="normChronoTOsn" class="input-control input-num" value="12.0"></div>
-              <div><label style="font-size:11.5px; font-weight:600;">ВСПОМОГ. (Tвсп, мин):</label><input type="text" id="normChronoTVsp" class="input-control input-num" value="4.0"></div>
-              <div><label style="font-size:11.5px; font-weight:600;">ЗВЕНО (чел):</label><input type="text" id="normChronoCrew" class="input-control input-num" value="2"></div>
-              <div><label style="font-size:11.5px; font-weight:600;">ПЗ НА ПАРТИЮ (мин):</label><input type="text" id="normChronoTPz" class="input-control input-num" value="30"></div>
-            </div>
-          </div>
-
-          <div class="norm-action-box" style="margin-top:14px; padding:12px; background:#f8fafc; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
-            <div>
-              <span style="font-size:11px; color:var(--text-muted); font-weight:600;">РАСЧЁТНАЯ НОРМА / В МАТРИЦЕ:</span>
-              <div style="display:flex; align-items:baseline; gap:8px;">
-                <div style="font-size:20px; font-weight:800; color:var(--accent);" id="normResultText">0.000 н-ч / ед</div>
-                <div style="font-size:12px; color:var(--text-muted);" id="normMatrixValText">(в матрице: 0.000)</div>
+              <div>
+                <label style="font-size:11.5px; font-weight:600; color:var(--text-muted);">КОЭФФ. ЭФФЕКТИВНОСТИ (Kэф):</label>
+                <input type="text" id="normStatKEff" class="input-control input-num" value="0.95">
               </div>
             </div>
-            <button class="btn btn-primary btn-sm" id="btnPushNormToMatrix"><svg class="icon"><use href="#icon-save"></use></svg> Перенести в матрицу норм</button>
+          </div>
+
+          <!-- Метод 2: Все 7 полей хронометража -->
+          <div id="normFieldsChrono" style="display:none;">
+            <div class="grid-4">
+              <div style="margin-bottom:10px;"><label style="font-size:11.5px; font-weight:600; color:var(--text-muted);">ОСНОВНОЕ (Tосн, мин):</label><input type="text" id="normChronoTOsn" class="input-control input-num" value="12.0"></div>
+              <div style="margin-bottom:10px;"><label style="font-size:11.5px; font-weight:600; color:var(--text-muted);">ВСПОМОГ. (Tвсп, мин):</label><input type="text" id="normChronoTVsp" class="input-control input-num" value="4.0"></div>
+              <div style="margin-bottom:10px;"><label style="font-size:11.5px; font-weight:600; color:var(--text-muted);">ЗВЕНО (чел):</label><input type="text" id="normChronoCrew" class="input-control input-num" value="2"></div>
+              <div style="margin-bottom:10px;"><label style="font-size:11.5px; font-weight:600; color:var(--text-muted);">ОБСЛУЖИВАНИЕ (%):</label><input type="text" id="normChronoKObs" class="input-control input-num" value="5"></div>
+            </div>
+            <div class="grid-4">
+              <div><label style="font-size:11.5px; font-weight:600; color:var(--text-muted);">ОТДЫХ/ЛИЧН (%):</label><input type="text" id="normChronoKOtl" class="input-control input-num" value="6"></div>
+              <div><label style="font-size:11.5px; font-weight:600; color:var(--text-muted);">ПЗ НА ПАРТИЮ (мин):</label><input type="text" id="normChronoTPz" class="input-control input-num" value="30"></div>
+              <div><label style="font-size:11.5px; font-weight:600; color:var(--text-muted);">РАЗМЕР ПАРТИИ (шт., для ПЗ):</label><input type="text" id="normChronoBatchSize" class="input-control input-num" value="50"></div>
+            </div>
+          </div>
+
+          <!-- Раздельные плашки результатов с точным оригинальным дизайном -->
+          <div class="norm-action-box" id="normActionStat" style="margin-top: 14px; padding: 12px; background: #f8fafc; border-radius: 6px; border: 1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <div>
+              <span style="font-size: 11px; color:var(--text-muted); font-weight:600;">РАСЧЁТНАЯ НОРМА / В МАТРИЦЕ:</span>
+              <div style="display:flex; align-items:baseline; gap:8px;">
+                <div style="font-size: 20px; font-weight: 800; color: var(--accent);" id="normStatResult">0.000 н-ч / ед</div>
+                <div style="font-size: 12px; color: var(--text-muted);" id="normStatMatrixVal">(в матрице: 0.000)</div>
+              </div>
+            </div>
+            <button class="btn btn-primary btn-sm" id="btnPushStatNormToRouting">
+              <svg class="icon"><use href="#icon-save"></use></svg> Перенести в матрицу норм
+            </button>
+          </div>
+
+          <div class="norm-action-box" id="normActionChrono" style="display:none; margin-top: 14px; padding: 12px; background: #f8fafc; border-radius: 6px; border: 1px solid var(--border-color); justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <div>
+              <span style="font-size: 11px; color:var(--text-muted); font-weight:600;">ШТУЧНАЯ НОРМА / В МАТРИЦЕ:</span>
+              <div style="display:flex; align-items:baseline; gap:8px;">
+                <div style="font-size: 20px; font-weight: 800; color: var(--accent);" id="normChronoResult">0.000 н-ч / ед</div>
+                <div style="font-size: 12px; color: var(--text-muted);" id="normChronoMatrixVal">(в матрице: 0.000)</div>
+              </div>
+            </div>
+            <button class="btn btn-primary btn-sm" id="btnPushChronoNormToRouting">
+              <svg class="icon"><use href="#icon-save"></use></svg> Перенести в матрицу норм
+            </button>
           </div>
         </div>
       </div>
@@ -412,7 +459,7 @@
       <div class="collapsible-box" style="margin-top: 6px;">
         <div class="collapsible-header" id="toggleSavedNormsRegistry">
           <div style="font-size: 13.5px; font-weight: 700; color: #1e3a8a; display: flex; align-items: center; gap: 8px;">
-            <svg class="icon"><use href="#icon-dict"></use></svg> Реестр обоснованных технологических норм (<span id="savedNormsCount">0</span> записей)
+            <svg class="icon"><use href="#icon-dict"></use></svg> Реестр обоснованных технологических норм и хронометражей (<span id="savedNormsCount">0</span> записей)
           </div>
           <svg class="icon chevron-icon rotated" id="chevronSavedNorms"><use href="#icon-chevron-down"></use></svg>
         </div>
@@ -443,7 +490,7 @@
         <button class="btn btn-primary" id="btnExportXlsx"><svg class="icon"><use href="#icon-download"></use></svg> Экспорт в Excel (.xlsx)</button>
         <button class="btn btn-secondary" id="btnPrintPdf"><svg class="icon"><use href="#icon-print"></use></svg> Печать / Отчёт PDF</button>
         <button class="btn btn-secondary" id="btnDownloadAnalyticsImage"><svg class="icon"><use href="#icon-image"></use></svg> Снимок аналитики (PNG)</button>
-        <button class="btn btn-secondary" id="btnExportCSV"><svg class="icon"><use href="#icon-download"></use></svg> CSV</button>
+        <button class="btn btn-secondary" id="btnExportCSV"><svg class="icon"><use href="#icon-download"></use></svg> CSV (для интеграции)</button>
       </div>
 
       <div id="analyticsCaptureArea">
@@ -470,9 +517,20 @@
           <div id="brigadeScheduleDetails" style="font-size:12.5px; color:var(--text-secondary); line-height:1.6;"></div>
         </div>
 
-        <div class="panel">
-          <div class="panel-header"><div class="panel-title"><svg class="icon"><use href="#icon-cpu"></use></svg> Загрузка оборудования и постов (% от 24ч/сутки)</div></div>
+        <div class="panel" style="margin-bottom: 18px;">
+          <div class="panel-header">
+            <div class="panel-title"><svg class="icon"><use href="#icon-cpu"></use></svg> Загрузка оборудования и постов (% от календарных 24ч/сутки)</div>
+          </div>
           <div class="panel-body">
+            <p style="font-size:12.5px; color:var(--text-secondary); margin-bottom:8px;">
+              Полоса и процент — фактическая занятость станка/поста от суток (24ч), независимо от того, каким графиком это закрывается. Режим смены под полосой — рекомендация, производная от того же процента, а не наоборот.
+            </p>
+            <!-- ВОССТАНОВЛЕНА ЛЕГЕНДА С ЦВЕТНЫМИ КВАДРАТАМИ -->
+            <div style="display:flex; gap:16px; margin-bottom:12px; font-size:11.5px; color:var(--text-secondary); flex-wrap:wrap;">
+              <span><span style="display:inline-block; width:10px; height:10px; border-radius:2px; background:#86efac; vertical-align:-1px;"></span> в пределах нормы (обычная смена)</span>
+              <span><span style="display:inline-block; width:10px; height:10px; border-radius:2px; background:#fde68a; vertical-align:-1px;"></span> нужна удлинённая смена (рекомендация с шагом 0.5ч)</span>
+              <span><span style="display:inline-block; width:10px; height:10px; border-radius:2px; background:#fca5a5; vertical-align:-1px;"></span> перегруз — не хватает даже макс. смены/доступности</span>
+            </div>
             <div class="table-container">
               <table class="data-table" id="shiftScheduleTable">
                 <thead><tr id="shiftScheduleTableHeader"></tr></thead>
@@ -482,7 +540,7 @@
           </div>
         </div>
 
-        <!-- ВОССТАНОВЛЕННАЯ СПРАВКА В АНАЛИТИКЕ -->
+        <!-- ВОССТАНОВЛЕННАЯ СПРАВКА ПО МЕТОДОЛОГИИ НА ВКЛАДКЕ 4 -->
         <div class="collapsible-box">
           <div class="collapsible-header" id="toggleMethodologyBtn">
             <div style="font-size: 13.5px; font-weight: 700; color: #1e3a8a; display: flex; align-items: center; gap: 8px;">
@@ -497,16 +555,16 @@
 
         <div class="grid-2" style="margin-bottom: 18px;">
           <div class="panel">
-            <div class="panel-header"><div class="panel-title">Динамика штатной численности по пулам (чел.)</div></div>
+            <div class="panel-header"><div class="panel-title">Динамика штатной численности по пулам квалификации (чел.)</div></div>
             <div class="panel-body"><div class="chart-box"><canvas id="chartStaffMonthly"></canvas></div></div>
           </div>
           <div class="panel">
-            <div class="panel-header"><div class="panel-title">Структура трудоёмкости по продукции</div></div>
+            <div class="panel-header"><div class="panel-title">Структура трудоёмкости по видам выпускаемой продукции</div></div>
             <div class="panel-body"><div class="chart-box"><canvas id="chartProductsShare"></canvas></div></div>
           </div>
         </div>
 
-        <div class="panel">
+        <div class="panel" style="margin-bottom: 0;">
           <div class="panel-header"><div class="panel-title">Сводная ведомость потребности в персонале по пулам квалификации (помесячно)</div></div>
           <div class="panel-body">
             <div class="table-container">
