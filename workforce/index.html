@@ -61,9 +61,8 @@
       <button class="btn btn-dark btn-sm" id="btnResetData" title="Сброс к эталонам"><svg class="icon"><use href="#icon-refresh"></use></svg></button>
     </div>
 
-    <!-- БЛОК СЛАЙДЕРА ХРАНИЛИЩА И АВТОРИЗАЦИИ -->
+    <!-- ТУМБЛЕР И ПРОФИЛЬ (БЕЗ КНОПКИ ВЫРАВНИВАНИЯ) -->
     <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-      <!-- Вид до входа (песочница) -->
       <div id="guestAuthWrap" style="display:inline-flex; align-items:center; gap:6px;">
         <span class="auth-badge" title="Все изменения сохраняются только в вашем браузере">💻 Память браузера</span>
         <button class="btn btn-dark btn-sm" id="btnOpenLoginModal" title="Войти для записи в единую базу предприятия">
@@ -71,7 +70,6 @@
         </button>
       </div>
 
-      <!-- Вид после входа (появляется слайдер и публикация) -->
       <div id="userAuthWrap" style="display:none; align-items:center; gap:8px;">
         <div class="storage-toggle" id="storageModeToggle">
           <button type="button" class="storage-toggle-btn active" id="btnModeLocal">💻 Браузер</button>
@@ -83,10 +81,6 @@
         <span class="auth-badge" id="userEmailBadge">👤 planner</span>
         <button class="btn btn-dark btn-sm" id="btnLogout" title="Выйти из аккаунта">Выйти</button>
       </div>
-
-      <button class="btn btn-level btn-sm" id="btnLevelToggle" title="Автоматически распределить объёмы под фиксированное количество людей">
-        <svg class="icon"><use href="#icon-sliders"></use></svg> Выровнять план под штат
-      </button>
     </div>
   </div>
 
@@ -138,10 +132,14 @@
         </div>
       </div>
 
-      <div class="panel">
+<div class="panel">
         <div class="panel-header">
           <div class="panel-title"><svg class="icon"><use href="#icon-plan"></use></svg> Матрица производственного плана (помесячно)</div>
           <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <!-- ❗️ КНОПКА ВЫРАВНИВАНИЯ ПЕРЕНЕСЕНА СЮДА — К СВОЕЙ ТАБЛИЦЕ -->
+            <button class="btn btn-level btn-sm" id="btnLevelToggle" title="Автоматически распределить объёмы под фиксированное количество людей">
+              <svg class="icon"><use href="#icon-sliders"></use></svg> Выровнять план под штат
+            </button>
             <button class="btn btn-secondary btn-sm" id="btnDownloadPlanTemplate" title="Выгрузить текущий план в Excel"><svg class="icon"><use href="#icon-download"></use></svg> Шаблон Excel</button>
             <button class="btn btn-secondary btn-sm" id="btnUploadPlanTemplate" title="Загрузить объёмы из Excel"><svg class="icon"><use href="#icon-upload"></use></svg> Загрузить из Excel</button>
             <input type="file" id="planExcelFileInput" accept=".xlsx" style="display:none;">
