@@ -961,9 +961,9 @@
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
                     <div><label class="res-label">Фольга, мм</label><select id="foilT"><option value="0.04">0.04</option><option value="0.045">0.045</option><option value="0.05" selected>0.05</option></select></div>
                     <div><label class="res-label">Ячейка, мм</label><select id="cell">
-                        <option value="6.3" selected>6.3 (полоса 3.5)</option>
-                        <option value="9.52">9.52 (5.3)</option>
-                        <option value="12.3">12.3 (6.8)</option>
+                        <option value="6.3" selected>6.3 (A4)</option>
+                        <option value="9.52">9.52 (A6)</option>
+                        <option value="12.3">12.3 (A7.5)</option>
                     </select></div>
                 </div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
@@ -1057,7 +1057,7 @@
                 <div class="res-box blue">
                     <span class="res-label">Клей (приготовить)</span>
                     <div class="res-sub-val" style="color:var(--accent)">Всего: <span id="resGlueTotal">0</span> кг</div>
-                    <div class="glue-detail">Клей: <span id="resGlueA">0</span> кг</div>
+                    <div class="glue-detail">Клей твёрдый: <span id="resGlueA">0</span> кг</div>
                     <div class="glue-detail">Этилацетат: <span id="resSolvent">0</span> кг</div>
                 </div>
             </div>
@@ -1295,7 +1295,7 @@
             <label>Кто утверждает (должность, ФИО)</label>
             <input type="text" id="stApprover" placeholder="напр. Начальник ПТО Бажанова О.В.">
             <label>Кто выдал задание (должность, ФИО)</label>
-            <input type="text" id="stIssuer" placeholder="напр. Мастер смены Иванов И.И.">
+            <input type="text" id="stIssuer" placeholder="напр. Специалист ПТО Чуб К.П.">
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                 <div>
                     <label>Главный технолог</label>
@@ -1320,11 +1320,11 @@
             <label>Компания</label>
             <input type="text" id="calcCompany" value="ООО «ЗСМК»">
             <label>Составил (должность, ФИО)</label>
-            <input type="text" id="calcAuthor" placeholder="напр. Ведущий экономист Смирнова Е.А.">
+            <input type="text" id="calcAuthor" placeholder="напр. Экономист Иванова Н.С.">
             <label>Проверил (должность, ФИО)</label>
-            <input type="text" id="calcReviewer" placeholder="напр. Начальник ПЭО Васильев В.В.">
+            <input type="text" id="calcReviewer" placeholder="напр. Главный технолог Фадеев А.Ю.">
             <label>Утвердил (должность, ФИО)</label>
-            <input type="text" id="calcApprover" placeholder="напр. Генеральный директор Курс С.Л.">
+            <input type="text" id="calcApprover" placeholder="напр. Генеральный директор Фомичёва А.А.">
             <div class="modal-buttons">
                 <button class="btn btn-action-eco" onclick="confirmCalcPrint()">Печать калькуляции</button>
                 <button class="btn" onclick="closeCalcModal()" style="background: #475569;">Отмена</button>
