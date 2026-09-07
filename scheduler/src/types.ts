@@ -4,33 +4,74 @@ export type OrderPriority = 'urgent' | 'normal' | 'low';
 export type OrderStatus = 'new' | 'scheduled' | 'in_progress' | 'completed' | 'overdue';
 export type OperationStatus = 'pending' | 'scheduled' | 'in_progress' | 'completed' | 'delayed';
 
-// 1. ЗАКАЗ / ПАРТИЯ В БЭКЛОГЕ
+// 1. БАЗОВЫЙ ШАБЛОН ГРАФИКА ДЛЯ УЧАСТКА
+export type SchedulePattern = '5_2_single' | '5_2_double' | '2_2_12h' | 'continuous_24h' | 'custom';
+
+export interface StationScheduleConfig {
+  professionId: string;       // ID участка (например "p1" - AluRanger, "p1787298947495" - Лазер)
+  professionName: string;
+  pattern: SchedulePattern;   // Типовой режим
+  defaultShiftHours: number;  // 8, 11 или 12 часов
+  shiftsPerDay: 1 | 2;        // 1 или 2 смены
+  defaultWorkers: number;     // Сколько рабочих по штату
+  crewPerMachine: number;     // Звено на 1 станок (из workforce)
+  totalMachines: number;      // Физических станков (из workforce)
+}
+
+// 2. РУЧНАЯ КОРРЕКТИРОВКА НА КОНКРЕТНЫЙ ДЕНЬ / СМЕНУ (Точечный факт и график)
+export interface ShiftOverride {
+  professionId: string;
+  date: string;               // ГГГГ-ММ-ДД
+  shiftNumber: 1 | 2;
+  isActive: boolean;          // Работает ли пост (можно отключить в рабочий день или включить в выходной)
+  shiftHours?: number;        // Изменение длины смены на этот день (например, вывели на 4ч или 12ч)
+  availableWorkers?: number;  // Сколько людей физически вышло (если вышло 2 вместо 3 — станки простаивают)
+  isMaintenance?: boolean;    // ППР / Ремонт станка
+  note?: string;              // Примечание ("Заболел оператор", "Срочный выход в субботу")
+}
+
+// 3. ФАКТИЧЕСКИЙ СЛОТ ДОСТУПНОЙ МОЩНОСТИ СТАНКА НА СМЕНУ
+export interface StationShiftSlot {
+  professionId: string;
+  professionName: string;
+  date: string;
+  shiftNumber: 1 | 2;
+  isWorking: boolean;         // Работает ли станок в эту смену
+  shiftHours: number;         // Длина смены
+  availableWorkers: number;   // Доступно людей
+  activeMachines: number;     // Сколько станков реально могут работать (с учётом людей и физ. станков)
+  totalCapacityHours: number; // Итого станко-часов: activeMachines * shiftHours
+  isWeekend: boolean;
+  isOverride: boolean;        // Была ли ручная правка
+  note?: string;
+}
+
+// 4. ЗАКАЗ / ПАРТИЯ В БЭКЛОГЕ
 export interface ProductionOrder {
   id: string;
-  orderNumber: string;        // Номер заказа (например: "ЗК-104")
-  customer?: string;          // Заказчик (например: "Инкерман")
-  productId: string;          // Ссылка на изделие из workforce
-  productName: string;        // Название изделия ("Сотовые панели Кемерово")
-  quantity: number;           // Объем партии (например: 150)
-  unit: string;               // Ед. изм. ("м²", "шт")
-  dueDate: string;            // Дата сдачи заказчику (ГГГГ-ММ-ДД: "2026-09-22")
-  priority: OrderPriority;    // Приоритет
-  status: OrderStatus;        // Текущий статус
-  notes?: string;             // Примечания (особые требования к упаковке, цвет)
+  orderNumber: string;        // "ЗК-104"
+  customer?: string;          // "Инкерман"
+  productId: string;          // Ссылка на изделие
+  productName: string;        // "Сотовые панели Кемерово"
+  quantity: number;           // 150
+  unit: string;               // "м²"
+  dueDate: string;            // Дата сдачи "2026-09-22"
+  priority: OrderPriority;
+  status: OrderStatus;
+  notes?: string;
   createdAt?: string;
 }
 
-// 2. ТЕХНОЛОГИЧЕСКИЙ ШАГ МАРШРУТА ИЗДЕЛИЯ
+// 5. ТЕХНОЛОГИЧЕСКИЙ МАРШРУТ
 export interface RoutingStep {
-  stepNumber: number;         // Порядковый номер (10, 20, 30...)
-  professionId: string;       // Станка/участок (например: "p1" - AluRanger)
-  professionName: string;     // "AluRanger", "Лазерная резка", "Холодная склейка"
-  normPerUnit: number;        // Норма времени (н-ч/ед), берется из workforce
-  setupTimeHours: number;     // Время переналадки станка перед партией (Tпз, ч)
-  bufferHoursAfter: number;   // Время высыхания / межоперационного буфера перед следующим шагом (ч)
+  stepNumber: number;         // 10, 20, 30
+  professionId: string;       // "p1"
+  professionName: string;     // "AluRanger"
+  normPerUnit: number;        // н-ч/ед
+  setupTimeHours: number;     // Тпз (переналадка, ч)
+  bufferHoursAfter: number;   // Межоперационный буфер (сушка, перемещение, ч)
 }
 
-// 3. ПОЛНЫЙ МАРШРУТ ИЗДЕЛИЯ
 export interface ProductRouting {
   id: string;
   productId: string;
@@ -38,16 +79,7 @@ export interface ProductRouting {
   steps: RoutingStep[];
 }
 
-// 4. ОПИСАНИЕ СМЕНЫ И СТАНКА
-export interface ShiftSlot {
-  date: string;               // Дата (ГГГГ-ММ-ДД: "2026-09-15")
-  shiftNumber: 1 | 2;         // 1 смена (день) или 2 смена (вечер)
-  durationHours: number;      // Длительность доступного фонда (8ч, 11ч, 12ч)
-  isWeekend: boolean;         // Выходной день
-  isMaintenance: boolean;     // Станок на плановом ремонте (ППР)
-}
-
-// 5. ОПЕРАЦИЯ, РАЗМЕЩЁННАЯ В РАСПИСАНИИ (БЛОК НА ДИАГРАММЕ ГАНТА)
+// 6. ОПЕРАЦИЯ В РАСПИСАНИИ (БЛОК НА ГАНТЕ)
 export interface ScheduledTask {
   id: string;
   orderId: string;
@@ -61,29 +93,23 @@ export interface ScheduledTask {
   quantity: number;
   unit: string;
   
-  // Временные координаты
-  startDate: string;          // Дата начала (ГГГГ-ММ-ДД)
+  startDate: string;
   startShift: 1 | 2;
-  endDate: string;            // Дата завершения (ГГГГ-ММ-ДД)
+  endDate: string;
   endShift: 1 | 2;
   
-  plannedHours: number;       // Сколько часов займет (Кол-во * Норма + Тпз)
+  plannedHours: number;
   status: OperationStatus;
-  isOverdue: boolean;         // Флаг риска срыва дедлайна заказа
-  
-  // Фактические данные со смены
-  factQuantity?: number;
-  factScrap?: number;
-  factMasterNote?: string;
+  isOverdue: boolean;
 }
 
-// 6. СУТОЧНАЯ ЗАГРУЗКА СТАНКА (ДЛЯ ТЕПЛОВОЙ КАРТЫ)
+// 7. СУТОЧНАЯ ТЕПЛОВАЯ КАРТА
 export interface StationDayLoad {
   professionId: string;
   professionName: string;
   date: string;
-  capacityHours: number;      // Доступная емкость (с учетом длины смен)
-  scheduledHours: number;     // Занято плановыми заказами
-  loadPercent: number;        // Процент загрузки (0% - 150%)
-  zone: 'empty' | 'low' | 'ok' | 'warn' | 'danger'; // 0%, <50%, 70-95%, 95-100%, >100%
+  capacityHours: number;      // Реальная емкость с учетом людей и станков
+  scheduledHours: number;
+  loadPercent: number;
+  zone: 'empty' | 'low' | 'ok' | 'warn' | 'danger';
 }
