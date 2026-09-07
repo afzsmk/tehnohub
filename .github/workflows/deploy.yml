@@ -28,23 +28,32 @@ jobs:
         with:
           node-version: 20
 
-      # 1. Устанавливаем библиотеки, запускаем тесты и компилируем workforce
-      - name: Test & Build Workforce
+      # 1. Сборка месячного плана Workforce
+      - name: Build Workforce
         working-directory: ./workforce
         run: |
           npm install
           npm test
           npm run build
 
-      # 2. Формируем сайт (главный index.html + скомпилированный workforce)
+      # 2. Сборка сменно-суточного диспетчера Scheduler
+      - name: Build Scheduler
+        working-directory: ./scheduler
+        run: |
+          npm install
+          npm test
+          npm run build
+
+      # 3. Формирование единого сайта для публикации
       - name: Prepare site directory
         run: |
           mkdir -p _site
           find . -maxdepth 1 -not -name '.' -not -name '_site' -not -name '.git' -exec cp -r {} _site/ \;
-          rm -rf _site/workforce
+          rm -rf _site/workforce _site/scheduler
           cp -r workforce/dist _site/workforce
+          cp -r scheduler/dist _site/scheduler
 
-      # 3. Публикуем на GitHub Pages
+      # 4. Публикация
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
