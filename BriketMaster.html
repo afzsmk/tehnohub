@@ -269,10 +269,10 @@
             background: var(--money2);
         }
 
-        /* Трехколоночная структура */
+        /* Трехколоночная структура с адаптивными долями fr */
         .app-layout-3col {
             display: grid;
-            grid-template-columns: 28% 38% 34%;
+            grid-template-columns: minmax(0, 28fr) minmax(0, 38fr) minmax(0, 34fr);
             gap: 14px;
             width: 100%;
             height: calc(100vh - 135px);
@@ -289,6 +289,7 @@
             overflow-y: auto;
             height: 100%;
             min-height: 0;
+            min-width: 0;
         }
         .col-pane::-webkit-scrollbar {
             width: 6px;
@@ -1348,7 +1349,7 @@
                 'vatVal', 'useVAT', 'marketPriceInput'
             ];
 
-            // Универсальные модальные окна[cite: 1]
+            // Универсальные модальные окна
             window.uiAlert = function(text, title = 'Уведомление') {
                 return new Promise(resolve => {
                     const overlay = document.getElementById('universalModal');
@@ -1551,7 +1552,7 @@
                 }
             });
 
-            // Расчёт по требуемой площади[cite: 1]
+            // Расчёт по требуемой площади
             window.calcQtyFromArea = async function() {
                 const targetArea = parseFloat(document.getElementById('targetAreaInput').value);
                 if (!targetArea || targetArea <= 0) {
@@ -1579,7 +1580,7 @@
                 saveState();
             };
 
-            // Изометрическая отрисовка: оптимизированный масштаб, без паразитных пустот и без взаимного смещения параметров
+            // Изометрическая отрисовка
             function drawBriquetIsometric(bLen, blankWidth, usableWidth, edgeTrim, thick, stripW, sawBlade, strips) {
                 const canvas = document.getElementById('briquetCanvas');
                 if (!canvas) return;
@@ -1598,16 +1599,13 @@
 
                 if (bLen <= 0 || blankWidth <= 0 || thick <= 0) return;
 
-                // Базовый угол изометрии
-                const angleX = 22 * Math.PI / 180; // ось ширины (влево-вверх)
-                const angleY = 16 * Math.PI / 180; // ось длины (вправо-вверх)
+                const angleX = 22 * Math.PI / 180;
+                const angleY = 16 * Math.PI / 180;
 
-                // Коэффициент общего масштаба холста (зависит ТОЛЬКО от размеров контейнера, не от ползунков брикета!)
                 const scaleW = W / 560;
                 const scaleH = H / 310;
                 const S = Math.max(0.75, Math.min(scaleW, scaleH));
 
-                // Постоянные коэффициенты масштабирования для каждого мм
                 const kL = 0.152 * S;
                 const kW = 0.275 * S;
                 const kT = 1.15 * S;
@@ -1621,11 +1619,9 @@
                 const vx_W = -Math.cos(angleX) * baseWid;
                 const vy_W = -Math.sin(angleX) * baseWid;
 
-                // Положение передней нижней точки: центрировано с учётом размерных подписей
                 const ox = W / 2 - (65 * S);
                 const oy = H - 24;
 
-                // Вершины изометрического блока
                 const p0 = { x: ox, y: oy };
                 const p0_top = { x: ox, y: oy - lenThick };
                 const pW = { x: ox + vx_W, y: oy + vy_W };
@@ -1636,7 +1632,7 @@
 
                 const isThickWarn = thick > 70;
 
-                // 1. Левая грань (ширина × толщина)
+                // 1. Левая грань
                 ctx.beginPath();
                 ctx.moveTo(p0.x, p0.y);
                 ctx.lineTo(pW.x, pW.y);
@@ -1649,7 +1645,6 @@
                 ctx.lineWidth = 1;
                 ctx.stroke();
 
-                // Зона торцовки на срезе кромки
                 const trimFrac = Math.min(1, Math.max(0, edgeTrim / blankWidth));
                 if (trimFrac > 0) {
                     const pt_bottom = { x: pW.x - vx_W * trimFrac, y: pW.y - vy_W * trimFrac };
@@ -1667,7 +1662,7 @@
                     ctx.stroke();
                 }
 
-                // 2. Правая грань (длина × толщина)
+                // 2. Правая грань
                 ctx.beginPath();
                 ctx.moveTo(p0.x, p0.y);
                 ctx.lineTo(pL.x, pL.y);
@@ -1680,7 +1675,6 @@
                 ctx.lineWidth = isThickWarn ? 1.4 : 1;
                 ctx.stroke();
 
-                // Слои фольги
                 ctx.strokeStyle = 'rgba(56, 189, 248, 0.15)';
                 const layerStep = Math.max(3.5, lenThick / 8);
                 for (let ly = layerStep; ly < lenThick; ly += layerStep) {
@@ -1690,7 +1684,7 @@
                     ctx.stroke();
                 }
 
-                // 3. Верхняя грань (поверхность раскроя)
+                // 3. Верхняя грань
                 ctx.beginPath();
                 ctx.moveTo(p0_top.x, p0_top.y);
                 ctx.lineTo(pW_top.x, pW_top.y);
@@ -1703,7 +1697,6 @@
                 ctx.lineWidth = 1.2;
                 ctx.stroke();
 
-                // Красная полоса торцовки на верхней грани
                 if (trimFrac > 0) {
                     const pt1 = { x: pW_top.x - vx_W * trimFrac, y: pW_top.y - vy_W * trimFrac };
                     const pt2 = { x: pt1.x + vx_L, y: pt1.y + vy_L };
@@ -1721,7 +1714,6 @@
                     ctx.stroke();
                 }
 
-                // Линии раскроя на полосы
                 if (strips > 0 && blankWidth > 0) {
                     const stepMm = stripW + sawBlade;
                     for (let i = 1; i <= strips; i++) {
@@ -1743,10 +1735,8 @@
                     }
                 }
 
-                // Размерные подписи
                 ctx.font = 'bold 11.5px Inter, sans-serif';
 
-                // Длина вдоль правой стороны
                 ctx.save();
                 ctx.translate((p0.x + pL.x) / 2, (p0.y + pL.y) / 2 + 14);
                 ctx.rotate(-angleY);
@@ -1755,7 +1745,6 @@
                 ctx.fillText(`L = ${Math.round(bLen)} мм`, 0, 0);
                 ctx.restore();
 
-                // Ширина вдоль левой стороны
                 ctx.save();
                 ctx.translate((p0.x + pW.x) / 2, (p0.y + pW.y) / 2 + 14);
                 ctx.rotate(angleX);
@@ -1764,7 +1753,6 @@
                 ctx.fillText(`B = ${blankWidth} мм`, 0, 0);
                 ctx.restore();
 
-                // Толщина по вертикали у правого ребра: красная при > 70 мм[cite: 1]
                 ctx.textAlign = 'left';
                 ctx.textBaseline = 'middle';
                 ctx.fillStyle = isThickWarn ? '#ef4444' : '#4ade80';
@@ -1772,7 +1760,6 @@
                 const thickLabel = `H = ${Math.round(thick)} мм` + (isThickWarn ? ' ⚠' : '');
                 ctx.fillText(thickLabel, pL_top.x + 10, pL_top.y + lenThick / 2);
 
-                // Засечки и размерная линия толщины
                 ctx.strokeStyle = isThickWarn ? '#ef4444' : '#4ade80';
                 ctx.lineWidth = isThickWarn ? 1.6 : 1;
                 ctx.beginPath();
@@ -1804,7 +1791,6 @@
                 document.getElementById('resUsableWidth').innerText = usableWidth.toFixed(1);
                 document.getElementById('edgeTrim').style.borderColor = (edgeTrim >= blankWidth) ? 'var(--danger)' : '';
 
-                // Предупреждение длины брикета[cite: 1]
                 const bLen = B * 1.5;
                 const tileBL = document.getElementById('tileBL');
                 if (bLen > 2000) {
@@ -1814,7 +1800,6 @@
                     tileBL.classList.remove('tile-warning');
                 }
 
-                // Предупреждение толщины брикета[cite: 1]
                 const nPure = nFromParams(L, cellSize, margin);
                 const thickTheor = nPure * foilT * 1.1273;
                 const tileThick = document.getElementById('tileThick');
@@ -1890,7 +1875,6 @@
                 document.getElementById('resSolvent').innerText = solventAll.toFixed(1);
                 document.getElementById('resMass').innerText = massTotalVal.toFixed(1);
 
-                // Обновление изометрической визуализации
                 const thickColor = thickTheor > 70 ? 'var(--danger)' : 'var(--accent)';
                 document.getElementById('visInfo').innerHTML = `${Math.round(bLen)} × ${blankWidth} × <span style="color:${thickColor}">${Math.round(thickTheor)} мм</span>`;
                 document.getElementById('visTrimText').innerText = `${edgeTrim} мм`;
@@ -1985,7 +1969,7 @@
                 document.getElementById('finTotal').innerText = Math.round(totalCost).toLocaleString() + ' ₽';
                 document.getElementById('vatLabelTotal').innerText = vatLabel;
 
-                // Сравнение с рыночной ценой[cite: 1]
+                // Сравнение с рыночной ценой
                 const mPrice = parseFloat(document.getElementById('marketPriceInput').value) || 0;
                 const diff = mPrice - costPerM2;
                 const perc = costPerM2 > 0 ? Math.round((diff / costPerM2) * 100) : 0;
@@ -2003,7 +1987,7 @@
                     profitRow.classList.remove('profitable');
                 }
 
-                // Сравнение с конкурентом[cite: 1]
+                // Сравнение с конкурентом
                 const compWidth = parseFloat(document.getElementById('comp_width').value) || 0;
                 const compPrice = parseFloat(document.getElementById('comp_price').value) || 0;
                 const compStrips = (stripW + sawBlade) > 0 ? Math.floor((compWidth + sawBlade) / (stripW + sawBlade)) : 0;
@@ -2053,7 +2037,7 @@
                 document.getElementById('cmpM2PriceDiff').innerText = Math.round(costPerM2NoVAT - compPricePerM2).toLocaleString();
             };
 
-            // Сохранение расчёта[cite: 1]
+            // Сохранение расчёта
             window.openSaveModal = function() {
                 document.getElementById('saveModal').style.display = 'flex';
                 document.getElementById('saveNameInput').value = '';
@@ -2206,7 +2190,7 @@
             window.openEconModal = function() { document.getElementById('econModal').style.display = 'flex'; };
             window.closeEconModal = function() { document.getElementById('econModal').style.display = 'none'; };
 
-            // Сменное задание[cite: 1]
+            // Сменное задание
             window.openShiftTaskModal = function() {
                 loadPrintParams();
                 document.getElementById('shiftTaskModal').style.display = 'flex';
@@ -2230,7 +2214,7 @@
                 printShiftTask();
             };
 
-            // Печать сменного задания (1 лист А4)[cite: 1]
+            // Печать сменного задания (1 лист А4)
             window.printShiftTask = function() {
                 const company = document.getElementById('stCompany').value || 'ООО «ЗСМК»';
                 const taskDateVal = document.getElementById('stDate').value;
@@ -2366,7 +2350,7 @@
                 setTimeout(() => w.print(), 300);
             };
 
-            // Плановая калькуляция[cite: 1]
+            // Плановая калькуляция
             window.openCalcModal = function() {
                 loadPrintParams();
                 document.getElementById('calcModal').style.display = 'flex';
@@ -2380,7 +2364,7 @@
                 printCalcPDF();
             };
 
-            // Печать калькуляции (Клей термореактивный, 2 колонки, 1 лист А4)[cite: 1]
+            // Печать калькуляции (Клей термореактивный, 2 колонки, 1 лист А4)
             window.printCalcPDF = function() {
                 const company = document.getElementById('calcCompany').value || 'ООО «ЗСМК»';
                 const author = document.getElementById('calcAuthor').value || '__________________';
