@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Сменно-суточный диспетчер цеха (MES) — ЗСМК</title>
+  <link rel="stylesheet" href="./src/styles/main.css">
+</head>
+<body>
+
+  <header>
+    <div>
+      <div class="brand-title">ТЕХНОХАБ ЗСМК • СМЕННО-СУТОЧНЫЙ ДИСПЕТЧЕР (MES)</div>
+      <div class="brand-subtitle">Оперативно-календарное планирование заказов по станкам (1–30 дней)</div>
+    </div>
+    <div style="display:flex; gap:10px; align-items:center;">
+      <span id="cloudStatus" style="font-size:12px; color:#10b981; font-weight:600;">● База Supabase</span>
+      <a href="../workforce/" class="btn btn-dark btn-sm">В месячный план workforce ↗</a>
+    </div>
+  </header>
+
+  <div class="control-subbar">
+    <div style="display:flex; align-items:center; gap:8px;">
+      <span style="font-size:11.5px; color:#94a3b8; font-weight:600;">ГОРИЗОНТ:</span>
+      <div class="horizon-btn-group" id="horizonGroup">
+        <button type="button" class="horizon-btn" data-days="3">3 дня</button>
+        <button type="button" class="horizon-btn" data-days="7">7 дней</button>
+        <button type="button" class="horizon-btn active" data-days="14">14 дней</button>
+        <button type="button" class="horizon-btn" data-days="30">30 дней</button>
+      </div>
+      <span style="font-size:11.5px; color:#94a3b8; margin-left:12px;">Старт:</span>
+      <input type="date" id="inputStartDate" class="input-control" style="width:130px; padding:3px 6px; background:#0f172a; color:#fff; border-color:#334155;">
+    </div>
+
+    <div style="display:flex; gap:8px;">
+      <button class="btn btn-primary btn-sm" id="btnAutoSchedule">⚡ Рассчитать расписание</button>
+    </div>
+  </div>
+
+  <nav class="tab-navigation">
+    <button class="tab-button active" data-tab="tab-gantt">Экран А: Гант станков</button>
+    <button class="tab-button" data-tab="tab-dispatch">Экран Б: Сменно-суточное задание (ССЗ)</button>
+    <button class="tab-button" data-tab="tab-heatmap">Экран В: Тепловая карта загрузки</button>
+    <button class="tab-button" data-tab="tab-orders">Журнал заказов и партий</button>
+    <button class="tab-button" data-tab="tab-shifts">Графики и смены станков</button>
+  </nav>
+
+  <main>
+    <!-- 1. ЭКРАН А: ГАНТ СТАНКОВ -->
+    <section id="tab-gantt" class="tab-content active">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Оперативный график загрузки станков (по сменам)</div>
+          <div style="font-size:12px; color:var(--text-secondary);">
+            <span id="ganttStats">—</span>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="gantt-container" id="ganttContainer"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. ЭКРАН Б: ССЗ (ЛИСТ МАСТЕРА НА ПЕЧАТЬ) -->
+    <section id="tab-dispatch" class="tab-content">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+        <div style="display:flex; gap:10px; align-items:center;">
+          <label style="font-weight:600;">Дата смены:</label>
+          <input type="date" id="dispatchDateSelect" class="input-control" style="width:140px;">
+          <label style="font-weight:600; margin-left:10px;">Смена:</label>
+          <select id="dispatchShiftSelect" class="input-control" style="width:120px;">
+            <option value="1">1 смена (День)</option>
+            <option value="2">2 смена (Вечер)</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" onclick="window.print()">🖨 Печать сменно-суточного задания (А4)</button>
+      </div>
+
+      <div class="panel" style="padding:24px; border:2px solid #0f172a; max-width:960px; margin:0 auto; background:#fff;">
+        <div style="display:flex; justify-content:space-between; border-bottom:2px solid #0f172a; padding-bottom:8px; margin-bottom:14px;">
+          <div>
+            <h2 style="font-size:16px;">ООО «ЗСМК» — ПРОИЗВОДСТВЕННЫЙ ЦЕХ №1</h2>
+            <div style="font-size:13px; font-weight:700;">СМЕННО-СУТОЧНОЕ ЗАДАНИЕ (ССЗ)</div>
+          </div>
+          <div style="text-align:right; font-size:12px;" id="dispatchDocMeta"></div>
+        </div>
+
+        <table class="data-table" id="dispatchTable">
+          <thead>
+            <tr>
+              <th style="width:30px;">№</th>
+              <th>Станок / Пост</th>
+              <th>Заказ / Клиент</th>
+              <th>Изделие</th>
+              <th style="text-align:right;">План, ед</th>
+              <th style="text-align:right;">Норма, н-ч</th>
+              <th style="width:70px; text-align:center;">Факт</th>
+              <th style="width:60px; text-align:center;">ОТК</th>
+            </tr>
+          </thead>
+          <tbody id="dispatchTableBody"></tbody>
+        </table>
+
+        <div style="margin-top:32px; display:flex; justify-content:space-between; font-size:12px;">
+          <div>Сдал мастер смены: ____________________</div>
+          <div>Принял контролёр ОТК: ____________________</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. ЭКРАН В: ТЕПЛОВАЯ КАРТА ЗАГРУЗКИ -->
+    <section id="tab-heatmap" class="tab-content">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Тепловая карта загрузки оборудования (% от сменного фонда)</div>
+          <div style="display:flex; gap:14px; font-size:11.5px;">
+            <span><span class="tile-ok" style="padding:2px 6px;">70–95%</span> Оптимально</span>
+            <span><span class="tile-warn" style="padding:2px 6px;">95–100%</span> Предел</span>
+            <span><span class="tile-danger" style="padding:2px 6px;">>100%</span> Перегруз</span>
+            <span><span class="tile-low" style="padding:2px 6px;"><50%</span> Резерв</span>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="gantt-container">
+            <table class="data-table" id="heatmapTable">
+              <thead><tr id="heatmapTableHeader"></tr></thead>
+              <tbody id="heatmapTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. ЖУРНАЛ ЗАКАЗОВ И ПАРТИЙ -->
+    <section id="tab-orders" class="tab-content">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Бэклог производственных заказов</div>
+          <button class="btn btn-primary btn-sm" id="btnAddOrder">+ Добавить заказ</button>
+        </div>
+        <div class="panel-body">
+          <table class="data-table" id="ordersTable">
+            <thead>
+              <tr>
+                <th style="width:80px;">Заказ</th>
+                <th>Клиент</th>
+                <th>Изделие</th>
+                <th style="width:90px; text-align:right;">Объём</th>
+                <th style="width:60px; text-align:center;">Ед.</th>
+                <th style="width:110px; text-align:center;">Дедлайн</th>
+                <th style="width:100px; text-align:center;">Приоритет</th>
+                <th style="width:100px; text-align:center;">Статус</th>
+                <th style="width:40px;"></th>
+              </tr>
+            </thead>
+            <tbody id="ordersTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. ГРАФИКИ И СМЕНЫ СТАНКОВ -->
+    <section id="tab-shifts" class="tab-content">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Режимы работы станков и ручные сменные исключения</div>
+        </div>
+        <div class="panel-body">
+          <p style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">
+            Укажите типовой график участка (например, Лазер — 2/2 по 12ч без выходных, Склейка — 5/2 по 8ч). В колонке «Рабочих» указывается доступное звено: если людей не хватает, количество работающих станков автоматически урезается.
+          </p>
+          <table class="data-table" id="stationsTable">
+            <thead>
+              <tr>
+                <th>Участок / Станок</th>
+                <th style="width:160px;">Базовый график</th>
+                <th style="width:90px; text-align:right;">Смена, ч</th>
+                <th style="width:80px; text-align:right;">Смен/день</th>
+                <th style="width:80px; text-align:right;">Станков</th>
+                <th style="width:80px; text-align:right;">Звено, чел</th>
+                <th style="width:90px; text-align:right;">Рабочих по штату</th>
+              </tr>
+            </thead>
+            <tbody id="stationsTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="./src/main.ts"></script>
+</body>
+</html>
