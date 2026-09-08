@@ -151,11 +151,7 @@ function onMaintenanceChanged(): void { saveState(state); calculate(); render();
 function mergeRemoteTask(remote: ProductionTask): void {
   const local = state.tasks.find(task => task.id === remote.id);
   if (!local) { state.tasks.push(remote); return; }
-  const employees = local.assignedEmployeeIds;
-  const equipment = local.assignedEquipmentIds;
   Object.assign(local, remote);
-  local.assignedEmployeeIds = employees;
-  local.assignedEquipmentIds = equipment;
 }
 
 async function handleAction(taskId: string, action: 'PREPARE' | MesExecutionAction): Promise<void> {
@@ -175,17 +171,8 @@ async function handleResult(taskId: string, goodQuantity: number, scrapQuantity:
   if (remoteReady()) {
     const result = await remoteExecution!.recordProductionResult(taskId, goodQuantity, scrapQuantity, state.tasks.find(t => t.id === taskId)?.assignedEquipmentIds ?? [], comment, new Date().toISOString());
     if (!state.results.some(item => item.id === result.id)) state.results.push(result);
-    const task = state.tasks.find(item => item.id === taskId);
-    if (task) {
-      task.actualQuantity += result.goodQuantity;
-      if (task.actualQuantity >= task.plannedQuantity && (!task.qualityRequired || task.qualityStatus === 'APPROVED')) {
-        task.status = 'COMPLETED';
-        task.actualEnd ??= result.recordedAt;
-      } else if (task.status === 'RUNNING' || task.status === 'PAUSED') {
-        task.status = 'PARTIALLY_COMPLETED';
-      }
-      task.version += 1;
-    }
+    const remoteTask = await remoteExecution!.getTask(taskId);
+    mergeRemoteTask(remoteTask);
     saveState(state);
     render();
     return;
