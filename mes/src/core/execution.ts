@@ -1,5 +1,6 @@
 import { DowntimeEvent, ProductionEvent, ProductionResult, ProductionTask, TaskStatus } from '../types';
 import { canTransition } from './taskLifecycle';
+import { assertEmployeeInAssignment, assertExecutionIdentity, ExecutionActorContext } from '../integration/identity';
 
 export interface ExecutionState {
   tasks: ProductionTask[];
@@ -31,9 +32,25 @@ function eventType(action: ExecutionAction): ProductionEvent['type'] {
   }
 }
 
-export function executeTaskAction(state: ExecutionState, taskId: string, action: ExecutionAction, actorId: string, at = nowIso()): ProductionTask {
+function resolveActor(actor: string | ExecutionActorContext, task: ProductionTask, employeeIds?: readonly string[]): ExecutionActorContext {
+  if (typeof actor !== 'string') {
+    const identity = assertExecutionIdentity(actor);
+    if (identity.role === 'OPERATOR') assertEmployeeInAssignment(identity.employeeId, task.assignedEmployeeIds);
+    return identity;
+  }
+  return { userId: actor, employeeId: employeeIds?.[0] ?? '', role: 'SYSTEM_COMPAT' };
+}
+
+export function executeTaskAction(
+  state: ExecutionState,
+  taskId: string,
+  action: ExecutionAction,
+  actor: string | ExecutionActorContext,
+  at = nowIso()
+): ProductionTask {
   const task = state.tasks.find(item => item.id === taskId);
   if (!task) throw new Error(`Задание не найдено: ${taskId}`);
+  const identity = resolveActor(actor, task);
 
   if (action === 'PREPARE') {
     const next = task.status === 'PLANNED' ? 'ASSIGNED' : task.status === 'ASSIGNED' ? 'READY' : task.status;
@@ -61,8 +78,8 @@ export function executeTaskAction(state: ExecutionState, taskId: string, action:
     taskId,
     type: eventType(action),
     occurredAt: at,
-    actorId,
-    payload: { action, status: task.status }
+    actorId: identity.userId,
+    payload: { action, status: task.status, employeeId: identity.employeeId, role: identity.role }
   });
   return task;
 }
@@ -75,9 +92,18 @@ export interface ResultInput {
   comment?: string;
 }
 
-export function recordProductionResult(state: ExecutionState, taskId: string, input: ResultInput, actorId: string, at = nowIso()): ProductionResult {
+export function recordProductionResult(
+  state: ExecutionState,
+  taskId: string,
+  input: ResultInput,
+  actor: string | ExecutionActorContext,
+  at = nowIso()
+): ProductionResult {
   const task = state.tasks.find(item => item.id === taskId);
   if (!task) throw new Error(`Задание не найдено: ${taskId}`);
+  const identity = resolveActor(actor, task, input.employeeIds);
+  const effectiveEmployeeIds = identity.role === 'OPERATOR' ? [identity.employeeId] : [...input.employeeIds];
+  if (identity.role === 'OPERATOR') assertEmployeeInAssignment(identity.employeeId, task.assignedEmployeeIds);
   if (task.status === 'CANCELLED' || task.status === 'DRAFT') throw new Error('Нельзя регистрировать факт для неактивного задания');
   if (!Number.isFinite(input.goodQuantity) || !Number.isFinite(input.scrapQuantity) || input.goodQuantity < 0 || input.scrapQuantity < 0) {
     throw new Error('Количество выпуска и брака должно быть неотрицательным числом');
@@ -91,7 +117,7 @@ export function recordProductionResult(state: ExecutionState, taskId: string, in
     recordedAt: at,
     goodQuantity: input.goodQuantity,
     scrapQuantity: input.scrapQuantity,
-    employeeIds: [...input.employeeIds],
+    employeeIds: effectiveEmployeeIds,
     equipmentIds: [...input.equipmentIds],
     comment: input.comment || undefined
   };
@@ -109,8 +135,8 @@ export function recordProductionResult(state: ExecutionState, taskId: string, in
     taskId,
     type: 'RESULT_RECORDED',
     occurredAt: at,
-    actorId,
-    payload: { resultId: result.id, goodQuantity: input.goodQuantity, scrapQuantity: input.scrapQuantity }
+    actorId: identity.userId,
+    payload: { resultId: result.id, goodQuantity: input.goodQuantity, scrapQuantity: input.scrapQuantity, employeeId: identity.employeeId, role: identity.role }
   });
   return result;
 }
@@ -121,9 +147,17 @@ export interface DowntimeInput {
   comment?: string;
 }
 
-export function startDowntime(state: ExecutionState, input: DowntimeInput, actorId: string, at = nowIso()): DowntimeEvent {
+export function startDowntime(
+  state: ExecutionState,
+  input: DowntimeInput,
+  actor: string | ExecutionActorContext,
+  at = nowIso()
+): DowntimeEvent {
   const existing = state.downtimes.find(event => event.equipmentId === input.equipmentId && !event.endedAt);
   if (existing) throw new Error('Для оборудования уже зарегистрирован открытый простой');
+  const identity = typeof actor === 'string'
+    ? { userId: actor, employeeId: '', role: 'SYSTEM_COMPAT' }
+    : assertExecutionIdentity(actor);
   const event: DowntimeEvent = {
     id: `DT-${Date.now()}-${state.downtimes.length + 1}`,
     equipmentId: input.equipmentId,
@@ -132,15 +166,23 @@ export function startDowntime(state: ExecutionState, input: DowntimeInput, actor
     comment: input.comment || undefined
   };
   state.downtimes.push(event);
-  state.events.push({ id: `EV-${Date.now()}-${state.events.length + 1}`, type: 'DOWNTIME_STARTED', occurredAt: at, actorId, payload: { downtimeId: event.id, equipmentId: input.equipmentId, reasonCode: input.reasonCode } });
+  state.events.push({ id: `EV-${Date.now()}-${state.events.length + 1}`, type: 'DOWNTIME_STARTED', occurredAt: at, actorId: identity.userId, payload: { downtimeId: event.id, equipmentId: input.equipmentId, reasonCode: input.reasonCode, employeeId: identity.employeeId, role: identity.role } });
   return event;
 }
 
-export function endDowntime(state: ExecutionState, downtimeId: string, actorId: string, at = nowIso()): DowntimeEvent {
+export function endDowntime(
+  state: ExecutionState,
+  downtimeId: string,
+  actor: string | ExecutionActorContext,
+  at = nowIso()
+): DowntimeEvent {
   const event = state.downtimes.find(item => item.id === downtimeId);
   if (!event) throw new Error(`Простой не найден: ${downtimeId}`);
   if (event.endedAt) throw new Error('Простой уже закрыт');
+  const identity = typeof actor === 'string'
+    ? { userId: actor, employeeId: '', role: 'SYSTEM_COMPAT' }
+    : assertExecutionIdentity(actor);
   event.endedAt = at;
-  state.events.push({ id: `EV-${Date.now()}-${state.events.length + 1}`, type: 'DOWNTIME_ENDED', occurredAt: at, actorId, payload: { downtimeId: event.id } });
+  state.events.push({ id: `EV-${Date.now()}-${state.events.length + 1}`, type: 'DOWNTIME_ENDED', occurredAt: at, actorId: identity.userId, payload: { downtimeId: event.id, employeeId: identity.employeeId, role: identity.role } });
   return event;
 }
