@@ -27,7 +27,7 @@ function clone<T>(value: T): T {
 }
 
 export class InMemoryWorkforceOutboxStore implements WorkforceOutboxStore {
-  private readonly entries = new Map<string, WorkforceOutboxEntry>();
+  protected readonly entries = new Map<string, WorkforceOutboxEntry>();
 
   enqueue(events: MesActualEventDto[]): void {
     for (const event of events) {
@@ -77,11 +77,115 @@ export class InMemoryWorkforceOutboxStore implements WorkforceOutboxStore {
       .map(clone);
   }
 
-  private findById(id: string): WorkforceOutboxEntry {
+  protected findById(id: string): WorkforceOutboxEntry {
     const entry = [...this.entries.values()].find(item => item.id === id);
     if (!entry) throw new Error(`Outbox entry не найдена: ${id}`);
     return entry;
   }
+}
+
+export interface WorkforceOutboxStorage {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+}
+
+export const DEFAULT_WORKFORCE_OUTBOX_STORAGE_KEY = 'zsmk_mes_workforce_outbox_v1';
+
+interface PersistedOutboxState {
+  schemaVersion: 1;
+  entries: WorkforceOutboxEntry[];
+}
+
+function readOutboxState(storage: WorkforceOutboxStorage, key: string): WorkforceOutboxEntry[] {
+  try {
+    const raw = storage.getItem(key);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as Partial<PersistedOutboxState>;
+    return parsed.schemaVersion === 1 && Array.isArray(parsed.entries)
+      ? parsed.entries.map(clone)
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+export class PersistentWorkforceOutboxStore implements WorkforceOutboxStore {
+  private entries: WorkforceOutboxEntry[];
+
+  constructor(
+    private readonly storage: WorkforceOutboxStorage,
+    private readonly key = DEFAULT_WORKFORCE_OUTBOX_STORAGE_KEY
+  ) {
+    this.entries = readOutboxState(storage, key);
+  }
+
+  enqueue(events: MesActualEventDto[]): void {
+    const existing = new Set(this.entries.map(entry => entry.idempotencyKey));
+    for (const event of events) {
+      if (existing.has(event.idempotencyKey)) continue;
+      this.entries.push({
+        id: `OUT-${event.idempotencyKey}`,
+        idempotencyKey: event.idempotencyKey,
+        event: clone(event),
+        createdAt: new Date().toISOString(),
+        attempts: 0,
+        status: 'PENDING'
+      });
+      existing.add(event.idempotencyKey);
+    }
+    this.persist();
+  }
+
+  claim(limit: number, now = new Date().toISOString()): WorkforceOutboxEntry[] {
+    const take = Math.max(0, Math.floor(limit));
+    const result: WorkforceOutboxEntry[] = [];
+    for (const entry of this.entries) {
+      if (result.length >= take) break;
+      if (entry.status !== 'PENDING' && entry.status !== 'FAILED') continue;
+      entry.status = 'SENDING';
+      entry.attempts += 1;
+      entry.lastAttemptAt = now;
+      result.push(clone(entry));
+    }
+    this.persist();
+    return result;
+  }
+
+  markSent(id: string, sentAt = new Date().toISOString()): void {
+    const entry = this.findById(id);
+    entry.status = 'SENT';
+    entry.sentAt = sentAt;
+    entry.lastError = undefined;
+    this.persist();
+  }
+
+  markFailed(id: string, error: string, now = new Date().toISOString()): void {
+    const entry = this.findById(id);
+    entry.status = 'FAILED';
+    entry.lastError = error;
+    entry.lastAttemptAt = now;
+    this.persist();
+  }
+
+  list(status?: WorkforceOutboxStatus): WorkforceOutboxEntry[] {
+    return this.entries
+      .filter(entry => !status || entry.status === status)
+      .map(clone);
+  }
+
+  private findById(id: string): WorkforceOutboxEntry {
+    const entry = this.entries.find(item => item.id === id);
+    if (!entry) throw new Error(`Outbox entry не найдена: ${id}`);
+    return entry;
+  }
+
+  private persist(): void {
+    this.storage.setItem(this.key, JSON.stringify({ schemaVersion: 1, entries: this.entries } satisfies PersistedOutboxState));
+  }
+}
+
+export function browserWorkforceOutboxStore(key = DEFAULT_WORKFORCE_OUTBOX_STORAGE_KEY): PersistentWorkforceOutboxStore {
+  return new PersistentWorkforceOutboxStore(window.localStorage, key);
 }
 
 export interface WorkforceFeedbackSender {
