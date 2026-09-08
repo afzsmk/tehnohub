@@ -1,9 +1,15 @@
 // src/services/storage/validator.ts
-import { ScenarioData } from '../../types';
+import { ScenarioData, AppState } from '../../types';
+
+function createScenarioId(): string {
+  if (typeof globalThis.crypto?.randomUUID === 'function') return globalThis.crypto.randomUUID();
+  return `scenario-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
 
 export function normalizeScenario(sc: ScenarioData): ScenarioData {
   if (!sc.normConfigs) sc.normConfigs = {};
   if (!sc.settings) sc.settings = {} as any;
+  if (!sc.scenarioId?.trim()) sc.scenarioId = createScenarioId();
   const s = sc.settings;
 
   s.brigadesCount = s.brigadesCount ?? 3;
