@@ -21,10 +21,10 @@ function readLocalState(): MesState | null {
   }
 }
 
-async function cacheRemoteState(client: SupabaseClient, userId: string): Promise<void> {
-  if (typeof window === 'undefined' || localStorage.getItem(REMOTE_USER_KEY) === userId) return;
+async function cacheRemoteState(client: SupabaseClient, userId: string): Promise<boolean> {
+  if (typeof window === 'undefined' || localStorage.getItem(REMOTE_USER_KEY) === userId) return false;
   const current = readLocalState();
-  if (!current) return;
+  if (!current) return false;
   if (!localStorage.getItem(DEMO_BACKUP_KEY)) localStorage.setItem(DEMO_BACKUP_KEY, JSON.stringify(current));
   const snapshot = await loadMesStateFromSupabase(client, current);
   const merged: MesState = {
@@ -42,6 +42,7 @@ async function cacheRemoteState(client: SupabaseClient, userId: string): Promise
   };
   localStorage.setItem(MES_STATE_KEY, JSON.stringify(merged));
   localStorage.setItem(REMOTE_USER_KEY, userId);
+  return true;
 }
 
 function restoreDemoState(): void {
@@ -52,13 +53,18 @@ function restoreDemoState(): void {
   localStorage.removeItem(REMOTE_USER_KEY);
 }
 
+async function ensureRemoteStateLoaded(client: SupabaseClient, userId: string): Promise<void> {
+  const loaded = await cacheRemoteState(client, userId);
+  if (loaded && typeof window !== 'undefined') window.location.reload();
+}
+
 export async function getMesAuthState(client: SupabaseClient): Promise<MesAuthState> {
   const { data, error } = await client.auth.getSession();
   if (error) throw error;
   const user = data.session?.user ?? null;
   if (!user) return { user: null, identity: null };
   const identity = await resolveMesIdentity(client);
-  await cacheRemoteState(client, user.id);
+  await ensureRemoteStateLoaded(client, user.id);
   return { user, identity };
 }
 
@@ -86,7 +92,7 @@ export function subscribeMesAuth(client: SupabaseClient, callback: (state: MesAu
         return;
       }
       const identity = await resolveMesIdentity(client);
-      await cacheRemoteState(client, session.user.id);
+      await ensureRemoteStateLoaded(client, session.user.id);
       await callback({ user: session.user, identity });
     })().catch(() => undefined);
   });
