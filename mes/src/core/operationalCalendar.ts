@@ -3,6 +3,7 @@ import { CalendarDay, EmployeeSchedule, EquipmentBlock, ShiftDefinition } from '
 export interface TimeWindow {
   start: number;
   end: number;
+  shiftId?: string;
 }
 
 const DAY_MS = 86_400_000;
@@ -45,14 +46,11 @@ export function buildShiftWindows(
     for (const shiftId of day.shiftIds) {
       const shift = shifts.find(s => s.id === shiftId);
       if (!shift || shift.durationMinutes <= 0) continue;
-      let windowStart = dayStart + shift.startMinute * MINUTE_MS;
-      let windowEnd = windowStart + shift.durationMinutes * MINUTE_MS;
-      while (windowStart < dayStart + DAY_MS && windowEnd <= dayStart + DAY_MS) {
-        const clippedStart = Math.max(windowStart, start);
-        const clippedEnd = Math.min(windowEnd, end);
-        if (clippedStart < clippedEnd) windows.push({ start: clippedStart, end: clippedEnd });
-        break;
-      }
+      const windowStart = dayStart + shift.startMinute * MINUTE_MS;
+      const windowEnd = windowStart + shift.durationMinutes * MINUTE_MS;
+      const clippedStart = Math.max(windowStart, start);
+      const clippedEnd = Math.min(windowEnd, end);
+      if (clippedStart < clippedEnd) windows.push({ start: clippedStart, end: clippedEnd, shiftId: shift.id });
     }
   }
 
@@ -64,15 +62,13 @@ export function employeeWindows(
   baseWindows: TimeWindow[],
   schedules: EmployeeSchedule[]
 ): TimeWindow[] {
-  if (schedules.length === 0) return baseWindows;
   const relevant = schedules.filter(s => s.employeeId === employeeId);
   if (relevant.length === 0) return baseWindows;
   return baseWindows.filter(window => {
-    const key = dateKey(window.start);
-    const schedule = relevant.find(s => s.date === key);
-    if (!schedule) return false;
-    return schedule.status === 'WORK' && schedule.shiftIds.length > 0;
-  }).map(window => window);
+    const schedule = relevant.find(s => s.date === dateKey(window.start));
+    if (!schedule || schedule.status !== 'WORK') return false;
+    return Boolean(window.shiftId && schedule.shiftIds.includes(window.shiftId));
+  });
 }
 
 export function subtractBlocks(windows: TimeWindow[], blocks: EquipmentBlock[]): TimeWindow[] {
@@ -85,8 +81,8 @@ export function subtractBlocks(windows: TimeWindow[], blocks: EquipmentBlock[]):
     result = result.flatMap(window => {
       if (blockEnd <= window.start || blockStart >= window.end) return [window];
       const parts: TimeWindow[] = [];
-      if (window.start < blockStart) parts.push({ start: window.start, end: Math.min(window.end, blockStart) });
-      if (blockEnd < window.end) parts.push({ start: Math.max(window.start, blockEnd), end: window.end });
+      if (window.start < blockStart) parts.push({ start: window.start, end: Math.min(window.end, blockStart), shiftId: window.shiftId });
+      if (blockEnd < window.end) parts.push({ start: Math.max(window.start, blockEnd), end: window.end, shiftId: window.shiftId });
       return parts.filter(part => part.start < part.end);
     });
   }
@@ -99,7 +95,7 @@ export function intersectWindows(a: TimeWindow[], b: TimeWindow[]): TimeWindow[]
     for (const right of b) {
       const start = Math.max(left.start, right.start);
       const end = Math.min(left.end, right.end);
-      if (start < end) result.push({ start, end });
+      if (start < end) result.push({ start, end, shiftId: left.shiftId });
     }
   }
   return result.sort((x, y) => x.start - y.start);
