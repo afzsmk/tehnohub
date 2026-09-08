@@ -1,10 +1,19 @@
 import './styles.css';
+import { buildDefaultCalendar } from './core/operationalCalendar';
 import { buildDeterministicSchedule } from './core/scheduler';
 import { MesState } from './types';
 import { loadState, saveState } from './services/storage';
 
+const horizonStart = new Date(Date.now()).toISOString();
+const horizonEnd = new Date(Date.now() + 14 * 86400000).toISOString();
+
+const shifts = [
+  { id: 'SHIFT-DAY', name: 'Дневная 08:00–20:00', startMinute: 8 * 60, durationMinutes: 12 * 60 },
+  { id: 'SHIFT-NIGHT', name: 'Ночная 20:00–08:00', startMinute: 20 * 60, durationMinutes: 12 * 60 }
+];
+
 const seed: MesState = {
-  plan: { id: 'mes-demo-plan', version: 1, horizonStart: new Date().toISOString(), horizonEnd: new Date(Date.now() + 14 * 86400000).toISOString(), status: 'DRAFT' },
+  plan: { id: 'mes-demo-plan', version: 1, horizonStart, horizonEnd, status: 'DRAFT' },
   products: [
     { id: 'P-001', code: 'PANEL-01', name: 'Сотовая панель', unit: 'м²' },
     { id: 'P-002', code: 'PANEL-02', name: 'Сэндвич-панель', unit: 'м²' }
@@ -17,6 +26,16 @@ const seed: MesState = {
   equipment: [
     { id: 'EQ-001', code: 'LASER-01', name: 'Лазерный станок №1', workCenter: 'Лазерная резка', capabilities: ['CUT'], active: true },
     { id: 'EQ-002', code: 'GLUE-01', name: 'Пост склейки №1', workCenter: 'Склейка', capabilities: ['GLUE'], active: true }
+  ],
+  shifts,
+  calendar: buildDefaultCalendar(horizonStart, horizonEnd, shifts.map(s => s.id)),
+  employeeSchedules: [
+    ...buildDefaultCalendar(horizonStart, horizonEnd, shifts.map(s => s.id)).filter(d => d.isWorking).map(d => ({ employeeId: 'E-001', date: d.date, shiftIds: ['SHIFT-DAY'], status: 'WORK' as const })),
+    ...buildDefaultCalendar(horizonStart, horizonEnd, shifts.map(s => s.id)).filter(d => d.isWorking).map(d => ({ employeeId: 'E-002', date: d.date, shiftIds: ['SHIFT-DAY'], status: 'WORK' as const })),
+    ...buildDefaultCalendar(horizonStart, horizonEnd, shifts.map(s => s.id)).filter(d => d.isWorking).map(d => ({ employeeId: 'E-003', date: d.date, shiftIds: ['SHIFT-NIGHT'], status: 'WORK' as const }))
+  ],
+  equipmentBlocks: [
+    { id: 'EB-001', equipmentId: 'EQ-001', start: new Date(Date.now() + 2 * 86400000 + 12 * 3600000).toISOString(), end: new Date(Date.now() + 2 * 86400000 + 16 * 3600000).toISOString(), reason: 'MAINTENANCE', comment: 'Плановое ТО' }
   ],
   orders: [
     {
@@ -45,13 +64,24 @@ if (!app) throw new Error('Не найден контейнер приложен
 const root = app;
 
 function render(): void {
-  const schedule = buildDeterministicSchedule({ orders: state.orders, employees: state.employees, equipment: state.equipment, horizonStart: state.plan.horizonStart, horizonEnd: state.plan.horizonEnd });
+  const schedule = buildDeterministicSchedule({
+    orders: state.orders,
+    employees: state.employees,
+    equipment: state.equipment,
+    horizonStart: state.plan.horizonStart,
+    horizonEnd: state.plan.horizonEnd,
+    shifts: state.shifts,
+    calendar: state.calendar,
+    employeeSchedules: state.employeeSchedules,
+    equipmentBlocks: state.equipmentBlocks
+  });
   state.tasks = schedule.tasks;
   saveState(state);
 
   const completed = state.results.reduce((sum, r) => sum + r.goodQuantity, 0);
   const downtime = state.downtimes.length;
   const blocked = schedule.conflicts.length;
+  const blockedByMaintenance = state.equipmentBlocks.filter(b => b.reason === 'MAINTENANCE').length;
 
   root.innerHTML = `
     <header class="topbar">
@@ -68,6 +98,7 @@ function render(): void {
       </section>
       <section class="grid-2">
         <div class="panel"><div class="panel-head"><h2>Оперативный план</h2><button id="recalc" class="primary">Пересчитать</button></div>
+          <div class="meta-row"><span>Горизонт: 14 дней</span><span>Смен: ${state.shifts.length}</span><span>Блокировок оборудования: ${blockedByMaintenance}</span></div>
           <table><thead><tr><th>Заказ</th><th>Приоритет</th><th>Срок</th><th>Статус</th></tr></thead><tbody>
             ${state.orders.map(o => `<tr><td><strong>${o.number}</strong></td><td>${o.priority}</td><td>${new Date(o.dueAt).toLocaleDateString('ru-RU')}</td><td>${o.status}</td></tr>`).join('')}
           </tbody></table>
