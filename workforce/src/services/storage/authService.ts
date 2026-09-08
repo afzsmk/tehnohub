@@ -1,6 +1,7 @@
 // src/services/storage/authService.ts
 import { supabase } from './supabaseClient';
 import { User } from '@supabase/supabase-js';
+import '../../integration/mes/ui';
 
 export const authService = {
   async getUser(): Promise<User | null> {
