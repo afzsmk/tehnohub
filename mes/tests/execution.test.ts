@@ -22,6 +22,7 @@ describe('MES shop-floor execution', () => {
 
   it('records production and completes at planned quantity', () => {
     const state = { tasks: [task()], results: [], downtimes: [], events: [] };
+    executeTaskAction(state, 'T1', 'START', 'E1', '2030-01-01T08:00:00.000Z');
     recordProductionResult(state, 'T1', { goodQuantity: 8, scrapQuantity: 1, employeeIds: ['E1'], equipmentIds: ['EQ1'] }, 'E1', '2030-01-01T09:00:00.000Z');
     expect(state.tasks[0].actualQuantity).toBe(8);
     expect(state.tasks[0].status).toBe('PARTIALLY_COMPLETED');
@@ -32,6 +33,7 @@ describe('MES shop-floor execution', () => {
 
   it('rejects production above plan', () => {
     const state = { tasks: [task()], results: [], downtimes: [], events: [] };
+    executeTaskAction(state, 'T1', 'START', 'E1', '2030-01-01T08:00:00.000Z');
     expect(() => recordProductionResult(state, 'T1', { goodQuantity: 11, scrapQuantity: 0, employeeIds: ['E1'], equipmentIds: ['EQ1'] }, 'E1')).toThrow('превышает плановое количество');
   });
 
