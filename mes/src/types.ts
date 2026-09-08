@@ -32,6 +32,8 @@ export type OrderStatus =
   | 'BLOCKED';
 
 export type Priority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
+export type ScheduleStatus = 'WORK' | 'OFF' | 'VACATION' | 'SICK' | 'ABSENCE';
+export type EquipmentBlockReason = 'MAINTENANCE' | 'REPAIR' | 'SETUP' | 'OTHER';
 
 export interface Product {
   id: string;
@@ -68,6 +70,35 @@ export interface RouteOperation {
   requiredEquipmentIds?: string[];
   setupMinutes: number;
   runMinutesPerUnit: number;
+}
+
+export interface ShiftDefinition {
+  id: string;
+  name: string;
+  startMinute: number;
+  durationMinutes: number;
+}
+
+export interface CalendarDay {
+  date: string;
+  isWorking: boolean;
+  shiftIds: string[];
+}
+
+export interface EmployeeSchedule {
+  employeeId: string;
+  date: string;
+  shiftIds: string[];
+  status: ScheduleStatus;
+}
+
+export interface EquipmentBlock {
+  id: string;
+  equipmentId: string;
+  start: string;
+  end: string;
+  reason: EquipmentBlockReason;
+  comment?: string;
 }
 
 export interface ProductionOrder {
@@ -163,6 +194,10 @@ export interface MesState {
   products: Product[];
   employees: Employee[];
   equipment: Equipment[];
+  shifts: ShiftDefinition[];
+  calendar: CalendarDay[];
+  employeeSchedules: EmployeeSchedule[];
+  equipmentBlocks: EquipmentBlock[];
   orders: ProductionOrder[];
   tasks: ProductionTask[];
   downtimes: DowntimeEvent[];
