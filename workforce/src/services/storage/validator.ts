@@ -1,5 +1,5 @@
 // src/services/storage/validator.ts
-import { ScenarioData, AppState } from '../../types';
+import { ScenarioData } from '../../types';
 
 function createScenarioId(): string {
   if (typeof globalThis.crypto?.randomUUID === 'function') return globalThis.crypto.randomUUID();
