@@ -24,11 +24,8 @@ create table if not exists quality_inspections (
   comment text
 );
 
-create index if not exists idx_quality_inspections_task on quality_inspections(task_id, inspected_at desc);
-
-revoke all on function mes_record_production_result(text,numeric,numeric,jsonb,text,timestamptz) from public;
-
-afterQuality
+create index if not exists idx_quality_inspections_task
+  on quality_inspections(task_id, inspected_at desc);
 
 create or replace function mes_request_quality_check(p_task_id text)
 returns production_tasks
@@ -38,6 +35,7 @@ set search_path = public
 as $$
 declare
   v_task production_tasks%rowtype;
+  v_before text;
 begin
   if auth.uid() is null then raise exception 'MES authentication required'; end if;
   if not mes_has_role(array['ADMIN','PRODUCTION_MANAGER','MASTER','OPERATOR','QUALITY']) then
@@ -47,10 +45,11 @@ begin
   select * into v_task from production_tasks where id = p_task_id for update;
   if not found then raise exception 'Задание не найдено: %', p_task_id; end if;
   if not v_task.quality_required then return v_task; end if;
-  if v_task.status <> 'RUNNING' and v_task.status <> 'PARTIALLY_COMPLETED' then
+  if v_task.status not in ('RUNNING','PARTIALLY_COMPLETED') then
     raise exception 'Запрос ОТК допустим только для выполняемого задания';
   end if;
 
+  v_before := v_task.quality_status;
   update production_tasks
      set quality_status = 'PENDING', version = version + 1
    where id = p_task_id
@@ -58,7 +57,7 @@ begin
 
   insert into audit_log(actor_id, entity_type, entity_id, action, before_state, after_state)
   values (auth.uid()::text, 'PRODUCTION_TASK', p_task_id, 'QUALITY_CHECK_REQUESTED',
-          jsonb_build_object('qualityStatus', 'NOT_REQUIRED'),
+          jsonb_build_object('qualityStatus', v_before),
           jsonb_build_object('qualityRequired', true, 'qualityStatus', 'PENDING', 'version', v_task.version));
   return v_task;
 end;
@@ -83,7 +82,6 @@ as $$
 declare
   v_task production_tasks%rowtype;
   v_inspection quality_inspections%rowtype;
-  v_role text;
 begin
   if auth.uid() is null then raise exception 'MES authentication required'; end if;
   if mes_current_role() not in ('QUALITY','ADMIN','PRODUCTION_MANAGER') then
@@ -116,7 +114,8 @@ begin
   ) returning * into v_inspection;
 
   update production_tasks
-     set quality_status = p_status, version = version + 1
+     set quality_status = p_status,
+         version = version + 1
    where id = p_task_id;
 
   insert into production_events(id, task_id, type, occurred_at, actor_id, payload)
