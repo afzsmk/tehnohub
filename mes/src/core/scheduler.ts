@@ -1,4 +1,22 @@
-import { Employee, Equipment, ProductionOrder, ProductionTask, RouteOperation } from '../types';
+import {
+  CalendarDay,
+  Employee,
+  EmployeeSchedule,
+  Equipment,
+  EquipmentBlock,
+  ProductionOrder,
+  ProductionTask,
+  RouteOperation,
+  ShiftDefinition
+} from '../types';
+import {
+  buildShiftWindows,
+  employeeWindows,
+  findFittingWindow,
+  intersectWindows,
+  subtractBlocks,
+  TimeWindow
+} from './operationalCalendar';
 
 export interface ScheduleInput {
   orders: ProductionOrder[];
@@ -6,6 +24,10 @@ export interface ScheduleInput {
   equipment: Equipment[];
   horizonStart: string;
   horizonEnd: string;
+  shifts?: ShiftDefinition[];
+  calendar?: CalendarDay[];
+  employeeSchedules?: EmployeeSchedule[];
+  equipmentBlocks?: EquipmentBlock[];
 }
 
 export interface ScheduleConflict {
@@ -22,42 +44,52 @@ export interface ScheduleOutput {
 
 const MINUTE = 60_000;
 
-function nextAvailableStart(candidate: number, durationMs: number, occupied: Array<{ start: number; end: number }>): number {
-  let start = candidate;
-  for (const block of occupied.sort((a, b) => a.start - b.start)) {
-    if (start + durationMs <= block.start) return start;
-    if (start >= block.end) continue;
-    start = block.end;
+function overlap(a: TimeWindow, b: TimeWindow): boolean {
+  return a.start < b.end && b.start < a.end;
+}
+
+function mergeOccupied(base: TimeWindow[], extra: TimeWindow): TimeWindow[] {
+  return [...base, extra].sort((a, b) => a.start - b.start);
+}
+
+function chooseBestStart(
+  candidate: number,
+  durationMs: number,
+  employeeWindowsForShift: TimeWindow[],
+  equipmentWindowsForShift: TimeWindow[],
+  employeeBusy: TimeWindow[],
+  equipmentBusy: TimeWindow[]
+): number | null {
+  const commonWindows = intersectWindows(employeeWindowsForShift, equipmentWindowsForShift);
+  let best: number | null = null;
+  for (const common of commonWindows) {
+    const start = findFittingWindow(Math.max(candidate, common.start), durationMs, [common], employeeBusy);
+    if (start === null || start + durationMs > common.end) continue;
+    const adjusted = findFittingWindow(start, durationMs, [common], equipmentBusy);
+    if (adjusted === null || adjusted + durationMs > common.end) continue;
+    if (best === null || adjusted < best) best = adjusted;
   }
-  return start;
-}
-
-function chooseEmployee(operation: RouteOperation, employees: Employee[], from: number, to: number, used: Set<string>): string[] {
-  return employees
-    .filter(e => e.active)
-    .filter(e => !used.has(e.id))
-    .filter(e => operation.requiredQualification === undefined || e.qualificationLevel >= operation.requiredQualification)
-    .slice(0, 1)
-    .map(e => e.id);
-}
-
-function chooseEquipment(operation: RouteOperation, equipment: Equipment[], used: Set<string>): string[] {
-  const required = operation.requiredEquipmentIds ?? [];
-  if (required.length > 0) return required.filter(id => equipment.some(e => e.id === id && e.active && !used.has(e.id)));
-  return equipment.filter(e => e.active && !used.has(e.id) && e.workCenter === operation.workCenter).slice(0, 1).map(e => e.id);
+  return best;
 }
 
 export function buildDeterministicSchedule(input: ScheduleInput): ScheduleOutput {
   const start = new Date(input.horizonStart).getTime();
   const end = new Date(input.horizonEnd).getTime();
-  const employeeBusy = new Map<string, Array<{ start: number; end: number }>>();
-  const equipmentBusy = new Map<string, Array<{ start: number; end: number }>>();
+  const shifts = input.shifts ?? [];
+  const calendar = input.calendar ?? [];
+  const baseWindows = shifts.length > 0 && calendar.length > 0
+    ? buildShiftWindows(input.horizonStart, input.horizonEnd, shifts, calendar)
+    : [{ start, end }];
+  const employeeSchedules = input.employeeSchedules ?? [];
+  const equipmentBlocks = input.equipmentBlocks ?? [];
+  const employeeBusy = new Map<string, TimeWindow[]>();
+  const equipmentBusy = new Map<string, TimeWindow[]>();
   const tasks: ProductionTask[] = [];
   const conflicts: ScheduleConflict[] = [];
 
   const orders = [...input.orders].sort((a, b) => {
-    const p = { URGENT: 0, HIGH: 1, NORMAL: 2, LOW: 3 }[a.priority] - { URGENT: 0, HIGH: 1, NORMAL: 2, LOW: 3 }[b.priority];
-    return p || new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime();
+    const priority = { URGENT: 0, HIGH: 1, NORMAL: 2, LOW: 3 } as const;
+    return priority[a.priority] - priority[b.priority] || new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime();
   });
 
   for (const order of orders) {
@@ -77,38 +109,54 @@ export function buildDeterministicSchedule(input: ScheduleInput): ScheduleOutput
         continue;
       }
 
-      const equipmentPool = input.equipment.filter(e => e.active && (!operation.requiredEquipmentIds?.length || operation.requiredEquipmentIds.includes(e.id)) && (!operation.requiredEquipmentIds?.length ? e.workCenter === operation.workCenter : true));
+      const equipmentPool = input.equipment.filter(e =>
+        e.active &&
+        (!operation.requiredEquipmentIds?.length || operation.requiredEquipmentIds.includes(e.id)) &&
+        (!operation.requiredEquipmentIds?.length ? e.workCenter === operation.workCenter : true)
+      );
       if (equipmentPool.length === 0) {
-        conflicts.push({ code: 'EQUIPMENT', orderId: order.id, operationId: operation.id, message: 'Нет доступного оборудования для операции.' });
+        conflicts.push({ code: 'EQUIPMENT', orderId: order.id, operationId: operation.id, message: 'Нет оборудования для операции.' });
         continue;
       }
 
-      const employee = employeePool.find(e => {
-        const busy = employeeBusy.get(e.id) ?? [];
-        return nextAvailableStart(candidate, durationMs, busy) + durationMs <= end;
-      });
-      const machine = equipmentPool.find(e => {
-        const busy = equipmentBusy.get(e.id) ?? [];
-        return nextAvailableStart(candidate, durationMs, busy) + durationMs <= end;
-      });
+      let selectedEmployee: Employee | undefined;
+      let selectedEquipment: Equipment | undefined;
+      let plannedStart: number | null = null;
 
-      if (!employee || !machine) {
-        conflicts.push({ code: 'NO_CAPACITY', orderId: order.id, operationId: operation.id, message: 'Нет совместного окна сотрудника и оборудования.' });
+      for (const employee of employeePool) {
+        const employeeShiftWindows = employeeWindows(employee.id, baseWindows, employeeSchedules);
+        for (const equipment of equipmentPool) {
+          const equipmentWindows = subtractBlocks(baseWindows, equipmentBlocks.filter(b => b.equipmentId === equipment.id));
+          const startAt = chooseBestStart(
+            candidate,
+            durationMs,
+            employeeShiftWindows,
+            equipmentWindows,
+            employeeBusy.get(employee.id) ?? [],
+            equipmentBusy.get(equipment.id) ?? []
+          );
+          if (startAt === null) continue;
+          if (plannedStart === null || startAt < plannedStart) {
+            plannedStart = startAt;
+            selectedEmployee = employee;
+            selectedEquipment = equipment;
+          }
+        }
+      }
+
+      if (plannedStart === null || !selectedEmployee || !selectedEquipment) {
+        conflicts.push({ code: 'NO_CAPACITY', orderId: order.id, operationId: operation.id, message: 'Нет совместного окна сотрудника и оборудования с учётом смен и блокировок.' });
         continue;
       }
 
-      const employeeBusyBlocks = employeeBusy.get(employee.id) ?? [];
-      const machineBusyBlocks = equipmentBusy.get(machine.id) ?? [];
-      let plannedStart = nextAvailableStart(candidate, durationMs, employeeBusyBlocks);
-      plannedStart = nextAvailableStart(plannedStart, durationMs, machineBusyBlocks);
       const plannedEnd = plannedStart + durationMs;
       if (plannedEnd > end) {
         conflicts.push({ code: 'NO_CAPACITY', orderId: order.id, operationId: operation.id, message: 'Операция не помещается в горизонт.' });
         continue;
       }
 
-      employeeBusy.set(employee.id, [...employeeBusyBlocks, { start: plannedStart, end: plannedEnd }]);
-      equipmentBusy.set(machine.id, [...machineBusyBlocks, { start: plannedStart, end: plannedEnd }]);
+      employeeBusy.set(selectedEmployee.id, mergeOccupied(employeeBusy.get(selectedEmployee.id) ?? [], { start: plannedStart, end: plannedEnd }));
+      equipmentBusy.set(selectedEquipment.id, mergeOccupied(equipmentBusy.get(selectedEquipment.id) ?? [], { start: plannedStart, end: plannedEnd }));
       sequenceEnd = plannedEnd;
 
       tasks.push({
@@ -121,8 +169,8 @@ export function buildDeterministicSchedule(input: ScheduleInput): ScheduleOutput
         plannedEnd: new Date(plannedEnd).toISOString(),
         plannedQuantity: order.quantity,
         actualQuantity: 0,
-        assignedEmployeeIds: chooseEmployee(operation, [employee], plannedStart, plannedEnd, new Set()),
-        assignedEquipmentIds: chooseEquipment(operation, [machine], new Set()),
+        assignedEmployeeIds: [selectedEmployee.id],
+        assignedEquipmentIds: [selectedEquipment.id],
         version: 1
       });
     }
