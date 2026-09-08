@@ -12,6 +12,7 @@ set search_path = public
 as $$
 declare
   v_order production_orders%rowtype;
+  v_before production_orders%rowtype;
   v_route_count integer := 0;
   v_task_count integer := 0;
   v_bad_task_count integer := 0;
@@ -33,6 +34,7 @@ begin
   if not found then
     raise exception 'Производственный заказ не найден: %', p_order_id;
   end if;
+  v_before := v_order;
 
   if p_next_status not in ('IMPORTED','PLANNED','RELEASED','IN_EXECUTION','PARTIALLY_COMPLETED','COMPLETED','CANCELLED','BLOCKED') then
     raise exception 'Недопустимый статус заказа: %', p_next_status;
@@ -137,7 +139,7 @@ begin
     'MES_PRODUCTION_ORDER',
     v_order.id,
     'ORDER_STATUS_CHANGED',
-    jsonb_build_object('status', case when p_next_status is null then null else null end),
+    jsonb_build_object('status', v_before.status, 'completedQuantity', v_before.completed_quantity),
     jsonb_build_object('status', v_order.status, 'completedQuantity', v_order.completed_quantity)
   );
 
