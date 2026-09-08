@@ -3,6 +3,7 @@ import { MES_CONTRACT_VERSION, WorkforcePlanOrder, WorkforcePublishedPlan } from
 
 export interface BuildPublishedPlanOptions {
   scenarioId: string;
+  scenarioName?: string;
   applicationVersion: string;
   planId: string;
   version: number;
@@ -89,7 +90,7 @@ export function buildWorkforcePublishedPlan(data: ScenarioData, options: BuildPu
     planId: options.planId,
     version: options.version,
     scenarioId: options.scenarioId,
-    scenarioName: data.settings.companyName || 'Workforce plan',
+    scenarioName: options.scenarioName || data.settings.companyName || 'Workforce plan',
     publishedAt,
     source: {
       system: 'workforce',
