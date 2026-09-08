@@ -1,11 +1,14 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { DowntimeEvent, Employee, Equipment, MaintenanceOrder, MesState, ProductionEvent, ProductionOrder, ProductionResult, ProductionTask, Product, RouteOperation } from '../types';
+import type { CalendarDay, DowntimeEvent, Employee, EmployeeSchedule, Equipment, MaintenanceOrder, MesState, ProductionEvent, ProductionOrder, ProductionResult, ProductionTask, Product, RouteOperation, ShiftDefinition } from '../types';
 
 export interface RemoteSnapshot {
   plan: MesState['plan'];
   products: Product[];
   employees: Employee[];
   equipment: Equipment[];
+  shifts: ShiftDefinition[];
+  calendar: CalendarDay[];
+  employeeSchedules: EmployeeSchedule[];
   orders: ProductionOrder[];
   tasks: ProductionTask[];
   downtimes: DowntimeEvent[];
@@ -40,8 +43,9 @@ function buildRoute(tasks: ProductionTask[]): Map<string, RouteOperation[]> {
 }
 
 export async function loadMesStateFromSupabase(client: SupabaseClient, fallback: MesState): Promise<RemoteSnapshot> {
-  const [plans, productsRows, employeeRows, equipmentRows, orderRows, taskRows, assignmentRows, downtimeRows, maintenanceRows, resultRows, eventRows] = await Promise.all([
+  const [plans, productsRows, employeeRows, equipmentRows, shiftRows, calendarRows, scheduleRows, orderRows, taskRows, assignmentRows, downtimeRows, maintenanceRows, resultRows, eventRows] = await Promise.all([
     selectAll(client, 'operational_plans'), selectAll(client, 'products'), selectAll(client, 'employees'), selectAll(client, 'equipment'),
+    selectAll(client, 'shift_definitions'), selectAll(client, 'calendar_days'), selectAll(client, 'employee_schedules'),
     selectAll(client, 'production_orders'), selectAll(client, 'production_tasks'), selectAll(client, 'task_assignments'), selectAll(client, 'downtime_events'),
     selectAll(client, 'maintenance_orders'), selectAll(client, 'production_results'), selectAll(client, 'production_events')
   ]);
@@ -67,6 +71,9 @@ export async function loadMesStateFromSupabase(client: SupabaseClient, fallback:
     products: productsRows.map(row => ({ id: str(row.id), code: str(row.code), name: str(row.name), unit: str(row.unit) })),
     employees: employeeRows.map(row => ({ id: str(row.id), personnelNo: str(row.personnel_no), name: str(row.name), profession: str(row.profession), qualificationLevel: num(row.qualification_level), active: bool(row.active, true) })),
     equipment: equipmentRows.map(row => ({ id: str(row.id), code: str(row.code), name: str(row.name), workCenter: str(row.work_center), capabilities: stringArray(row.capabilities), active: bool(row.active, true) })),
+    shifts: (shiftRows.length ? shiftRows : fallback.shifts.map(shift => ({ id: shift.id, name: shift.name, start_minute: shift.startMinute, duration_minutes: shift.durationMinutes, active: true }))).map(row => ({ id: str(row.id), name: str(row.name), startMinute: num(row.start_minute), durationMinutes: num(row.duration_minutes), active: bool(row.active, true) })),
+    calendar: calendarRows.length ? calendarRows.map(row => ({ date: str(row.date), isWorking: bool(row.is_working), shiftIds: stringArray(row.shift_ids) })) : fallback.calendar,
+    employeeSchedules: scheduleRows.length ? scheduleRows.map(row => ({ employeeId: str(row.employee_id), date: str(row.date), shiftIds: stringArray(row.shift_ids), status: str(row.status) as EmployeeSchedule['status'] })) : fallback.employeeSchedules,
     orders,
     tasks,
     downtimes: downtimeRows.map(row => ({ id: str(row.id), equipmentId: str(row.equipment_id), reasonCode: str(row.reason_code), startedAt: str(row.started_at), endedAt: row.ended_at ? str(row.ended_at) : undefined, comment: row.comment ? str(row.comment) : undefined })),
@@ -81,6 +88,9 @@ export function applyRemoteSnapshot(state: MesState, snapshot: RemoteSnapshot): 
   state.products = snapshot.products;
   state.employees = snapshot.employees;
   state.equipment = snapshot.equipment;
+  state.shifts = snapshot.shifts;
+  state.calendar = snapshot.calendar;
+  state.employeeSchedules = snapshot.employeeSchedules;
   state.orders = snapshot.orders;
   state.tasks = snapshot.tasks;
   state.downtimes = snapshot.downtimes;
