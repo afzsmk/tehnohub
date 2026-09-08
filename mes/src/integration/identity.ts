@@ -1,28 +1,8 @@
-export const MES_ROLES = [
-  'ADMIN',
-  'PRODUCTION_MANAGER',
-  'PLANNER',
-  'DISPATCHER',
-  'MASTER',
-  'OPERATOR',
-  'MAINTENANCE',
-  'QUALITY',
-  'ANALYST'
-] as const;
-
+export const MES_ROLES = ['ADMIN','PRODUCTION_MANAGER','PLANNER','DISPATCHER','MASTER','OPERATOR','MAINTENANCE','QUALITY','ANALYST'] as const;
 export type MesRole = (typeof MES_ROLES)[number] | 'SYSTEM_COMPAT';
 
-export interface MesExecutionIdentity {
-  userId: string;
-  employeeId: string;
-  role: MesRole;
-}
-
-export interface ExecutionActorContext {
-  readonly userId: string;
-  readonly employeeId: string;
-  readonly role: MesRole;
-}
+export interface MesExecutionIdentity { userId: string; employeeId: string; role: MesRole; }
+export interface ExecutionActorContext { readonly userId: string; readonly employeeId: string; readonly role: MesRole; }
 
 export function assertExecutionIdentity(identity: MesExecutionIdentity): ExecutionActorContext {
   if (!identity.userId.trim()) throw new Error('MES userId обязателен');
