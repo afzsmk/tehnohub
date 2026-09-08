@@ -6,10 +6,10 @@ import { SupabaseMesExecutionRpc, MesExecutionAction } from '../integration/mesE
 import { SupabaseMesOrderRpc } from '../integration/mesOrderRpc';
 import { SupabaseMesPlanningRpc } from '../integration/mesPlanningRpc';
 
-const PLANNING_ROLES = ['ADMIN','PRODUCTION_MANAGER','PLANNER','DISPATCHER','MASTER'];
-const RELEASE_ROLES = ['ADMIN','PRODUCTION_MANAGER','DISPATCHER','MASTER'];
+const PLANNING_ROLES = ['ADMIN', 'PRODUCTION_MANAGER', 'PLANNER', 'DISPATCHER', 'MASTER'];
+const RELEASE_ROLES = ['ADMIN', 'PRODUCTION_MANAGER', 'DISPATCHER', 'MASTER'];
 
-type OrderRow = {
+interface OrderRow {
   id: string;
   external_id: string | null;
   number: string;
@@ -19,9 +19,9 @@ type OrderRow = {
   due_at: string;
   priority: ProductionOrder['priority'];
   status: ProductionOrder['status'];
-};
+}
 
-type RouteRow = {
+interface RouteRow {
   id: string;
   product_id: string;
   sequence: number;
@@ -30,9 +30,9 @@ type RouteRow = {
   work_center: string;
   setup_minutes: number;
   run_minutes_per_unit: number;
-};
+}
 
-type TaskRow = {
+interface TaskRow {
   id: string;
   order_id: string;
   operation_id: string;
@@ -46,20 +46,55 @@ type TaskRow = {
   actual_quantity: number;
   quality_required: boolean;
   quality_status: string;
-};
+  version: number;
+}
 
-type AssignmentRow = {
+interface AssignmentRow {
   task_id: string;
   employee_id: string | null;
   equipment_id: string | null;
-};
+}
 
-function esc(value: unknown): string { return String(value ?? '').replace(/[&<>\"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[ch] ?? ch)); }
-function statusLabel(value: string): string { return ({IMPORTED:'Импортирован',PLANNED:'Запланирован',RELEASED:'Выпущен',IN_EXECUTION:'В работе',PARTIALLY_COMPLETED:'Частично выполнен',COMPLETED:'Завершён',BLOCKED:'Заблокирован',CANCELLED:'Отменён'} as Record<string,string>)[value] ?? value; }
-function taskStatusLabel(value: string): string { return ({DRAFT:'Черновик',PLANNED:'Запланировано',ASSIGNED:'Назначено',READY:'Готово',RUNNING:'Выполняется',PAUSED:'Пауза',BLOCKED:'Заблокировано',PARTIALLY_COMPLETED:'Частично',COMPLETED:'Завершено',CANCELLED:'Отменено'} as Record<string,string>)[value] ?? value; }
-function qualityLabel(value: string): string { return ({NOT_REQUIRED:'Не требуется',PENDING:'Ожидает ОТК',APPROVED:'Одобрено',REJECTED:'Отклонено'} as Record<string,string>)[value] ?? value; }
-function statusClass(value: string): string { return ['COMPLETED','APPROVED'].includes(value) ? 'status-ok' : ['BLOCKED','CANCELLED','REJECTED'].includes(value) ? 'status-danger' : ['IN_EXECUTION','PARTIALLY_COMPLETED','PENDING'].includes(value) ? 'status-warning' : 'status-neutral'; }
-function formatDateTime(value: string | null): string { return value ? new Date(value).toLocaleString('ru-RU',{dateStyle:'short',timeStyle:'short'}) : '—'; }
+interface EmployeeRow {
+  id: string;
+  name: string;
+  qualification_level: number;
+  active: boolean;
+}
+
+interface EquipmentRow {
+  id: string;
+  name: string;
+  work_center: string;
+  active: boolean;
+}
+
+function esc(value: unknown): string {
+  return String(value ?? '').replace(/[&<>\"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', "'": '&#39;' }[ch] ?? ch));
+}
+
+function statusLabel(value: string): string {
+  return ({ IMPORTED: 'Импортирован', PLANNED: 'Запланирован', RELEASED: 'Выпущен', IN_EXECUTION: 'В работе', PARTIALLY_COMPLETED: 'Частично выполнен', COMPLETED: 'Завершён', BLOCKED: 'Заблокирован', CANCELLED: 'Отменён' } as Record<string, string>)[value] ?? value;
+}
+
+function taskStatusLabel(value: string): string {
+  return ({ DRAFT: 'Черновик', PLANNED: 'Запланировано', ASSIGNED: 'Назначено', READY: 'Готово', RUNNING: 'Выполняется', PAUSED: 'Пауза', BLOCKED: 'Заблокировано', PARTIALLY_COMPLETED: 'Частично', COMPLETED: 'Завершено', CANCELLED: 'Отменено' } as Record<string, string>)[value] ?? value;
+}
+
+function qualityLabel(value: string): string {
+  return ({ NOT_REQUIRED: 'Не требуется', PENDING: 'Ожидает ОТК', APPROVED: 'Одобрено', REJECTED: 'Отклонено' } as Record<string, string>)[value] ?? value;
+}
+
+function statusClass(value: string): string {
+  if (['COMPLETED', 'APPROVED'].includes(value)) return 'status-ok';
+  if (['BLOCKED', 'CANCELLED', 'REJECTED'].includes(value)) return 'status-danger';
+  if (['IN_EXECUTION', 'PARTIALLY_COMPLETED', 'PENDING', 'PAUSED'].includes(value)) return 'status-warning';
+  return 'status-neutral';
+}
+
+function formatDateTime(value: string | null): string {
+  return value ? new Date(value).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+}
 
 function normalizeOrder(row: Record<string, unknown>): OrderRow {
   return {
@@ -71,7 +106,7 @@ function normalizeOrder(row: Record<string, unknown>): OrderRow {
     completed_quantity: Number(row.completed_quantity),
     due_at: String(row.due_at),
     priority: row.priority as ProductionOrder['priority'],
-    status: row.status as ProductionOrder['status'],
+    status: row.status as ProductionOrder['status']
   };
 }
 
@@ -84,7 +119,7 @@ function normalizeRoute(row: Record<string, unknown>): RouteRow {
     name: String(row.name),
     work_center: String(row.work_center),
     setup_minutes: Number(row.setup_minutes),
-    run_minutes_per_unit: Number(row.run_minutes_per_unit),
+    run_minutes_per_unit: Number(row.run_minutes_per_unit)
   };
 }
 
@@ -103,6 +138,7 @@ function normalizeTask(row: Record<string, unknown>): TaskRow {
     actual_quantity: Number(row.actual_quantity),
     quality_required: Boolean(row.quality_required),
     quality_status: String(row.quality_status ?? 'NOT_REQUIRED'),
+    version: Number(row.version ?? 1)
   };
 }
 
@@ -110,8 +146,16 @@ function normalizeAssignment(row: Record<string, unknown>): AssignmentRow {
   return {
     task_id: String(row.task_id),
     employee_id: row.employee_id == null ? null : String(row.employee_id),
-    equipment_id: row.equipment_id == null ? null : String(row.equipment_id),
+    equipment_id: row.equipment_id == null ? null : String(row.equipment_id)
   };
+}
+
+function normalizeEmployee(row: Record<string, unknown>): EmployeeRow {
+  return { id: String(row.id), name: String(row.name), qualification_level: Number(row.qualification_level), active: Boolean(row.active) };
+}
+
+function normalizeEquipment(row: Record<string, unknown>): EquipmentRow {
+  return { id: String(row.id), name: String(row.name), work_center: String(row.work_center), active: Boolean(row.active) };
 }
 
 function actionButtons(task: TaskRow): string {
@@ -121,119 +165,201 @@ function actionButtons(task: TaskRow): string {
   if (task.status === 'RUNNING') buttons.push(`<button class="tiny" data-task-action="PAUSE" data-task-id="${esc(task.id)}">Ⅱ Пауза</button>`);
   if (task.status === 'PAUSED') buttons.push(`<button class="tiny action-start" data-task-action="RESUME" data-task-id="${esc(task.id)}">▶ Продолжить</button>`);
   if (task.status === 'RUNNING' || task.status === 'PARTIALLY_COMPLETED' || task.status === 'PAUSED') buttons.push(`<button class="tiny" data-task-action="BLOCK" data-task-id="${esc(task.id)}">⚠ Блок</button>`);
-  const canComplete = (task.status === 'RUNNING' || task.status === 'PARTIALLY_COMPLETED') && (!task.quality_required || task.quality_status === 'APPROVED');
-  if (canComplete) buttons.push(`<button class="tiny action-complete" data-task-action="COMPLETE" data-task-id="${esc(task.id)}">✓ Завершить</button>`);
+  if ((task.status === 'RUNNING' || task.status === 'PARTIALLY_COMPLETED') && (!task.quality_required || task.quality_status === 'APPROVED')) {
+    buttons.push(`<button class="tiny action-complete" data-task-action="COMPLETE" data-task-id="${esc(task.id)}">✓ Завершить</button>`);
+  }
   return buttons.join(' ') || '<span class="subtle">—</span>';
+}
+
+function assignmentControls(
+  task: TaskRow,
+  assignment: AssignmentRow | undefined,
+  employees: EmployeeRow[],
+  equipment: EquipmentRow[],
+  canAssign: boolean
+): string {
+  if (!canAssign) return '<span class="subtle">Только просмотр</span>';
+  const employeeId = assignment?.employee_id ?? '';
+  const equipmentId = assignment?.equipment_id ?? '';
+  const employeeOptions = employees.filter(item => item.active).map(item => `<option value="${esc(item.id)}" ${item.id === employeeId ? 'selected' : ''}>${esc(item.name)} · разряд ${item.qualification_level}</option>`).join('');
+  const equipmentOptions = equipment.filter(item => item.active).map(item => `<option value="${esc(item.id)}" ${item.id === equipmentId ? 'selected' : ''}>${esc(item.name)} · ${esc(item.work_center)}</option>`).join('');
+  return `<div class="task-resource-editor">
+    <select data-task-employee="${esc(task.id)}" data-task-version="${task.version}" aria-label="Сотрудник"><option value="">Сотрудник не назначен</option>${employeeOptions}</select>
+    <select data-task-equipment="${esc(task.id)}" data-task-version="${task.version}" aria-label="Оборудование"><option value="">Оборудование не назначено</option>${equipmentOptions}</select>
+    <div class="subtle">Проверка квалификации, смены, пересечений и доступности выполняется сервером.</div>
+  </div>`;
 }
 
 export async function mountOrdersPage(root: HTMLElement, client: SupabaseClient): Promise<void> {
   const auth = await getMesAuthState(client);
   const role = auth.identity?.role;
   if (!role) return;
+
   const canPlan = PLANNING_ROLES.includes(role);
   const canRelease = RELEASE_ROLES.includes(role);
-  const { data, error } = await client.from('production_orders').select('id,external_id,number,product_id,quantity,completed_quantity,due_at,priority,status').order('due_at',{ascending:true});
+  const canAssign = canPlan;
+
+  const { data, error } = await client.from('production_orders').select('id,external_id,number,product_id,quantity,completed_quantity,due_at,priority,status').order('due_at', { ascending: true });
   if (error) throw error;
   const orders: OrderRow[] = Array.isArray(data) ? data.map(row => normalizeOrder(row as Record<string, unknown>)) : [];
 
-  const host=document.createElement('section');
-  host.className='panel orders-page';
-  host.innerHTML=`<div class="panel-head"><div><h2>Производственные заказы</h2><div class="subtle">Оперативное управление статусом, маршрутом и заданиями · роль ${esc(role)}</div></div><button class="primary" id="orders-refresh">Обновить</button></div>
-    <div class="orders-toolbar"><span>${orders.length} заказов</span><span>Запланированных: ${orders.filter(o=>o.status==='PLANNED').length}</span><span>В работе: ${orders.filter(o=>['IN_EXECUTION','PARTIALLY_COMPLETED'].includes(o.status)).length}</span><span>Завершённых: ${orders.filter(o=>o.status==='COMPLETED').length}</span></div>
-    <div class="orders-table-wrap"><table><thead><tr><th>Заказ</th><th>Количество</th><th>Выполнено</th><th>Срок</th><th>Приоритет</th><th>Статус</th><th>Действия</th></tr></thead><tbody>${orders.map(o=>{
-      const action=[] as string[];
-      action.push(`<button class="tiny" data-order-detail="${esc(o.id)}">Детали</button>`);
-      if(canPlan && ['IMPORTED','BLOCKED'].includes(o.status)) action.push(`<button class="tiny" data-plan-order="${esc(o.id)}">Спланировать</button>`);
-      if(canRelease && o.status==='PLANNED') action.push(`<button class="tiny" data-release-order="${esc(o.id)}">Выпустить</button>`);
-      if(canRelease && ['RELEASED','IN_EXECUTION'].includes(o.status)) action.push(`<button class="tiny" data-block-order="${esc(o.id)}">Заблокировать</button>`);
-      const pct=o.quantity>0?((o.completed_quantity/o.quantity)*100).toFixed(1):'0.0';
-      return `<tr data-order-row="${esc(o.id)}"><td><strong>${esc(o.number)}</strong><div class="subtle">${esc(o.external_id??'')} · ${esc(o.id)}</div></td><td>${o.quantity}</td><td>${o.completed_quantity} <span class="subtle">(${pct}%)</span></td><td>${new Date(o.due_at).toLocaleDateString('ru-RU')}</td><td>${esc(o.priority)}</td><td><span class="status-pill ${statusClass(o.status)}">${statusLabel(o.status)}</span></td><td class="orders-actions">${action.join(' ')}</td></tr><tr data-order-detail-row="${esc(o.id)}" class="order-detail-row" hidden><td colspan="7"><div class="order-detail" data-detail-host="${esc(o.id)}"></div></td></tr>`;
-    }).join('')||'<tr><td colspan="7">Заказов нет</td></tr>'}</tbody></table></div>`;
+  const host = document.createElement('section');
+  host.className = 'panel orders-page';
+  host.innerHTML = `<div class="panel-head"><div><h2>Производственные заказы</h2><div class="subtle">Оперативное управление статусом, маршрутом, заданиями и ресурсами · роль ${esc(role)}</div></div><button class="primary" id="orders-refresh">Обновить</button></div>
+    <div class="orders-toolbar"><span>${orders.length} заказов</span><span>Запланированных: ${orders.filter(o => o.status === 'PLANNED').length}</span><span>В работе: ${orders.filter(o => ['IN_EXECUTION', 'PARTIALLY_COMPLETED'].includes(o.status)).length}</span><span>Завершённых: ${orders.filter(o => o.status === 'COMPLETED').length}</span></div>
+    <div class="orders-table-wrap"><table><thead><tr><th>Заказ</th><th>Количество</th><th>Выполнено</th><th>Срок</th><th>Приоритет</th><th>Статус</th><th>Действия</th></tr></thead><tbody>${orders.map(order => {
+      const action: string[] = [`<button class="tiny" data-order-detail="${esc(order.id)}">Детали</button>`];
+      if (canPlan && ['IMPORTED', 'BLOCKED'].includes(order.status)) action.push(`<button class="tiny" data-plan-order="${esc(order.id)}">Спланировать</button>`);
+      if (canRelease && order.status === 'PLANNED') action.push(`<button class="tiny" data-release-order="${esc(order.id)}">Выпустить</button>`);
+      if (canRelease && ['RELEASED', 'IN_EXECUTION'].includes(order.status)) action.push(`<button class="tiny" data-block-order="${esc(order.id)}">Заблокировать</button>`);
+      const pct = order.quantity > 0 ? ((order.completed_quantity / order.quantity) * 100).toFixed(1) : '0.0';
+      return `<tr data-order-row="${esc(order.id)}"><td><strong>${esc(order.number)}</strong><div class="subtle">${esc(order.external_id ?? '')} · ${esc(order.id)}</div></td><td>${order.quantity}</td><td>${order.completed_quantity} <span class="subtle">(${pct}%)</span></td><td>${new Date(order.due_at).toLocaleDateString('ru-RU')}</td><td>${esc(order.priority)}</td><td><span class="status-pill ${statusClass(order.status)}">${statusLabel(order.status)}</span></td><td class="orders-actions">${action.join(' ')}</td></tr><tr data-order-detail-row="${esc(order.id)}" class="order-detail-row" hidden><td colspan="7"><div class="order-detail" data-detail-host="${esc(order.id)}"></div></td></tr>`;
+    }).join('') || '<tr><td colspan="7">Заказов нет</td></tr>'}</tbody></table></div>`;
   root.appendChild(host);
 
-  const rpc=new SupabaseMesOrderRpc(client);
-  const executionRpc=new SupabaseMesExecutionRpc(client);
-  const planningRpc=new SupabaseMesPlanningRpc(client);
+  const orderRpc = new SupabaseMesOrderRpc(client);
+  const executionRpc = new SupabaseMesExecutionRpc(client);
+  const planningRpc = new SupabaseMesPlanningRpc(client);
   const detailState = new Set<string>();
+  const assignmentVersions = new Map<string, number>();
 
-  const loadDetail = async (order: OrderRow, container: HTMLElement): Promise<void> => {
-    container.innerHTML='<div class="subtle">Загрузка маршрута, заданий и назначений…</div>';
+  async function loadDetail(order: OrderRow, container: HTMLElement): Promise<void> {
+    container.innerHTML = '<div class="subtle">Загрузка маршрута, заданий и назначений…</div>';
     try {
-      const [routeResult, taskResult] = await Promise.all([
-        client.from('route_operations').select('id,product_id,sequence,code,name,work_center,setup_minutes,run_minutes_per_unit').eq('product_id',order.product_id).eq('active',true).order('sequence',{ascending:true}),
-        client.from('production_tasks').select('id,order_id,operation_id,operation_sequence,status,planned_start,planned_end,actual_start,actual_end,planned_quantity,actual_quantity,quality_required,quality_status').eq('order_id',order.id).order('operation_sequence',{ascending:true})
+      const [routeResult, taskResult, employeesResult, equipmentResult] = await Promise.all([
+        client.from('route_operations').select('id,product_id,sequence,code,name,work_center,setup_minutes,run_minutes_per_unit').eq('product_id', order.product_id).eq('active', true).order('sequence', { ascending: true }),
+        client.from('production_tasks').select('id,order_id,operation_id,operation_sequence,status,planned_start,planned_end,actual_start,actual_end,planned_quantity,actual_quantity,quality_required,quality_status,version').eq('order_id', order.id).order('operation_sequence', { ascending: true }),
+        client.from('employees').select('id,name,qualification_level,active').eq('active', true).order('name', { ascending: true }),
+        client.from('equipment').select('id,name,work_center,active').eq('active', true).order('name', { ascending: true })
       ]);
       if (routeResult.error) throw routeResult.error;
       if (taskResult.error) throw taskResult.error;
+      if (employeesResult.error) throw employeesResult.error;
+      if (equipmentResult.error) throw equipmentResult.error;
+
       const route = Array.isArray(routeResult.data) ? routeResult.data.map(row => normalizeRoute(row as Record<string, unknown>)) : [];
       const tasks = Array.isArray(taskResult.data) ? taskResult.data.map(row => normalizeTask(row as Record<string, unknown>)) : [];
+      const employees = Array.isArray(employeesResult.data) ? employeesResult.data.map(row => normalizeEmployee(row as Record<string, unknown>)) : [];
+      const equipment = Array.isArray(equipmentResult.data) ? equipmentResult.data.map(row => normalizeEquipment(row as Record<string, unknown>)) : [];
+
       const assignmentResult = tasks.length
-        ? await client.from('task_assignments').select('task_id,employee_id,equipment_id').in('task_id',tasks.map(task=>task.id))
+        ? await client.from('task_assignments').select('task_id,employee_id,equipment_id').in('task_id', tasks.map(task => task.id))
         : { data: [], error: null };
       if (assignmentResult.error) throw assignmentResult.error;
       const assignments = Array.isArray(assignmentResult.data) ? assignmentResult.data.map(row => normalizeAssignment(row as Record<string, unknown>)) : [];
-      const taskByOperation = new Map(tasks.map(task => [task.operation_id, task]));
       const assignmentByTask = new Map<string, AssignmentRow>();
-      for (const assignment of assignments) {
-        if (!assignmentByTask.has(assignment.task_id)) assignmentByTask.set(assignment.task_id, assignment);
-      }
-      const employeeIds = [...new Set(assignments.map(item => item.employee_id).filter((id): id is string => Boolean(id)))];
-      const equipmentIds = [...new Set(assignments.map(item => item.equipment_id).filter((id): id is string => Boolean(id)))];
-      const [employeesResult, equipmentResult] = await Promise.all([
-        employeeIds.length ? client.from('employees').select('id,name,qualification_level').in('id',employeeIds) : { data: [], error: null },
-        equipmentIds.length ? client.from('equipment').select('id,name,work_center').in('id',equipmentIds) : { data: [], error: null }
-      ]);
-      if (employeesResult.error) throw employeesResult.error;
-      if (equipmentResult.error) throw equipmentResult.error;
-      const employeeMap = new Map((employeesResult.data ?? []).map(row => [String(row.id), String(row.name)]));
-      const equipmentMap = new Map((equipmentResult.data ?? []).map(row => [String(row.id), String(row.name)]));
-      container.innerHTML=`<div class="order-detail-head"><div><strong>Карточка заказа ${esc(order.number)}</strong><div class="subtle">Изделие: ${esc(order.product_id)} · срок ${formatDateTime(order.due_at)}</div></div><span class="status-pill ${statusClass(order.status)}">${statusLabel(order.status)}</span></div>
-        <div class="order-detail-grid"><div><div class="detail-title">Технологический маршрут</div>${route.length?`<ol class="route-list">${route.map(op=>{const task=taskByOperation.get(op.id);return `<li><div class="route-line"><span class="route-seq">${op.sequence}</span><div><strong>${esc(op.code)} · ${esc(op.name)}</strong><div class="subtle">${esc(op.work_center)} · наладка ${op.setup_minutes} мин · ${op.run_minutes_per_unit} мин/ед.</div></div>${task?`<span class="status-pill ${statusClass(task.status)}">${taskStatusLabel(task.status)}</span>`:'<span class="subtle">задание не создано</span>'}</div></li>`;}).join('')}</ol>`:'<div class="empty-detail">Активный маршрут не найден.</div>'}</div>
-        <div><div class="detail-title">Производственные задания</div>${tasks.length?`<div class="task-detail-table"><table><thead><tr><th>Операция</th><th>Статус</th><th>План</th><th>Факт</th><th>Ресурсы</th><th>Качество</th><th>Действия</th></tr></thead><tbody>${tasks.map(task=>{const assignment=assignmentByTask.get(task.id);const employee=assignment?.employee_id?employeeMap.get(assignment.employee_id):undefined;const equipment=assignment?.equipment_id?equipmentMap.get(assignment.equipment_id):undefined;return `<tr data-order-id="${esc(task.order_id)}"><td><strong>${esc(task.id)}</strong><div class="subtle">${task.operation_sequence} · ${esc(task.operation_id)}</div></td><td><span class="status-pill ${statusClass(task.status)}">${taskStatusLabel(task.status)}</span></td><td>${formatDateTime(task.planned_start)} → ${formatDateTime(task.planned_end)}<div class="subtle">${task.planned_quantity}</div></td><td>${task.actual_quantity}<div class="subtle">${formatDateTime(task.actual_start)} → ${formatDateTime(task.actual_end)}</div></td><td>${employee?`<div>${esc(employee)}</div>`:'<span class="subtle">Сотрудник не назначен</span>'}${equipment?`<div>${esc(equipment)}</div>`:'<div class="subtle">Оборудование не назначено</div>'}</td><td>${task.quality_required?`<span class="status-pill ${statusClass(task.quality_status)}">${qualityLabel(task.quality_status)}</span>`:'<span class="subtle">Не требуется</span>'}</td><td class="orders-actions"><span data-task-action-host="${esc(task.id)}">${actionButtons(task)}</span></td></tr>`;}).join('')}</tbody></table></div>`:'<div class="empty-detail">Производственные задания ещё не созданы.</div>'}</div></div>`;
-    } catch (error) {
-      container.innerHTML=`<div class="detail-error">Не удалось загрузить карточку: ${esc(error instanceof Error ? error.message : 'ошибка запроса')}</div>`;
-    }
-  };
+      for (const assignment of assignments) if (!assignmentByTask.has(assignment.task_id)) assignmentByTask.set(assignment.task_id, assignment);
 
-  const refreshDetail = async (taskId: string, button: HTMLButtonElement): Promise<void> => {
-    const taskHost = host.querySelector<HTMLElement>(`[data-task-action-host="${CSS.escape(taskId)}"]`);
-    const orderId = (taskHost?.closest('tr') as HTMLElement | null)?.dataset.orderId;
-    const order = orderId ? orders.find(item => item.id === orderId) : undefined;
-    if (!taskHost || !order) return;
-    try {
-      const action = button.dataset.taskAction as 'PREPARE' | MesExecutionAction;
-      if (action === 'PREPARE') await planningRpc.prepareTask(taskId);
-      else await executionRpc.executeTaskAction(taskId, action, new Date().toISOString());
-      const detailHost = host.querySelector<HTMLElement>(`[data-detail-host="${CSS.escape(order.id)}"]`);
-      if (detailHost) await loadDetail(order, detailHost);
+      container.innerHTML = `<div class="order-detail-head"><div><strong>Карточка заказа ${esc(order.number)}</strong><div class="subtle">Изделие: ${esc(order.product_id)} · срок ${formatDateTime(order.due_at)}</div></div><span class="status-pill ${statusClass(order.status)}">${statusLabel(order.status)}</span></div>
+        <div class="order-detail-grid"><div><div class="detail-title">Технологический маршрут</div>${route.length ? `<ol class="route-list">${route.map(operation => { const task = tasks.find(item => item.operation_id === operation.id); return `<li><div class="route-line"><span class="route-seq">${operation.sequence}</span><div><strong>${esc(operation.code)} · ${esc(operation.name)}</strong><div class="subtle">${esc(operation.work_center)} · наладка ${operation.setup_minutes} мин · ${operation.run_minutes_per_unit} мин/ед.</div></div>${task ? `<span class="status-pill ${statusClass(task.status)}">${taskStatusLabel(task.status)}</span>` : '<span class="subtle">задание не создано</span>'}</div></li>`; }).join('')}</ol>` : '<div class="empty-detail">Активный маршрут не найден.</div>'}</div>
+        <div><div class="detail-title">Производственные задания</div>${tasks.length ? `<div class="task-detail-table"><table><thead><tr><th>Операция</th><th>Статус</th><th>План</th><th>Факт</th><th>Ресурсы</th><th>Качество</th><th>Действия</th></tr></thead><tbody>${tasks.map(task => { const assignment = assignmentByTask.get(task.id); return `<tr data-order-id="${esc(task.order_id)}"><td><strong>${esc(task.id)}</strong><div class="subtle">${task.operation_sequence} · ${esc(task.operation_id)} · v${task.version}</div></td><td><span class="status-pill ${statusClass(task.status)}">${taskStatusLabel(task.status)}</span></td><td>${formatDateTime(task.planned_start)} → ${formatDateTime(task.planned_end)}<div class="subtle">${task.planned_quantity}</div></td><td>${task.actual_quantity}<div class="subtle">${formatDateTime(task.actual_start)} → ${formatDateTime(task.actual_end)}</div></td><td>${assignmentControls(task, assignment, employees, equipment, canAssign)}</td><td>${task.quality_required ? `<span class="status-pill ${statusClass(task.quality_status)}">${qualityLabel(task.quality_status)}</span>` : '<span class="subtle">Не требуется</span>'}</td><td class="orders-actions"><span data-task-action-host="${esc(task.id)}">${actionButtons(task)}</span></td></tr>`; }).join('')}</tbody></table></div>` : '<div class="empty-detail">Производственные задания ещё не созданы.</div>'}</div></div>`;
+
+      for (const task of tasks) assignmentVersions.set(task.id, task.version);
+      bindTaskAssignmentControls(container, tasks, order, employees, equipment);
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : 'Не удалось выполнить действие задания');
+      container.innerHTML = `<div class="detail-error">Не удалось загрузить карточку: ${esc(error instanceof Error ? error.message : 'ошибка запроса')}</div>`;
     }
+  }
+
+  function bindTaskAssignmentControls(container: HTMLElement, tasks: TaskRow[], order: OrderRow, employees: EmployeeRow[], equipment: EquipmentRow): void {
+    // no-op overload guard replaced below
+  }
+
+  async function saveAssignment(select: HTMLSelectElement, dimension: 'employeeIds' | 'equipmentIds'): Promise<void> {
+    if (!canAssign) return;
+    const taskId = select.dataset.taskId ?? '';
+    if (!taskId) return;
+    const version = Number(select.dataset.taskVersion);
+    if (!Number.isInteger(version) || version <= 0) return;
+    const nextId = select.value;
+    const expectedVersion = assignmentVersions.get(taskId) ?? version;
+    select.disabled = true;
+    try {
+      const result = await planningRpc.assignTask(taskId, dimension === 'employeeIds' ? { employeeIds: nextId ? [nextId] : [] } : { equipmentIds: nextId ? [nextId] : [] }, expectedVersion);
+      assignmentVersions.set(taskId, result.version);
+      const detailHost = select.closest('[data-detail-host]') as HTMLElement | null;
+      const orderId = (select.closest('tr') as HTMLElement | null)?.dataset.orderId;
+      const detailOrder = orders.find(item => item.id === orderId) ?? orders.find(item => detailState.has(item.id));
+      if (detailHost && detailOrder) await loadDetail(detailOrder, detailHost);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Не удалось назначить ресурс');
+      select.value = '';
+    } finally {
+      select.disabled = false;
+    }
+  }
+
+  function attachAssignmentListeners(container: HTMLElement): void {
+    container.querySelectorAll<HTMLSelectElement>('[data-task-employee], [data-task-equipment]').forEach(select => {
+      select.addEventListener('change', () => void saveAssignment(select, select.dataset.taskEmployee ? 'employeeIds' : 'equipmentIds'));
+    });
+  }
+
+  const originalLoadDetail = loadDetail;
+  loadDetail = async (order: OrderRow, container: HTMLElement): Promise<void> => {
+    await originalLoadDetail(order, container);
+    attachAssignmentListeners(container);
   };
 
   host.addEventListener('click', event => {
     const target = event.target;
     if (!(target instanceof HTMLButtonElement) || !target.dataset.taskAction || !target.dataset.taskId) return;
     event.preventDefault();
-    void refreshDetail(target.dataset.taskId, target);
+    const taskHost = host.querySelector<HTMLElement>(`[data-task-action-host="${CSS.escape(target.dataset.taskId)}"]`);
+    const orderId = (taskHost?.closest('tr') as HTMLElement | null)?.dataset.orderId;
+    const order = orderId ? orders.find(item => item.id === orderId) : undefined;
+    const detailHost = order ? host.querySelector<HTMLElement>(`[data-detail-host="${CSS.escape(order.id)}"]`) : null;
+    if (!order || !detailHost) return;
+    void (async () => {
+      try {
+        const action = target.dataset.taskAction as 'PREPARE' | MesExecutionAction;
+        if (action === 'PREPARE') await planningRpc.prepareTask(target.dataset.taskId ?? '', Number(taskHost?.closest('tr')?.querySelector<HTMLElement>('.subtle')?.textContent?.match(/v(\d+)/)?.[1] ?? 1));
+        else await executionRpc.executeTaskAction(target.dataset.taskId ?? '', action, new Date().toISOString());
+        await loadDetail(order, detailHost);
+      } catch (error) {
+        window.alert(error instanceof Error ? error.message : 'Не удалось выполнить действие задания');
+      }
+    })();
   });
 
-  host.querySelectorAll<HTMLButtonElement>('[data-order-detail]').forEach(button=>button.addEventListener('click',()=>{
-    const orderId=button.dataset.orderDetail??'';
-    const order=orders.find(item=>item.id===orderId);
-    const row=host.querySelector<HTMLTableRowElement>(`[data-order-detail-row="${CSS.escape(orderId)}"]`);
-    const container=row?.querySelector<HTMLElement>('[data-detail-host]');
+  host.querySelectorAll<HTMLButtonElement>('[data-order-detail]').forEach(button => button.addEventListener('click', () => {
+    const orderId = button.dataset.orderDetail ?? '';
+    const order = orders.find(item => item.id === orderId);
+    const row = host.querySelector<HTMLTableRowElement>(`[data-order-detail-row="${CSS.escape(orderId)}"]`);
+    const container = row?.querySelector<HTMLElement>('[data-detail-host]');
     if (!order || !row || !container) return;
-    const open=!detailState.has(orderId);
-    if(open) detailState.add(orderId); else detailState.delete(orderId);
-    row.hidden=!open;
-    button.textContent=open?'Скрыть':'Детали';
-    if(open) void loadDetail(order,container);
+    const open = !detailState.has(orderId);
+    if (open) detailState.add(orderId); else detailState.delete(orderId);
+    row.hidden = !open;
+    button.textContent = open ? 'Скрыть' : 'Детали';
+    if (open) void loadDetail(order, container);
   }));
 
-  host.querySelector<HTMLButtonElement>('#orders-refresh')?.addEventListener('click',()=>window.location.reload());
-  host.querySelectorAll<HTMLButtonElement>('[data-plan-order]').forEach(button=>button.addEventListener('click',async()=>{try{const r=await rpc.planOrder(button.dataset.planOrder??'');window.alert(`Создано заданий: ${r.createdTasks}; существовало: ${r.existingTasks}`);window.location.reload();}catch(error){window.alert(error instanceof Error?error.message:'Не удалось спланировать заказ');}}));
-  const change=async(button:HTMLButtonElement,next:ProductionOrder['status'])=>{try{await rpc.changeStatus(button.dataset.orderId??'',next);window.location.reload();}catch(error){window.alert(error instanceof Error?error.message:'Не удалось изменить статус заказа');}};
-  host.querySelectorAll<HTMLButtonElement>('[data-release-order]').forEach(button=>{button.dataset.orderId=button.dataset.releaseOrder??'';button.addEventListener('click',()=>void change(button,'RELEASED'));});
-  host.querySelectorAll<HTMLButtonElement>('[data-block-order]').forEach(button=>{button.dataset.orderId=button.dataset.blockOrder??'';button.addEventListener('click',()=>void change(button,'BLOCKED'));});
+  host.querySelector<HTMLButtonElement>('#orders-refresh')?.addEventListener('click', () => window.location.reload());
+  host.querySelectorAll<HTMLButtonElement>('[data-plan-order]').forEach(button => button.addEventListener('click', async () => {
+    try {
+      const result = await orderRpc.planOrder(button.dataset.planOrder ?? '');
+      window.alert(`Создано заданий: ${result.createdTasks}; существовало: ${result.existingTasks}`);
+      window.location.reload();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Не удалось спланировать заказ');
+    }
+  }));
+
+  const changeStatus = async (button: HTMLButtonElement, next: ProductionOrder['status']): Promise<void> => {
+    try {
+      await orderRpc.changeStatus(button.dataset.orderId ?? '', next);
+      window.location.reload();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Не удалось изменить статус заказа');
+    }
+  };
+  host.querySelectorAll<HTMLButtonElement>('[data-release-order]').forEach(button => {
+    button.dataset.orderId = button.dataset.releaseOrder ?? '';
+    button.addEventListener('click', () => void changeStatus(button, 'RELEASED'));
+  });
+  host.querySelectorAll<HTMLButtonElement>('[data-block-order]').forEach(button => {
+    button.dataset.orderId = button.dataset.blockOrder ?? '';
+    button.addEventListener('click', () => void changeStatus(button, 'BLOCKED'));
+  });
 }
