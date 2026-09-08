@@ -8,6 +8,7 @@ import { getMesSupabaseClient } from './services/supabase';
 const supabase = getMesSupabaseClient();
 const assignmentQueues = new Map<string, Promise<void>>();
 const replanQueues = new Map<string, Promise<void>>();
+const prepareQueues = new Map<string, Promise<void>>();
 let calendarSaveQueue: Promise<void> = Promise.resolve();
 const assignmentVersions = new Map<string, number>();
 
@@ -87,7 +88,26 @@ document.addEventListener('change', event => {
 
 document.addEventListener('click', event => {
   const target = event.target;
-  if (!(target instanceof HTMLButtonElement) || target.id !== 'replan-apply' || !supabase) return;
+  if (!(target instanceof HTMLButtonElement) || !supabase) return;
+
+  if (target.dataset.action === 'PREPARE') {
+    const taskId = target.dataset.task;
+    if (!taskId) return;
+
+    enqueue(prepareQueues, taskId, async () => {
+      const auth = await getMesAuthState(supabase);
+      if (!auth.identity) return;
+      const version = Number(target.closest('tr')?.querySelector<HTMLElement>('[data-version]')?.dataset.version);
+      await new SupabaseMesPlanningRpc(supabase).prepareTask(
+        taskId,
+        Number.isInteger(version) && version > 0 ? version : undefined
+      );
+      window.location.reload();
+    });
+    return;
+  }
+
+  if (target.id !== 'replan-apply') return;
 
   const planId = target.dataset.planId;
   const planVersion = Number(target.dataset.planVersion);
