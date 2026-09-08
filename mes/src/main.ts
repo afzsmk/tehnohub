@@ -11,6 +11,9 @@ import { bindMaintenancePanel, renderMaintenancePanel } from './ui/maintenancePa
 import { renderPlanFactPanel } from './ui/planFactPanel';
 import { bindIntegrationPanel, renderIntegrationPanel } from './ui/integrationPanel';
 import { browserWorkforceIntegrationStore } from './integration/workforce';
+import { getMesAuthState, signInMes, signOutMes, subscribeMesAuth, MesAuthState } from './integration/auth';
+import { SupabaseMesExecutionRpc, MesExecutionAction } from './integration/mesExecutionRpc';
+import { getMesSupabaseClient } from './services/supabase';
 import { MesState, ProductionTask } from './types';
 import { loadState, saveState } from './services/storage';
 
@@ -63,10 +66,16 @@ const seed: MesState = {
 
 const state = loadState(seed);
 const integrationStore = browserWorkforceIntegrationStore();
+const supabase = getMesSupabaseClient();
+const remoteExecution = supabase ? new SupabaseMesExecutionRpc(supabase) : null;
+let authState: MesAuthState = { user: null, identity: null };
+let authUnsubscribe: (() => void) | null = null;
 const app = document.querySelector<HTMLDivElement>('#app');
 if (!app) throw new Error('Не найден контейнер приложения');
 const root = app;
-const actorId = 'demo-dispatcher';
+
+function currentActorId(): string { return authState.identity?.userId ?? 'demo-dispatcher'; }
+function remoteReady(): boolean { return Boolean(remoteExecution && authState.identity); }
 
 function ensureHorizon(): void {
   const requiredEnd = new Date(state.plan.horizonStart).getTime() + HORIZON_DAYS * DAY_MS;
@@ -121,8 +130,85 @@ function showError(error: unknown): void { window.alert(error instanceof Error ?
 
 function onMaintenanceChanged(): void { saveState(state); calculate(); render(); }
 
+function mergeRemoteTask(remote: ProductionTask): void {
+  const local = state.tasks.find(task => task.id === remote.id);
+  if (!local) { state.tasks.push(remote); return; }
+  const employees = local.assignedEmployeeIds;
+  const equipment = local.assignedEquipmentIds;
+  Object.assign(local, remote);
+  local.assignedEmployeeIds = employees;
+  local.assignedEquipmentIds = equipment;
+}
+
+async function handleAction(taskId: string, action: 'PREPARE' | MesExecutionAction): Promise<void> {
+  if (remoteReady() && action !== 'PREPARE') {
+    const task = await remoteExecution!.executeTaskAction(taskId, action, new Date().toISOString());
+    mergeRemoteTask(task);
+    saveState(state);
+    render();
+    return;
+  }
+  executeTaskAction(state, taskId, action, currentActorId());
+  saveState(state);
+  render();
+}
+
+async function handleResult(taskId: string, goodQuantity: number, scrapQuantity: number, comment: string): Promise<void> {
+  if (remoteReady()) {
+    const result = await remoteExecution!.recordProductionResult(taskId, goodQuantity, scrapQuantity, state.tasks.find(t => t.id === taskId)?.assignedEquipmentIds ?? [], comment, new Date().toISOString());
+    if (!state.results.some(item => item.id === result.id)) state.results.push(result);
+    const task = state.tasks.find(item => item.id === taskId);
+    if (task) {
+      task.actualQuantity += result.goodQuantity;
+      if (task.actualQuantity >= task.plannedQuantity) { task.status = 'COMPLETED'; task.actualEnd ??= result.recordedAt; }
+      else if (task.status === 'RUNNING' || task.status === 'PAUSED') task.status = 'PARTIALLY_COMPLETED';
+      task.version += 1;
+    }
+    saveState(state);
+    render();
+    return;
+  }
+  const task = state.tasks.find(t => t.id === taskId);
+  recordProductionResult(state, taskId, { goodQuantity, scrapQuantity, comment, employeeIds: task?.assignedEmployeeIds ?? [], equipmentIds: task?.assignedEquipmentIds ?? [] }, currentActorId());
+  saveState(state);
+  render();
+}
+
+async function handleDowntimeStart(equipmentId: string, reasonCode: string, comment: string): Promise<void> {
+  if (remoteReady()) {
+    const event = await remoteExecution!.startDowntime(equipmentId, reasonCode, comment, new Date().toISOString());
+    state.downtimes.push(event);
+    saveState(state);
+    render();
+    return;
+  }
+  startDowntime(state, { equipmentId, reasonCode, comment }, currentActorId());
+  saveState(state);
+  render();
+}
+
+async function handleDowntimeEnd(downtimeId: string): Promise<void> {
+  if (remoteReady()) {
+    const event = await remoteExecution!.endDowntime(downtimeId, new Date().toISOString());
+    const local = state.downtimes.find(item => item.id === downtimeId);
+    if (local) Object.assign(local, event); else state.downtimes.push(event);
+    saveState(state);
+    render();
+    return;
+  }
+  endDowntime(state, downtimeId, currentActorId());
+  saveState(state);
+  render();
+}
+
 ensureHorizon();
 if (state.tasks.length === 0) calculate();
+
+function authHtml(): string {
+  if (!supabase) return '<div class="plan-badge">Demo / localStorage</div>';
+  if (authState.user) return `<div class="auth-inline"><span>${authState.identity?.role ?? 'MES user'} · ${authState.user.email ?? authState.user.id}</span><button id="signout" class="tiny">Выйти</button></div>`;
+  return `<form id="login-form" class="auth-inline"><input name="email" type="email" placeholder="Email" required><input name="password" type="password" placeholder="Пароль" required><button class="tiny" type="submit">Войти</button></form>`;
+}
 
 function render(): void {
   const operations = state.orders.flatMap(order => order.route);
@@ -132,16 +218,14 @@ function render(): void {
   const conflicts = state.tasks.filter(task => state.tasks.some(other => other.id !== task.id && new Date(task.plannedStart).getTime() < new Date(other.plannedEnd).getTime() && new Date(other.plannedStart).getTime() < new Date(task.plannedEnd).getTime() && (task.assignedEmployeeIds.some(id => other.assignedEmployeeIds.includes(id)) || task.assignedEquipmentIds.some(id => other.assignedEquipmentIds.includes(id)))));
 
   const dispatchHtml = renderDispatchBoard({ tasks: state.tasks, employees: state.employees, equipment: state.equipment, shifts: state.shifts, calendar: state.calendar, equipmentBlocks: state.equipmentBlocks, operations, onMove: moveTask, onAssignEmployee: (taskId, employeeId) => updateTask(taskId, { assignedEmployeeIds: employeeId ? [employeeId] : [] }), onAssignEquipment: (taskId, equipmentId) => updateTask(taskId, { assignedEquipmentIds: equipmentId ? [equipmentId] : [] }) });
-
   const executionHtml = renderExecutionPanel({
     tasks: state.tasks, employees: state.employees, equipment: state.equipment, results: state.results, downtimes: state.downtimes,
-    onAction: (taskId, action) => { try { executeTaskAction(state, taskId, action, actorId); saveState(state); render(); } catch (error) { showError(error); } },
-    onResult: (taskId, goodQuantity, scrapQuantity, comment) => { try { const task = state.tasks.find(t => t.id === taskId); recordProductionResult(state, taskId, { goodQuantity, scrapQuantity, comment, employeeIds: task?.assignedEmployeeIds ?? [], equipmentIds: task?.assignedEquipmentIds ?? [] }, actorId); saveState(state); render(); } catch (error) { showError(error); } },
-    onDowntimeStart: (equipmentId, reasonCode, comment) => { try { startDowntime(state, { equipmentId, reasonCode, comment }, actorId); saveState(state); render(); } catch (error) { showError(error); } },
-    onDowntimeEnd: downtimeId => { try { endDowntime(state, downtimeId, actorId); saveState(state); render(); } catch (error) { showError(error); } }
+    onAction: (taskId, action) => { void handleAction(taskId, action).catch(showError); },
+    onResult: (taskId, goodQuantity, scrapQuantity, comment) => { void handleResult(taskId, goodQuantity, scrapQuantity, comment).catch(showError); },
+    onDowntimeStart: (equipmentId, reasonCode, comment) => { void handleDowntimeStart(equipmentId, reasonCode, comment).catch(showError); },
+    onDowntimeEnd: downtimeId => { void handleDowntimeEnd(downtimeId).catch(showError); }
   });
-
-  const maintenanceHtml = renderMaintenancePanel({ state, actorId, onChanged: onMaintenanceChanged, onError: showError });
+  const maintenanceHtml = renderMaintenancePanel({ state, actorId: currentActorId(), onChanged: onMaintenanceChanged, onError: showError });
   const planFactHtml = renderPlanFactPanel({ orders: state.orders, tasks: state.tasks, results: state.results, downtimes: state.downtimes });
   const replanHtml = renderReplanPanel({ tasks: state.tasks, downtimes: state.downtimes, plan: state.plan, onApply: applyControlledReplan });
   const integrationHtml = renderIntegrationPanel({ store: integrationStore, onRefresh: render });
@@ -149,7 +233,7 @@ function render(): void {
   const orderRows = state.orders.map(o => `<tr><td><strong>${o.number}</strong></td><td>${o.priority}</td><td>${new Date(o.dueAt).toLocaleDateString('ru-RU')}</td><td>${o.status}</td></tr>`).join('');
   const taskRows = state.tasks.map(t => { const op = operations.find(o => o.id === t.operationId); const employee = state.employees.find(e => e.id === t.assignedEmployeeIds[0]); const equipment = state.equipment.find(e => e.id === t.assignedEquipmentIds[0]); const conflict = conflicts.some(c => c.id === t.id); return `<tr class="${conflict ? 'row-conflict' : ''}"><td>${t.id}</td><td>${op?.name ?? t.operationId}</td><td>${new Date(t.plannedStart).toLocaleString('ru-RU')} → ${new Date(t.plannedEnd).toLocaleString('ru-RU')}</td><td>${employee?.name ?? '—'}</td><td>${equipment?.name ?? '—'}</td><td>v${t.version}</td></tr>`; }).join('');
 
-  root.innerHTML = `<header class="topbar"><div><div class="eyebrow">ТЕХНОХАБ ЗСМК</div><h1>MES • Производственное управление</h1></div><div class="plan-badge">План v${state.plan.version} · ${state.plan.status}</div></header>
+  root.innerHTML = `<header class="topbar"><div><div class="eyebrow">ТЕХНОХАБ ЗСМК</div><h1>MES • Производственное управление</h1></div><div class="auth-box">${authHtml()}</div></header>
   <main class="page"><section class="kpis"><article><span>Заказы</span><strong>${state.orders.length}</strong></article><article><span>Задания</span><strong>${state.tasks.length}</strong></article><article><span>Выпущено</span><strong>${totalGood}</strong></article><article class="${conflicts.length ? 'danger' : ''}"><span>Конфликты</span><strong>${conflicts.length}</strong></article><article><span>Открытые простои</span><strong>${openDowntime}</strong></article></section>
   <section class="panel"><div class="panel-head"><div><h2>Диспетчерская доска</h2><div class="subtle">30 дней · ${state.shifts.length} смены · ${state.equipmentBlocks.length} блокировки</div></div><button id="recalc" class="primary">Пересчитать</button></div>${dispatchHtml}</section>
   ${executionHtml}
@@ -165,10 +249,31 @@ function render(): void {
   root.querySelectorAll<HTMLButtonElement>('[data-move]').forEach(button => button.addEventListener('click', () => moveTask(button.dataset.move ?? '', Number(button.dataset.delta ?? 0))));
   root.querySelectorAll<HTMLSelectElement>('[data-employee]').forEach(select => select.addEventListener('change', () => updateTask(select.dataset.employee ?? '', { assignedEmployeeIds: select.value ? [select.value] : [] })));
   root.querySelectorAll<HTMLSelectElement>('[data-equipment]').forEach(select => select.addEventListener('change', () => updateTask(select.dataset.equipment ?? '', { assignedEquipmentIds: select.value ? [select.value] : [] })));
-  bindMaintenancePanel(root, { state, actorId, onChanged: onMaintenanceChanged, onError: showError });
+  root.querySelector<HTMLFormElement>('#login-form')?.addEventListener('submit', event => {
+    event.preventDefault();
+    const form = event.currentTarget as HTMLFormElement;
+    const data = new FormData(form);
+    void signInMes(supabase!, String(data.get('email') ?? ''), String(data.get('password') ?? '')).then(next => { authState = next; render(); }).catch(showError);
+  });
+  root.querySelector<HTMLButtonElement>('#signout')?.addEventListener('click', () => { void signOutMes(supabase!).catch(showError); });
+  bindMaintenancePanel(root, { state, actorId: currentActorId(), onChanged: onMaintenanceChanged, onError: showError });
   bindReplanPanel(root, { tasks: state.tasks, downtimes: state.downtimes, plan: state.plan, onApply: applyControlledReplan });
   bindIntegrationPanel(root, { store: integrationStore, onRefresh: render });
-  bindExecutionPanel(root, { tasks: state.tasks, employees: state.employees, equipment: state.equipment, results: state.results, downtimes: state.downtimes, onAction: (id, action) => { try { executeTaskAction(state, id, action, actorId); saveState(state); render(); } catch (e) { showError(e); } }, onResult: (id, good, scrap, comment) => { try { const task = state.tasks.find(t => t.id === id); recordProductionResult(state, id, { goodQuantity: good, scrapQuantity: scrap, comment, employeeIds: task?.assignedEmployeeIds ?? [], equipmentIds: task?.assignedEquipmentIds ?? [] }, actorId); saveState(state); render(); } catch (e) { showError(e); } }, onDowntimeStart: (equipmentId, reasonCode, comment) => { try { startDowntime(state, { equipmentId, reasonCode, comment }, actorId); saveState(state); render(); } catch (e) { showError(e); } }, onDowntimeEnd: id => { try { endDowntime(state, id, actorId); saveState(state); render(); } catch (e) { showError(e); } } });
+  bindExecutionPanel(root, { tasks: state.tasks, employees: state.employees, equipment: state.equipment, results: state.results, downtimes: state.downtimes, onAction: (id, action) => { void handleAction(id, action).catch(showError); }, onResult: (id, good, scrap, comment) => { void handleResult(id, good, scrap, comment).catch(showError); }, onDowntimeStart: (equipmentId, reasonCode, comment) => { void handleDowntimeStart(equipmentId, reasonCode, comment).catch(showError); }, onDowntimeEnd: id => { void handleDowntimeEnd(id).catch(showError); } });
   bindCalendarEditor(root, { calendar: state.calendar, shifts: state.shifts, employees: state.employees, employeeSchedules: state.employeeSchedules, equipment: state.equipment, equipmentBlocks: state.equipmentBlocks, onCalendarChange: updateCalendarDay, onEmployeeScheduleChange: updateEmployeeSchedule, onAddBlock: addEquipmentBlock, onRemoveBlock: removeEquipmentBlock });
 }
+
 render();
+
+void (async () => {
+  if (!supabase) return;
+  try {
+    authState = await getMesAuthState(supabase);
+    render();
+    authUnsubscribe = subscribeMesAuth(supabase, async next => { authState = next; render(); });
+  } catch (error) {
+    showError(error);
+  }
+})();
+
+window.addEventListener('beforeunload', () => authUnsubscribe?.());
