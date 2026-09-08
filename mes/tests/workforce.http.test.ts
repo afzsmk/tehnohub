@@ -25,12 +25,17 @@ function response(body: unknown, status = 200): Response {
 }
 
 describe('Workforce-MES HTTP client', () => {
-  it('posts a validated published plan with bearer token', async () => {
+  it('posts a validated published plan with auth, idempotency and correlation headers', async () => {
     const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(response({
       contractVersion: '1.0', idempotencyKey: 'WF-PLAN-1:5', sourcePlanId: 'WF-PLAN-1', sourcePlanVersion: 5,
       importedAt: '2026-09-08T12:01:00.000Z', importedBy: 'mes', accepted: true
     }));
-    const client = new WorkforceMesHttpClientImpl({ baseUrl: 'https://mes.example/', token: 'secret', fetchImpl });
+    const client = new WorkforceMesHttpClientImpl({
+      baseUrl: 'https://mes.example/',
+      token: 'secret',
+      fetchImpl,
+      correlationIdFactory: () => 'corr-123'
+    });
 
     const receipt = await client.importPublishedPlan(publishedPlan());
 
@@ -39,7 +44,12 @@ describe('Workforce-MES HTTP client', () => {
     const [url, init] = fetchImpl.mock.calls[0];
     expect(url).toBe('https://mes.example/api/mes/v1/workforce/plans');
     expect(init?.method).toBe('POST');
-    expect(init?.headers).toMatchObject({ Authorization: 'Bearer secret', 'Content-Type': 'application/json' });
+    expect(init?.headers).toMatchObject({
+      Authorization: 'Bearer secret',
+      'Content-Type': 'application/json',
+      'Idempotency-Key': 'WF-PLAN-1:5',
+      'X-Correlation-ID': 'corr-123'
+    });
     expect(JSON.parse(String(init?.body)).idempotencyKey).toBe('WF-PLAN-1:5');
   });
 
@@ -48,12 +58,15 @@ describe('Workforce-MES HTTP client', () => {
       .mockResolvedValueOnce(response({ message: 'temporary failure' }, 503))
       .mockResolvedValueOnce(response({ message: 'rate limited' }, 429))
       .mockResolvedValueOnce(response(undefined, 204));
-    const client = new WorkforceMesHttpClientImpl({ baseUrl: 'http://mes.local', fetchImpl, retries: 2, retryDelayMs: 0 });
+    const client = new WorkforceMesHttpClientImpl({ baseUrl: 'http://mes.local', fetchImpl, retries: 2, retryDelayMs: 0, correlationIdFactory: () => 'corr-456' });
 
     await expect(client.sendActualFeedback({
       contractVersion: '1.0', sentAt: '2026-09-08T12:00:00.000Z', sourceSiteExternalId: 'SITE-1', events: []
     })).resolves.toBeUndefined();
     expect(fetchImpl).toHaveBeenCalledTimes(3);
+    for (const call of fetchImpl.mock.calls) {
+      expect(call[1]?.headers).toMatchObject({ 'X-Correlation-ID': 'corr-456' });
+    }
   });
 
   it('does not retry a client error', async () => {
