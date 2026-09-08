@@ -4,3 +4,4 @@ export * from './mapper';
 export * from './service';
 export * from './feedback';
 export * from './http';
+export * from './api';
