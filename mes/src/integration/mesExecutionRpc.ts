@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { DowntimeEvent, ProductionResult, ProductionTask } from '../types';
+import type { DowntimeEvent, ProductionResult, ProductionTask, QualityStatus } from '../types';
 
 export type MesExecutionAction = 'START' | 'PAUSE' | 'RESUME' | 'BLOCK' | 'COMPLETE';
 
@@ -21,6 +21,7 @@ type DbTask = {
   id: string; order_id: string; operation_id: string; operation_sequence: number; status: ProductionTask['status'];
   planned_start: string; planned_end: string; actual_start: string | null; actual_end: string | null;
   planned_quantity: number; actual_quantity: number; version: number;
+  quality_required?: boolean | null; quality_status?: QualityStatus | null;
 };
 
 type DbResult = {
@@ -72,6 +73,8 @@ function mapTask(row: DbTask, assignment: { employeeIds: string[]; equipmentIds:
     actualQuantity: Number(row.actual_quantity),
     assignedEmployeeIds: [...assignment.employeeIds],
     assignedEquipmentIds: [...assignment.equipmentIds],
+    qualityRequired: row.quality_required === true,
+    qualityStatus: row.quality_status ?? (row.quality_required ? 'NOT_REQUIRED' : 'NOT_REQUIRED'),
     version: Number(row.version)
   };
 }
