@@ -4,6 +4,7 @@ import type { ProductionOrder } from '../types';
 import { getMesAuthState } from '../integration/auth';
 import { SupabaseMesExecutionRpc, MesExecutionAction } from '../integration/mesExecutionRpc';
 import { SupabaseMesOrderRpc } from '../integration/mesOrderRpc';
+import { SupabaseMesPlanningRpc } from '../integration/mesPlanningRpc';
 
 const PLANNING_ROLES = ['ADMIN','PRODUCTION_MANAGER','PLANNER','DISPATCHER','MASTER'];
 const RELEASE_ROLES = ['ADMIN','PRODUCTION_MANAGER','DISPATCHER','MASTER'];
@@ -152,6 +153,7 @@ export async function mountOrdersPage(root: HTMLElement, client: SupabaseClient)
 
   const rpc=new SupabaseMesOrderRpc(client);
   const executionRpc=new SupabaseMesExecutionRpc(client);
+  const planningRpc=new SupabaseMesPlanningRpc(client);
   const detailState = new Set<string>();
 
   const loadDetail = async (order: OrderRow, container: HTMLElement): Promise<void> => {
@@ -187,22 +189,23 @@ export async function mountOrdersPage(root: HTMLElement, client: SupabaseClient)
       const equipmentMap = new Map((equipmentResult.data ?? []).map(row => [String(row.id), String(row.name)]));
       container.innerHTML=`<div class="order-detail-head"><div><strong>Карточка заказа ${esc(order.number)}</strong><div class="subtle">Изделие: ${esc(order.product_id)} · срок ${formatDateTime(order.due_at)}</div></div><span class="status-pill ${statusClass(order.status)}">${statusLabel(order.status)}</span></div>
         <div class="order-detail-grid"><div><div class="detail-title">Технологический маршрут</div>${route.length?`<ol class="route-list">${route.map(op=>{const task=taskByOperation.get(op.id);return `<li><div class="route-line"><span class="route-seq">${op.sequence}</span><div><strong>${esc(op.code)} · ${esc(op.name)}</strong><div class="subtle">${esc(op.work_center)} · наладка ${op.setup_minutes} мин · ${op.run_minutes_per_unit} мин/ед.</div></div>${task?`<span class="status-pill ${statusClass(task.status)}">${taskStatusLabel(task.status)}</span>`:'<span class="subtle">задание не создано</span>'}</div></li>`;}).join('')}</ol>`:'<div class="empty-detail">Активный маршрут не найден.</div>'}</div>
-        <div><div class="detail-title">Производственные задания</div>${tasks.length?`<div class="task-detail-table"><table><thead><tr><th>Операция</th><th>Статус</th><th>План</th><th>Факт</th><th>Ресурсы</th><th>Качество</th><th>Действия</th></tr></thead><tbody>${tasks.map(task=>{const assignment=assignmentByTask.get(task.id);const employee=assignment?.employee_id?employeeMap.get(assignment.employee_id):undefined;const equipment=assignment?.equipment_id?equipmentMap.get(assignment.equipment_id):undefined;return `<tr><td><strong>${esc(task.id)}</strong><div class="subtle">${task.operation_sequence} · ${esc(task.operation_id)}</div></td><td><span class="status-pill ${statusClass(task.status)}">${taskStatusLabel(task.status)}</span></td><td>${formatDateTime(task.planned_start)} → ${formatDateTime(task.planned_end)}<div class="subtle">${task.planned_quantity}</div></td><td>${task.actual_quantity}<div class="subtle">${formatDateTime(task.actual_start)} → ${formatDateTime(task.actual_end)}</div></td><td>${employee?`<div>${esc(employee)}</div>`:'<span class="subtle">Сотрудник не назначен</span>'}${equipment?`<div>${esc(equipment)}</div>`:'<div class="subtle">Оборудование не назначено</div>'}</td><td>${task.quality_required?`<span class="status-pill ${statusClass(task.quality_status)}">${qualityLabel(task.quality_status)}</span>`:'<span class="subtle">Не требуется</span>'}</td><td class="orders-actions"><span data-task-action-host="${esc(task.id)}">${actionButtons(task)}</span></td></tr>`;}).join('')}</tbody></table></div>`:'<div class="empty-detail">Производственные задания ещё не созданы.</div>'}</div></div>`;
+        <div><div class="detail-title">Производственные задания</div>${tasks.length?`<div class="task-detail-table"><table><thead><tr><th>Операция</th><th>Статус</th><th>План</th><th>Факт</th><th>Ресурсы</th><th>Качество</th><th>Действия</th></tr></thead><tbody>${tasks.map(task=>{const assignment=assignmentByTask.get(task.id);const employee=assignment?.employee_id?employeeMap.get(assignment.employee_id):undefined;const equipment=assignment?.equipment_id?equipmentMap.get(assignment.equipment_id):undefined;return `<tr data-order-id="${esc(task.order_id)}"><td><strong>${esc(task.id)}</strong><div class="subtle">${task.operation_sequence} · ${esc(task.operation_id)}</div></td><td><span class="status-pill ${statusClass(task.status)}">${taskStatusLabel(task.status)}</span></td><td>${formatDateTime(task.planned_start)} → ${formatDateTime(task.planned_end)}<div class="subtle">${task.planned_quantity}</div></td><td>${task.actual_quantity}<div class="subtle">${formatDateTime(task.actual_start)} → ${formatDateTime(task.actual_end)}</div></td><td>${employee?`<div>${esc(employee)}</div>`:'<span class="subtle">Сотрудник не назначен</span>'}${equipment?`<div>${esc(equipment)}</div>`:'<div class="subtle">Оборудование не назначено</div>'}</td><td>${task.quality_required?`<span class="status-pill ${statusClass(task.quality_status)}">${qualityLabel(task.quality_status)}</span>`:'<span class="subtle">Не требуется</span>'}</td><td class="orders-actions"><span data-task-action-host="${esc(task.id)}">${actionButtons(task)}</span></td></tr>`;}).join('')}</tbody></table></div>`:'<div class="empty-detail">Производственные задания ещё не созданы.</div>'}</div></div>`;
     } catch (error) {
       container.innerHTML=`<div class="detail-error">Не удалось загрузить карточку: ${esc(error instanceof Error ? error.message : 'ошибка запроса')}</div>`;
     }
   };
 
   const refreshDetail = async (taskId: string, button: HTMLButtonElement): Promise<void> => {
-    const orderId = [...detailState].find(id => host.querySelector(`[data-task-action-host=\"${CSS.escape(taskId)}\"]`));
-    const taskRow = host.querySelector<HTMLElement>(`[data-task-action-host=\"${CSS.escape(taskId)}\"]`);
-    const order = orders.find(item => item.id === (taskRow ? String((taskRow.closest('tr') as HTMLElement)?.dataset.orderId ?? '') : '')) ?? orders.find(item => detailState.has(item.id));
-    if (!taskRow || !order) return;
+    const taskHost = host.querySelector<HTMLElement>(`[data-task-action-host="${CSS.escape(taskId)}"]`);
+    const orderId = (taskHost?.closest('tr') as HTMLElement | null)?.dataset.orderId;
+    const order = orderId ? orders.find(item => item.id === orderId) : undefined;
+    if (!taskHost || !order) return;
     try {
-      await executionRpc.executeTaskAction(taskId, button.dataset.taskAction as MesExecutionAction, new Date().toISOString());
-      const row = taskRow.closest('tr');
-      const detailRow = row?.parentElement?.parentElement?.closest('table')?.closest('div')?.querySelector<HTMLElement>(`[data-detail-host=\"${CSS.escape(order.id)}\"]`);
-      if (detailRow) await loadDetail(order, detailRow);
+      const action = button.dataset.taskAction as 'PREPARE' | MesExecutionAction;
+      if (action === 'PREPARE') await planningRpc.prepareTask(taskId);
+      else await executionRpc.executeTaskAction(taskId, action, new Date().toISOString());
+      const detailHost = host.querySelector<HTMLElement>(`[data-detail-host="${CSS.escape(order.id)}"]`);
+      if (detailHost) await loadDetail(order, detailHost);
     } catch (error) {
       window.alert(error instanceof Error ? error.message : 'Не удалось выполнить действие задания');
     }
