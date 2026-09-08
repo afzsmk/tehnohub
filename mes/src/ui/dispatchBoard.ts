@@ -28,29 +28,39 @@ function overlaps(aStart: number, aEnd: number, bStart: number, bEnd: number): b
   return aStart < bEnd && bStart < aEnd;
 }
 
-function issuesFor(task: ProductionTask, tasks: ProductionTask[], calendar: CalendarDay[], equipmentBlocks: EquipmentBlock[], operation?: RouteOperation): TaskIssue[] {
+function findShift(taskStart: number, shifts: ShiftDefinition[], calendar: CalendarDay[]): ShiftDefinition | undefined {
+  const date = calendar.find(d => d.date === dayKey(taskStart));
+  if (!date) return undefined;
+  const taskDate = new Date(taskStart);
+  const dayStart = Date.UTC(taskDate.getUTCFullYear(), taskDate.getUTCMonth(), taskDate.getUTCDate());
+  for (const id of date.shiftIds) {
+    const shift = shifts.find(s => s.id === id);
+    if (!shift) continue;
+    const start = dayStart + shift.startMinute * MINUTE_MS;
+    const end = start + shift.durationMinutes * MINUTE_MS;
+    if (taskStart >= start && taskStart < end) return shift;
+  }
+  return undefined;
+}
+
+function issuesFor(task: ProductionTask, tasks: ProductionTask[], calendar: CalendarDay[], equipmentBlocks: EquipmentBlock[], shifts: ShiftDefinition[], operation?: RouteOperation, employees: Employee[] = [], equipment: Equipment[] = []): TaskIssue[] {
   const issues: TaskIssue[] = [];
   const start = new Date(task.plannedStart).getTime();
   const end = new Date(task.plannedEnd).getTime();
   const day = calendar.find(d => d.date === dayKey(start));
   if (!day?.isWorking) issues.push({ kind: 'CALENDAR', message: 'Начало задания приходится на нерабочий день.' });
-  const shiftIds = day?.shiftIds ?? [];
-  if (day?.isWorking && shiftIds.length > 0) {
-    const inShift = shiftIds.some(shiftId => {
-      const shift = undefined;
-      void shiftId;
-      void shift;
-      return true;
-    });
-    if (!inShift) issues.push({ kind: 'CALENDAR', message: 'Задание начинается вне назначенной рабочей смены.' });
-  }
+  if (day?.isWorking && !findShift(start, shifts, calendar)) issues.push({ kind: 'CALENDAR', message: 'Задание начинается вне назначенной рабочей смены.' });
+
+  const assignedEmployee = employees.find(e => e.id === task.assignedEmployeeIds[0]);
   if (operation?.requiredQualification !== undefined) {
-    const assignedEmployee = task.assignedEmployeeIds[0];
-    if (!assignedEmployee) issues.push({ kind: 'QUALIFICATION', message: `Требуется квалификация ${operation.requiredQualification}.` });
+    if (!assignedEmployee) issues.push({ kind: 'QUALIFICATION', message: `Требуется квалификация ${operation.requiredQualification}; сотрудник не назначен.` });
+    else if (assignedEmployee.qualificationLevel < operation.requiredQualification) issues.push({ kind: 'QUALIFICATION', message: `Квалификация сотрудника (${assignedEmployee.qualificationLevel}) ниже требуемой (${operation.requiredQualification}).` });
   }
-  if (operation?.requiredEquipmentIds?.length && !operation.requiredEquipmentIds.some(id => task.assignedEquipmentIds.includes(id))) {
-    issues.push({ kind: 'EQUIPMENT', message: 'Назначенное оборудование не соответствует операции.' });
-  }
+  const assignedEquipment = equipment.find(e => e.id === task.assignedEquipmentIds[0]);
+  if (!assignedEquipment) issues.push({ kind: 'EQUIPMENT', message: 'Оборудование не назначено.' });
+  if (operation?.requiredEquipmentIds?.length && task.assignedEquipmentIds[0] && !operation.requiredEquipmentIds.includes(task.assignedEquipmentIds[0])) issues.push({ kind: 'EQUIPMENT', message: 'Назначенное оборудование не соответствует операции.' });
+  if (operation && !operation.requiredEquipmentIds?.length && assignedEquipment && assignedEquipment.workCenter !== operation.workCenter) issues.push({ kind: 'EQUIPMENT', message: 'У оборудования другой производственный участок.' });
+
   for (const other of tasks) {
     if (other.id === task.id) continue;
     const otherStart = new Date(other.plannedStart).getTime();
@@ -66,20 +76,6 @@ function issuesFor(task: ProductionTask, tasks: ProductionTask[], calendar: Cale
     if (overlaps(start, end, blockStart, blockEnd)) issues.push({ kind: 'MAINTENANCE', message: `Пересечение с блокировкой оборудования: ${block.reason}.` });
   }
   return issues;
-}
-
-function findShift(taskStart: number, shifts: ShiftDefinition[], calendar: CalendarDay[]): ShiftDefinition | undefined {
-  const date = calendar.find(d => d.date === dayKey(taskStart));
-  if (!date) return undefined;
-  const dayStart = Date.UTC(new Date(taskStart).getUTCFullYear(), new Date(taskStart).getUTCMonth(), new Date(taskStart).getUTCDate());
-  for (const id of date.shiftIds) {
-    const shift = shifts.find(s => s.id === id);
-    if (!shift) continue;
-    const start = dayStart + shift.startMinute * MINUTE_MS;
-    const end = start + shift.durationMinutes * MINUTE_MS;
-    if (taskStart >= start && taskStart < end) return shift;
-  }
-  return undefined;
 }
 
 function formatTime(value: string): string {
@@ -100,12 +96,12 @@ export function renderDispatchBoard(options: DispatchBoardOptions): string {
       <div class="dispatch-cell">${dayTasks.length ? dayTasks.map(task => renderTaskCard(task, tasks, employees, equipment, shifts, calendar, equipmentBlocks, operations)).join('') : '<div class="empty-cell">Нет заданий</div>'}</div>
     </div>`;
   }).join('');
-  return `<div class="dispatch-toolbar"><div><strong>Диспетчерская доска</strong><span>${calendar.length} дней · ${tasks.length} заданий</span></div><div class="legend"><span><i class="dot normal"></i>Задание</span><span><i class="dot conflict-dot"></i>Конфликт</span></div></div><div class="dispatch-grid">${cells}</div>`;
+  return `<div class="dispatch-toolbar"><div><strong>Диспетчерская доска</strong><span>${calendar.length} дней · ${tasks.length} заданий</span></div><div class="legend"><span><i class="dot normal"></i>Норма</span><span><i class="dot conflict-dot"></i>Конфликт</span></div></div><div class="dispatch-grid">${cells}</div>`;
 }
 
 function renderTaskCard(task: ProductionTask, tasks: ProductionTask[], employees: Employee[], equipment: Equipment[], shifts: ShiftDefinition[], calendar: CalendarDay[], equipmentBlocks: EquipmentBlock[], operations: RouteOperation[]): string {
   const operation = operations.find(op => op.id === task.operationId);
-  const issues = issuesFor(task, tasks, calendar, equipmentBlocks, operation);
+  const issues = issuesFor(task, tasks, calendar, equipmentBlocks, shifts, operation, employees, equipment);
   const employeeId = task.assignedEmployeeIds[0] ?? '';
   const equipmentId = task.assignedEquipmentIds[0] ?? '';
   const employee = employees.find(e => e.id === employeeId);
