@@ -110,7 +110,7 @@ export function recordProductionResult(state: ExecutionState, taskId: string, in
     type: 'RESULT_RECORDED',
     occurredAt: at,
     actorId,
-    payload: { goodQuantity: input.goodQuantity, scrapQuantity: input.scrapQuantity }
+    payload: { resultId: result.id, goodQuantity: input.goodQuantity, scrapQuantity: input.scrapQuantity }
   });
   return result;
 }
