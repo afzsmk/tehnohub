@@ -1,3 +1,4 @@
+import './productionEntryPage.css';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ProductionTask } from '../types';
 import { getMesAuthState } from '../integration/auth';
