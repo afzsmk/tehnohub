@@ -7,6 +7,7 @@ export interface WorkforceMesHttpClientOptions {
   fetchImpl?: typeof fetch;
   retries?: number;
   retryDelayMs?: number;
+  correlationIdFactory?: () => string;
 }
 
 export type WorkforceMesApiPath =
@@ -30,6 +31,10 @@ function shouldRetry(status: number | undefined): boolean {
   return status === undefined || status === 408 || status === 425 || status === 429 || status >= 500;
 }
 
+function defaultCorrelationId(): string {
+  return `mes-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 async function parseError(response: Response): Promise<Error> {
   let detail = '';
   try {
@@ -46,26 +51,32 @@ export class WorkforceMesHttpClientImpl implements WorkforceMesHttpClient {
   private readonly fetchImpl: typeof fetch;
   private readonly retries: number;
   private readonly retryDelayMs: number;
+  private readonly correlationIdFactory: () => string;
 
   constructor(private readonly options: WorkforceMesHttpClientOptions) {
     this.baseUrl = normalizedBaseUrl(options.baseUrl);
     this.fetchImpl = options.fetchImpl ?? fetch;
     this.retries = Math.max(0, Math.floor(options.retries ?? 2));
     this.retryDelayMs = Math.max(0, Math.floor(options.retryDelayMs ?? 250));
+    this.correlationIdFactory = options.correlationIdFactory ?? defaultCorrelationId;
   }
 
   async importPublishedPlan(dto: WorkforcePublishedPlanDto): Promise<MesImportReceipt> {
     validatePublishedPlan(dto);
-    return this.request<MesImportReceipt>('/api/mes/v1/workforce/plans', dto);
+    return this.request<MesImportReceipt>('/api/mes/v1/workforce/plans', dto, dto.idempotencyKey);
   }
 
   async sendActualFeedback(dto: MesActualFeedbackBatchDto): Promise<void> {
     validateActualFeedback(dto);
-    await this.request<unknown>('/api/mes/v1/workforce/actual-feedback', dto);
+    const batchId = dto.events.length === 0
+      ? `empty-${dto.sentAt}`
+      : `batch-${dto.events.map(event => event.idempotencyKey).join(',')}`;
+    await this.request<unknown>('/api/mes/v1/workforce/actual-feedback', dto, batchId);
   }
 
-  private async request<T>(path: WorkforceMesApiPath, body: unknown): Promise<T> {
+  private async request<T>(path: WorkforceMesApiPath, body: unknown, idempotencyKey: string): Promise<T> {
     let lastError: Error | undefined;
+    const correlationId = this.correlationIdFactory();
 
     for (let attempt = 0; attempt <= this.retries; attempt += 1) {
       let response: Response;
@@ -75,6 +86,8 @@ export class WorkforceMesHttpClientImpl implements WorkforceMesHttpClient {
           headers: {
             'Content-Type': 'application/json',
             Accept: 'application/json',
+            'Idempotency-Key': idempotencyKey,
+            'X-Correlation-ID': correlationId,
             ...(this.options.token ? { Authorization: `Bearer ${this.options.token}` } : {})
           },
           body: JSON.stringify(body)
