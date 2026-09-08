@@ -26,7 +26,8 @@ function fakeClient(
 const dbTask = {
   id: 'TASK-1', order_id: 'ORDER-1', operation_id: 'OP-1', operation_sequence: 10,
   status: 'ASSIGNED', planned_start: '2026-09-08T08:00:00.000Z', planned_end: '2026-09-08T10:00:00.000Z',
-  actual_start: null, actual_end: null, planned_quantity: 100, actual_quantity: 0, version: 4
+  actual_start: null, actual_end: null, planned_quantity: 100, actual_quantity: 0, version: 4,
+  quality_required: true, quality_status: 'PENDING'
 };
 
 describe('Supabase MES planning RPC', () => {
@@ -52,6 +53,8 @@ describe('Supabase MES planning RPC', () => {
     });
     expect(task.assignedEmployeeIds).toEqual(['E-1']);
     expect(task.assignedEquipmentIds).toEqual(['M-1']);
+    expect(task.qualityRequired).toBe(true);
+    expect(task.qualityStatus).toBe('PENDING');
     expect(task.version).toBe(4);
   });
 
@@ -67,6 +70,8 @@ describe('Supabase MES planning RPC', () => {
       args: { p_task_id: 'TASK-1', p_expected_version: 4 }
     });
     expect(task.status).toBe('READY');
+    expect(task.qualityRequired).toBe(true);
+    expect(task.qualityStatus).toBe('PENDING');
     expect(task.version).toBe(5);
   });
 
