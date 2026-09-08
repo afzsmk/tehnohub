@@ -1,5 +1,5 @@
 // src/services/storage/validator.ts
-import { ScenarioData, AppState } from '../../types';
+import { ScenarioData } from '../../types';
 
 export function normalizeScenario(sc: ScenarioData): ScenarioData {
   if (!sc.normConfigs) sc.normConfigs = {};
@@ -32,6 +32,11 @@ export function normalizeScenario(sc: ScenarioData): ScenarioData {
     }
     if (pr.minCrew === undefined) pr.minCrew = (pr.pool === "dedicated" ? 1 : 0);
     if (pr.availabilityHours === undefined) pr.availabilityHours = 24;
+    if (!pr.externalId?.trim()) pr.externalId = pr.id;
+  });
+
+  (sc.products || []).forEach(product => {
+    if (!product.externalId?.trim()) product.externalId = product.id;
   });
 
   return sc;
