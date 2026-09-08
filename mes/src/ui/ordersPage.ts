@@ -7,6 +7,18 @@ import { SupabaseMesOrderRpc } from '../integration/mesOrderRpc';
 const PLANNING_ROLES = ['ADMIN','PRODUCTION_MANAGER','PLANNER','DISPATCHER','MASTER'];
 const RELEASE_ROLES = ['ADMIN','PRODUCTION_MANAGER','DISPATCHER','MASTER'];
 
+type OrderRow = {
+  id: string;
+  external_id: string | null;
+  number: string;
+  product_id: string;
+  quantity: number;
+  completed_quantity: number;
+  due_at: string;
+  priority: ProductionOrder['priority'];
+  status: ProductionOrder['status'];
+};
+
 function esc(value: unknown): string { return String(value ?? '').replace(/[&<>\"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[ch] ?? ch)); }
 function statusLabel(value: string): string { return ({IMPORTED:'Импортирован',PLANNED:'Запланирован',RELEASED:'Выпущен',IN_EXECUTION:'В работе',PARTIALLY_COMPLETED:'Частично выполнен',COMPLETED:'Завершён',BLOCKED:'Заблокирован',CANCELLED:'Отменён'} as Record<string,string>)[value] ?? value; }
 function statusClass(value: string): string { return ['COMPLETED'].includes(value) ? 'status-ok' : ['BLOCKED','CANCELLED'].includes(value) ? 'status-danger' : ['IN_EXECUTION','PARTIALLY_COMPLETED'].includes(value) ? 'status-warning' : 'status-neutral'; }
@@ -19,7 +31,17 @@ export async function mountOrdersPage(root: HTMLElement, client: SupabaseClient)
   const canRelease = RELEASE_ROLES.includes(role);
   const { data, error } = await client.from('production_orders').select('id,external_id,number,product_id,quantity,completed_quantity,due_at,priority,status').order('due_at',{ascending:true});
   if (error) throw error;
-  const orders = (Array.isArray(data) ? data : []) as Array<Omit<ProductionOrder,'route'> & { external_id:string|null }>;
+  const orders: OrderRow[] = Array.isArray(data) ? data.map(row => ({
+    id: String(row.id),
+    external_id: row.external_id == null ? null : String(row.external_id),
+    number: String(row.number),
+    product_id: String(row.product_id),
+    quantity: Number(row.quantity),
+    completed_quantity: Number(row.completed_quantity),
+    due_at: String(row.due_at),
+    priority: row.priority as ProductionOrder['priority'],
+    status: row.status as ProductionOrder['status'],
+  })) : [];
   const host=document.createElement('section');
   host.className='panel orders-page';
   host.innerHTML=`<div class="panel-head"><div><h2>Производственные заказы</h2><div class="subtle">Оперативное управление статусом и запуском заказов · роль ${esc(role)}</div></div><button class="primary" id="orders-refresh">Обновить</button></div>
@@ -29,8 +51,8 @@ export async function mountOrdersPage(root: HTMLElement, client: SupabaseClient)
       if(canPlan && ['IMPORTED','BLOCKED'].includes(o.status)) action.push(`<button class="tiny" data-plan-order="${esc(o.id)}">Спланировать</button>`);
       if(canRelease && o.status==='PLANNED') action.push(`<button class="tiny" data-release-order="${esc(o.id)}">Выпустить</button>`);
       if(canRelease && ['RELEASED','IN_EXECUTION'].includes(o.status)) action.push(`<button class="tiny" data-block-order="${esc(o.id)}">Заблокировать</button>`);
-      const pct=o.quantity>0?((Number(o.completed_quantity)/Number(o.quantity))*100).toFixed(1):'0.0';
-      return `<tr><td><strong>${esc(o.number)}</strong><div class="subtle">${esc(o.external_id??'')} · ${esc(o.id)}</div></td><td>${Number(o.quantity)}</td><td>${Number(o.completed_quantity)} <span class="subtle">(${pct}%)</span></td><td>${new Date(o.due_at).toLocaleDateString('ru-RU')}</td><td>${esc(o.priority)}</td><td><span class="status-pill ${statusClass(o.status)}">${statusLabel(o.status)}</span></td><td>${action.join(' ')||'—'}</td></tr>`;
+      const pct=o.quantity>0?((o.completed_quantity/o.quantity)*100).toFixed(1):'0.0';
+      return `<tr><td><strong>${esc(o.number)}</strong><div class="subtle">${esc(o.external_id??'')} · ${esc(o.id)}</div></td><td>${o.quantity}</td><td>${o.completed_quantity} <span class="subtle">(${pct}%)</span></td><td>${new Date(o.due_at).toLocaleDateString('ru-RU')}</td><td>${esc(o.priority)}</td><td><span class="status-pill ${statusClass(o.status)}">${statusLabel(o.status)}</span></td><td>${action.join(' ')||'—'}</td></tr>`;
     }).join('')||'<tr><td colspan="7">Заказов нет</td></tr>'}</tbody></table></div>`;
   root.appendChild(host);
   const rpc=new SupabaseMesOrderRpc(client);
