@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { ProductionResult, ProductionTask, DowntimeEvent } from '../types';
+import type { DowntimeEvent, ProductionResult, ProductionTask } from '../types';
 
 export type MesExecutionAction = 'START' | 'PAUSE' | 'RESUME' | 'BLOCK' | 'COMPLETE';
 
@@ -14,6 +14,7 @@ export interface MesExecutionRpc {
     recordedAt?: string
   ): Promise<ProductionResult>;
   startDowntime(equipmentId: string, reasonCode: string, comment?: string, startedAt?: string): Promise<DowntimeEvent>;
+  endDowntime(downtimeId: string, endedAt?: string): Promise<DowntimeEvent>;
 }
 
 function assertRpcRow<T>(data: unknown, functionName: string): T {
@@ -63,5 +64,14 @@ export class SupabaseMesExecutionRpc implements MesExecutionRpc {
     });
     if (error) throw error;
     return assertRpcRow<DowntimeEvent>(data, 'mes_start_downtime');
+  }
+
+  async endDowntime(downtimeId: string, endedAt?: string): Promise<DowntimeEvent> {
+    const { data, error } = await this.client.rpc('mes_end_downtime', {
+      p_downtime_id: downtimeId,
+      p_ended_at: endedAt ?? new Date().toISOString()
+    });
+    if (error) throw error;
+    return assertRpcRow<DowntimeEvent>(data, 'mes_end_downtime');
   }
 }
