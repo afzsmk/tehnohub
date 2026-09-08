@@ -8,6 +8,7 @@ import { mountMesDashboardPage } from './ui/mesDashboardPage';
 import { mountOrdersPage } from './ui/ordersPage';
 import { mountEventJournalPage } from './ui/eventJournalPage';
 import { mountIntegrityPage } from './ui/integrityPage';
+import { mountOperationalWorkflowPage } from './ui/operationalWorkflowPage';
 import { getMesSupabaseClient } from './services/supabase';
 
 const supabase = getMesSupabaseClient();
@@ -118,10 +119,11 @@ void import('./main').then(async () => {
   const auth = await getMesAuthState(supabase);
   if (!auth.identity) return;
   const app = document.querySelector<HTMLDivElement>('#app') ?? document.body;
-  await mountRouteEditor(app, supabase);
-  await mountQualityPage(app, supabase);
   await mountMesDashboardPage(app, supabase);
+  await mountOperationalWorkflowPage(app, supabase);
   await mountOrdersPage(app, supabase);
+  await mountQualityPage(app, supabase);
   await mountEventJournalPage(app, supabase);
   await mountIntegrityPage(app, supabase);
+  await mountRouteEditor(app, supabase);
 }).catch(reportRemoteFailure);
