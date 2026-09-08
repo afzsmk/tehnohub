@@ -11,6 +11,7 @@ import { mountIntegrityPage } from './ui/integrityPage';
 import { mountOperationalWorkflowPage } from './ui/operationalWorkflowPage';
 import { mountWorkflowMonitorPage } from './ui/workflowMonitorPage';
 import { mountProductionEntryPage } from './ui/productionEntryPage';
+import { mountEquipmentOperationsPage } from './ui/equipmentOperationsPage';
 import { getMesSupabaseClient } from './services/supabase';
 
 const supabase = getMesSupabaseClient();
@@ -124,6 +125,7 @@ void import('./main').then(async () => {
   await mountMesDashboardPage(app, supabase);
   await mountOperationalWorkflowPage(app, supabase);
   await mountProductionEntryPage(app, supabase);
+  await mountEquipmentOperationsPage(app, supabase);
   await mountOrdersPage(app, supabase);
   await mountQualityPage(app, supabase);
   await mountEventJournalPage(app, supabase);
