@@ -22,7 +22,7 @@ interface DbTask {
 }
 
 function requireRow(data: unknown): DbTask {
-  if (!data || typeof data !== 'object') throw new Error('MES RPC mes_assign_task вернул пустой результат');
+  if (!data || typeof data !== 'object') throw new Error('MES RPC вернул пустой результат');
   return data as DbTask;
 }
 
@@ -62,5 +62,14 @@ export class SupabaseMesPlanningRpc {
       employeeIds: employeeIds ?? [],
       equipmentIds: equipmentIds ?? []
     });
+  }
+
+  async prepareTask(taskId: string, expectedVersion?: number): Promise<ProductionTask> {
+    const { data, error } = await this.client.rpc('mes_prepare_task', {
+      p_task_id: taskId,
+      p_expected_version: expectedVersion ?? null
+    });
+    if (error) throw error;
+    return mapTask(requireRow(data), { employeeIds: [], equipmentIds: [] });
   }
 }
