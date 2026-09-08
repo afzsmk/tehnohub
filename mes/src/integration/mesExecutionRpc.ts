@@ -32,6 +32,8 @@ type DbDowntime = {
   id: string; equipment_id: string; reason_code: string; started_at: string; ended_at: string | null; comment: string | null;
 };
 
+type DbAssignment = { employee_id: string | null; equipment_id: string | null };
+
 function assertRpcRow<T>(data: unknown, functionName: string): T {
   if (!data) throw new Error(`MES RPC ${functionName} вернул пустой результат`);
   return data as T;
@@ -42,7 +44,20 @@ function asStringArray(value: unknown): string[] {
   return value.filter((item): item is string => typeof item === 'string');
 }
 
-function mapTask(row: DbTask): ProductionTask {
+async function loadAssignments(client: SupabaseClient, taskId: string): Promise<{ employeeIds: string[]; equipmentIds: string[] }> {
+  const { data, error } = await client
+    .from('task_assignments')
+    .select('employee_id,equipment_id')
+    .eq('task_id', taskId);
+  if (error) throw error;
+  const rows = Array.isArray(data) ? data as DbAssignment[] : [];
+  return {
+    employeeIds: [...new Set(rows.map(row => row.employee_id).filter((id): id is string => Boolean(id)))].sort(),
+    equipmentIds: [...new Set(rows.map(row => row.equipment_id).filter((id): id is string => Boolean(id)))].sort()
+  };
+}
+
+function mapTask(row: DbTask, assignment: { employeeIds: string[]; equipmentIds: string[] } = { employeeIds: [], equipmentIds: [] }): ProductionTask {
   return {
     id: row.id,
     orderId: row.order_id,
@@ -55,8 +70,8 @@ function mapTask(row: DbTask): ProductionTask {
     actualEnd: row.actual_end ?? undefined,
     plannedQuantity: Number(row.planned_quantity),
     actualQuantity: Number(row.actual_quantity),
-    assignedEmployeeIds: [],
-    assignedEquipmentIds: [],
+    assignedEmployeeIds: [...assignment.employeeIds],
+    assignedEquipmentIds: [...assignment.equipmentIds],
     version: Number(row.version)
   };
 }
@@ -95,7 +110,9 @@ export class SupabaseMesExecutionRpc implements MesExecutionRpc {
       p_occurred_at: occurredAt ?? new Date().toISOString()
     });
     if (error) throw error;
-    return mapTask(assertRpcRow<DbTask>(data, 'mes_execute_task_action'));
+    const row = assertRpcRow<DbTask>(data, 'mes_execute_task_action');
+    const assignment = await loadAssignments(this.client, taskId);
+    return mapTask(row, assignment);
   }
 
   async recordProductionResult(
