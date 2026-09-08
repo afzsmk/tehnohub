@@ -24,7 +24,7 @@ export async function mountWorkflowMonitorPage(root:HTMLElement, client:Supabase
         client.from('production_orders').select('id,number,status,quantity,completed_quantity').limit(250),
         client.from('production_tasks').select('id,order_id,status,planned_quantity,actual_quantity,quality_required,quality_status,version').order('version',{ascending:false}).limit(250),
         client.from('integration_outbox').select('id,idempotency_key,status,attempts,last_error,created_at').order('created_at',{ascending:false}).limit(20),
-        client.rpc<IntegrityResult>('mes_check_operational_integrity')
+        client.rpc('mes_check_operational_integrity')
       ]);
       for(const r of [ordersR,tasksR,outboxR,integrityR]) if(r.error) throw r.error;
       const orders=(ordersR.data??[]) as OrderRow[], tasks=(tasksR.data??[]) as TaskRow[], outbox=(outboxR.data??[]) as OutboxRow[], integrity=integrityR.data as unknown as IntegrityResult;
