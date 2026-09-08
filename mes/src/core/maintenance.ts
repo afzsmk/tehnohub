@@ -14,7 +14,19 @@ function assertInterval(start: string, end: string): void {
 }
 
 function appendEvent(state: MesState, order: MaintenanceOrder, type: ProductionEvent['type'], actorId: string, payload: Record<string, unknown>): void {
-  state.events.push({ id: `EV-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, type, occurredAt: new Date().toISOString(), actorId, payload: { maintenanceOrderId: order.id, equipmentId: order.equipmentId, ...payload } });
+  state.events.push({
+    id: `EV-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    type,
+    occurredAt: new Date().toISOString(),
+    actorId,
+    payload: {
+      maintenanceOrderId: order.id,
+      equipmentId: order.equipmentId,
+      mesPlanId: state.plan.id,
+      mesPlanVersion: state.plan.version,
+      ...payload
+    }
+  });
 }
 
 function overlap(aStart: string, aEnd: string, bStart: string, bEnd: string): boolean {
