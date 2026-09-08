@@ -2,8 +2,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ProductionTask } from '../types';
 
 export interface MesTaskAssignment {
-  employeeIds: string[];
-  equipmentIds: string[];
+  employeeIds?: string[];
+  equipmentIds?: string[];
 }
 
 interface DbTask {
@@ -26,7 +26,7 @@ function requireRow(data: unknown): DbTask {
   return data as DbTask;
 }
 
-function mapTask(row: DbTask, assignment: MesTaskAssignment): ProductionTask {
+function mapTask(row: DbTask, assignment: { employeeIds: string[]; equipmentIds: string[] }): ProductionTask {
   return {
     id: row.id,
     orderId: row.order_id,
@@ -49,8 +49,8 @@ export class SupabaseMesPlanningRpc {
   constructor(private readonly client: SupabaseClient) {}
 
   async assignTask(taskId: string, assignment: MesTaskAssignment, expectedVersion?: number): Promise<ProductionTask> {
-    const employeeIds = [...new Set(assignment.employeeIds.filter(Boolean))];
-    const equipmentIds = [...new Set(assignment.equipmentIds.filter(Boolean))];
+    const employeeIds = assignment.employeeIds === undefined ? null : [...new Set(assignment.employeeIds.filter(Boolean))];
+    const equipmentIds = assignment.equipmentIds === undefined ? null : [...new Set(assignment.equipmentIds.filter(Boolean))];
     const { data, error } = await this.client.rpc('mes_assign_task', {
       p_task_id: taskId,
       p_employee_ids: employeeIds,
@@ -58,6 +58,9 @@ export class SupabaseMesPlanningRpc {
       p_expected_version: expectedVersion ?? null
     });
     if (error) throw error;
-    return mapTask(requireRow(data), { employeeIds, equipmentIds });
+    return mapTask(requireRow(data), {
+      employeeIds: employeeIds ?? [],
+      equipmentIds: equipmentIds ?? []
+    });
   }
 }
