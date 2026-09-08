@@ -35,8 +35,23 @@ describe('Supabase MES planning RPC', () => {
     expect(task.version).toBe(4);
   });
 
+  it('calls task readiness validation with optimistic version', async () => {
+    let called: { name: string; args: Record<string, unknown> } | undefined;
+    const readyTask = { ...dbTask, status: 'READY', version: 5 };
+    const rpc = new SupabaseMesPlanningRpc(fakeClient(readyTask, null, (name, args) => { called = { name, args }; }));
+
+    const task = await rpc.prepareTask('TASK-1', 4);
+
+    expect(called).toEqual({
+      name: 'mes_prepare_task',
+      args: { p_task_id: 'TASK-1', p_expected_version: 4 }
+    });
+    expect(task.status).toBe('READY');
+    expect(task.version).toBe(5);
+  });
+
   it('propagates RPC errors', async () => {
     const rpc = new SupabaseMesPlanningRpc(fakeClient(null, new Error('permission denied')));
-    await expect(rpc.assignTask('TASK-1', { equipmentIds: ['EQ-1'] }, 1)).rejects.toThrow('permission denied');
+    await expect(rpc.prepareTask('TASK-1')).rejects.toThrow('permission denied');
   });
 });
