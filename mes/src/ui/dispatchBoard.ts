@@ -1,4 +1,7 @@
 import { CalendarDay, Employee, Equipment, EquipmentBlock, ProductionTask, RouteOperation, ShiftDefinition } from '../types';
+import { getMesAuthState } from '../integration/auth';
+import { getMesSupabaseClient } from '../services/supabase';
+import { SupabaseMesPlanningRpc } from '../integration/mesPlanningRpc';
 
 export interface DispatchBoardOptions {
   tasks: ProductionTask[];
@@ -98,6 +101,31 @@ function formatTime(value: string): string {
 
 function formatDate(value: string): string {
   return new Date(`${value}T00:00:00.000Z`).toLocaleDateString('ru-RU', { weekday: 'short', day: '2-digit', month: '2-digit' });
+}
+
+async function persistAssignment(
+  task: ProductionTask,
+  assignment: { employeeIds?: string[]; equipmentIds?: string[] },
+  callback: () => void
+): Promise<void> {
+  const supabase = getMesSupabaseClient();
+  if (!supabase) {
+    callback();
+    return;
+  }
+
+  const auth = await getMesAuthState(supabase);
+  if (!auth.identity) {
+    callback();
+    return;
+  }
+
+  const rpc = new SupabaseMesPlanningRpc(supabase);
+  await rpc.assignTask(task.id, {
+    employeeIds: assignment.employeeIds ?? task.assignedEmployeeIds,
+    equipmentIds: assignment.equipmentIds ?? task.assignedEquipmentIds
+  }, task.version);
+  callback();
 }
 
 export function renderDispatchBoard(options: DispatchBoardOptions): string {
