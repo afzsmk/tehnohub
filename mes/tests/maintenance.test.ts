@@ -38,6 +38,12 @@ describe('maintenance lifecycle', () => {
     expect(state.equipmentBlocks).toEqual([expect.objectContaining({ id: `MB-${order.id}`, equipmentId: 'EQ-1', reason: 'MAINTENANCE' })]);
   });
 
+  it('stores MES plan context on maintenance events', () => {
+    const state = buildState();
+    createMaintenanceOrder(state, baseInput, 'A-1');
+    expect(state.events[0].payload).toEqual(expect.objectContaining({ mesPlanId: 'P', mesPlanVersion: 1, equipmentId: 'EQ-1' }));
+  });
+
   it('prevents overlapping active maintenance', () => {
     const state = buildState();
     createMaintenanceOrder(state, baseInput, 'A-1');
