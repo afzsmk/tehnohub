@@ -5,6 +5,7 @@ export type MesExecutionAction = 'START' | 'PAUSE' | 'RESUME' | 'BLOCK' | 'COMPL
 
 export interface MesExecutionRpc {
   executeTaskAction(taskId: string, action: MesExecutionAction, occurredAt?: string): Promise<ProductionTask>;
+  getTask(taskId: string): Promise<ProductionTask>;
   recordProductionResult(
     taskId: string,
     goodQuantity: number,
@@ -74,7 +75,7 @@ function mapTask(row: DbTask, assignment: { employeeIds: string[]; equipmentIds:
     assignedEmployeeIds: [...assignment.employeeIds],
     assignedEquipmentIds: [...assignment.equipmentIds],
     qualityRequired: row.quality_required === true,
-    qualityStatus: row.quality_status ?? (row.quality_required ? 'NOT_REQUIRED' : 'NOT_REQUIRED'),
+    qualityStatus: row.quality_status ?? 'NOT_REQUIRED',
     version: Number(row.version)
   };
 }
@@ -105,6 +106,18 @@ function mapDowntime(row: DbDowntime): DowntimeEvent {
 
 export class SupabaseMesExecutionRpc implements MesExecutionRpc {
   constructor(private readonly client: SupabaseClient) {}
+
+  async getTask(taskId: string): Promise<ProductionTask> {
+    const { data, error } = await this.client
+      .from('production_tasks')
+      .select('id,order_id,operation_id,operation_sequence,status,planned_start,planned_end,actual_start,actual_end,planned_quantity,actual_quantity,version,quality_required,quality_status')
+      .eq('id', taskId)
+      .maybeSingle();
+    if (error) throw error;
+    const row = assertRpcRow<DbTask>(data, 'production_tasks.select');
+    const assignment = await loadAssignments(this.client, taskId);
+    return mapTask(row, assignment);
+  }
 
   async executeTaskAction(taskId: string, action: MesExecutionAction, occurredAt?: string): Promise<ProductionTask> {
     const { data, error } = await this.client.rpc('mes_execute_task_action', {
