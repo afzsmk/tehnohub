@@ -26,6 +26,19 @@ function requireRow(data: unknown): DbTask {
   return data as DbTask;
 }
 
+async function loadAssignments(client: SupabaseClient, taskId: string): Promise<{ employeeIds: string[]; equipmentIds: string[] }> {
+  const { data, error } = await client
+    .from('task_assignments')
+    .select('employee_id,equipment_id')
+    .eq('task_id', taskId);
+  if (error) throw error;
+  const rows = Array.isArray(data) ? data as Array<{ employee_id: string | null; equipment_id: string | null }> : [];
+  return {
+    employeeIds: [...new Set(rows.map(row => row.employee_id).filter((id): id is string => Boolean(id)))].sort(),
+    equipmentIds: [...new Set(rows.map(row => row.equipment_id).filter((id): id is string => Boolean(id)))].sort()
+  };
+}
+
 function mapTask(row: DbTask, assignment: { employeeIds: string[]; equipmentIds: string[] }): ProductionTask {
   return {
     id: row.id,
@@ -58,10 +71,9 @@ export class SupabaseMesPlanningRpc {
       p_expected_version: expectedVersion ?? null
     });
     if (error) throw error;
-    return mapTask(requireRow(data), {
-      employeeIds: employeeIds ?? [],
-      equipmentIds: equipmentIds ?? []
-    });
+    const row = requireRow(data);
+    const assignments = await loadAssignments(this.client, taskId);
+    return mapTask(row, assignments);
   }
 
   async prepareTask(taskId: string, expectedVersion?: number): Promise<ProductionTask> {
@@ -70,6 +82,8 @@ export class SupabaseMesPlanningRpc {
       p_expected_version: expectedVersion ?? null
     });
     if (error) throw error;
-    return mapTask(requireRow(data), { employeeIds: [], equipmentIds: [] });
+    const row = requireRow(data);
+    const assignments = await loadAssignments(this.client, taskId);
+    return mapTask(row, assignments);
   }
 }
