@@ -7,7 +7,9 @@ import { getMesSupabaseClient } from './services/supabase';
 const supabase = getMesSupabaseClient();
 const assignmentQueues = new Map<string, Promise<void>>();
 const replanQueues = new Map<string, Promise<void>>();
-const calendarQueues = new Map<string, Promise<void>>();
+const calendarQueueKey = 'calendar';
+let calendarSaveQueue: Promise<void> = Promise.resolve();
+const assignmentVersions = new Map<string, number>();
 
 function reportRemoteFailure(error: unknown): void {
   window.alert(error instanceof Error ? error.message : 'Серверная операция MES не выполнена');
@@ -26,34 +28,11 @@ function enqueue(queues: Map<string, Promise<void>>, key: string, job: () => Pro
   });
 }
 
-async function waitForMainRender(): Promise<void> {
-  await new Promise<void>(resolve => window.setTimeout(resolve, 0));
-}
-
-function calendarPayloadFromDom(): {
-  calendar: Array<{ date: string; isWorking: boolean; shiftIds: string[] }>;
-  employeeSchedules: Array<{ employeeId: string; date: string; status: 'WORK' | 'OFF'; shiftIds: string[] }>;
-} {
-  const calendar = Array.from(document.querySelectorAll<HTMLInputElement>('[data-working]')).map(input => {
-    const date = input.dataset.working ?? '';
-    const shiftIds = Array.from(document.querySelectorAll<HTMLInputElement>(`[data-day="${date}"][data-shift]`))
-      .filter(item => item.checked)
-      .map(item => item.dataset.shift ?? '')
-      .filter(Boolean);
-    return { date, isWorking: input.checked, shiftIds: input.checked ? shiftIds : [] };
-  }).filter(item => item.date);
-
-  const employeeSchedules = Array.from(document.querySelectorAll<HTMLSelectElement>('[data-employee-day]')).map(select => {
-    const [employeeId, date] = (select.dataset.employeeDay ?? '|').split('|');
-    return {
-      employeeId,
-      date,
-      status: select.value ? 'WORK' as const : 'OFF' as const,
-      shiftIds: select.value ? [select.value] : []
-    };
-  }).filter(item => item.employeeId && item.date);
-
-  return { calendar, employeeSchedules };
+function enqueueCalendarSave(job: () => Promise<void>): void {
+  calendarSaveQueue = calendarSaveQueue
+    .catch(() => undefined)
+    .then(job)
+    .catch(reportRemoteFailure);
 }
 
 document.addEventListener('change', event => {
@@ -65,36 +44,58 @@ document.addEventListener('change', event => {
   const taskId = employeeTaskId ?? equipmentTaskId;
   if (!taskId) return;
 
-  const expectedVersion = Number(target.dataset.version);
-  if (!Number.isInteger(expectedVersion) || expectedVersion <= 0) return;
+  const domVersion = Number(target.dataset.version);
+  if (!Number.isInteger(domVersion) || domVersion <= 0) return;
 
   const isEmployee = Boolean(employeeTaskId);
   const value = target.value;
+  if (!assignmentVersions.has(taskId)) assignmentVersions.set(taskId, domVersion);
 
   enqueue(assignmentQueues, taskId, async () => {
     const auth = await getMesAuthState(supabase);
     if (!auth.identity) return;
+    const expectedVersion = assignmentVersions.get(taskId) ?? domVersion;
     const rpc = new SupabaseMesPlanningRpc(supabase);
     await rpc.assignTask(
       taskId,
-      isEmployee ? { employeeIds: [value] } : { equipmentIds: [value] },
+      isEmployee ? { employeeIds: value ? [value] : [] } : { equipmentIds: value ? [value] : [] },
       expectedVersion
     );
+    assignmentVersions.set(taskId, expectedVersion + 1);
   });
 }, true);
 
 document.addEventListener('change', event => {
   const target = event.target;
-  if (!supabase || !(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) return;
+  if (!(target instanceof HTMLInputElement) && !(target instanceof HTMLSelectElement)) return;
+  if (!supabase) return;
   if (!target.matches('[data-working], [data-day][data-shift], [data-employee-day]')) return;
 
-  enqueue(calendarQueues, 'calendar', async () => {
-    await waitForMainRender();
+  enqueueCalendarSave(async () => {
     const auth = await getMesAuthState(supabase);
     if (!auth.identity) return;
-    const payload = calendarPayloadFromDom();
-    const rpc = new SupabaseMesCalendarRpc(supabase);
-    await rpc.saveCalendar(payload.calendar, payload.employeeSchedules);
+    await Promise.resolve();
+
+    const calendar = Array.from(document.querySelectorAll<HTMLInputElement>('[data-working]')).map(input => {
+      const date = input.dataset.working ?? '';
+      const shiftIds = Array.from(document.querySelectorAll<HTMLInputElement>(`[data-day="${CSS.escape(date)}"][data-shift]`))
+        .filter(item => item.checked)
+        .map(item => item.dataset.shift ?? '')
+        .filter(Boolean);
+      return { date, isWorking: input.checked, shiftIds };
+    }).filter(day => day.date);
+
+    const employeeSchedules = Array.from(document.querySelectorAll<HTMLSelectElement>('[data-employee-day]')).map(select => {
+      const [employeeId, date] = (select.dataset.employeeDay ?? '|').split('|');
+      return {
+        employeeId,
+        date,
+        shiftIds: select.value ? [select.value] : [],
+        status: select.value ? 'WORK' as const : 'OFF' as const
+      };
+    }).filter(item => item.employeeId && item.date);
+
+    await new SupabaseMesCalendarRpc(supabase).saveCalendar(calendar, employeeSchedules);
   });
 }, true);
 
@@ -122,9 +123,8 @@ document.addEventListener('click', event => {
     if (!auth.identity) return;
     const rpc = new SupabaseMesReplanRpc(supabase);
     await rpc.apply(planId, planVersion, changes);
+    window.location.reload();
   });
 }, true);
 
-// The existing main module remains the UI/state coordinator. This bootstrap
-// only adds server-side persistence guards before it is evaluated.
 void import('./main');
