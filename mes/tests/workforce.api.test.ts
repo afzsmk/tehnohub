@@ -20,25 +20,50 @@ function publishedPlan(status: WorkforcePublishedPlanDto['status'] = 'PUBLISHED'
   };
 }
 
-function api() {
+function api(options?: { expectedBearerToken?: string }) {
   return createWorkforceMesApi({
-    service: new WorkforceIntegrationService(new InMemoryWorkforceIntegrationStore())
+    service: new WorkforceIntegrationService(new InMemoryWorkforceIntegrationStore()),
+    ...options
   });
 }
 
 describe('Workforce MES HTTP API', () => {
-  it('accepts a published Workforce plan', async () => {
+  it('accepts a published Workforce plan and returns correlation id', async () => {
     const response = await api()(new Request('https://mes.local/api/mes/v1/workforce/plans', {
       method: 'POST',
-      headers: { 'x-actor-id': 'api-user', 'Content-Type': 'application/json' },
+      headers: { 'x-actor-id': 'api-user', 'idempotency-key': 'WF-PLAN-API:2', 'x-correlation-id': 'corr-123', 'Content-Type': 'application/json' },
       body: JSON.stringify(publishedPlan())
     }));
 
     expect(response.status).toBe(202);
+    expect(response.headers.get('x-correlation-id')).toBe('corr-123');
     const body = await response.json();
     expect(body.accepted).toBe(true);
     expect(body.sourcePlanId).toBe('WF-PLAN-API');
     expect(body.importedBy).toBe('api-user');
+  });
+
+  it('rejects an idempotency header mismatch', async () => {
+    const response = await api()(new Request('https://mes.local/api/mes/v1/workforce/plans', {
+      method: 'POST',
+      headers: { 'idempotency-key': 'wrong-key', 'Content-Type': 'application/json' },
+      body: JSON.stringify(publishedPlan())
+    }));
+    expect(response.status).toBe(400);
+    expect((await response.json()).message).toContain('Idempotency-Key');
+  });
+
+  it('enforces optional bearer authentication', async () => {
+    const handler = api({ expectedBearerToken: 'secret' });
+    const unauthorized = await handler(new Request('https://mes.local/api/mes/v1/workforce/plans', { method: 'POST', body: JSON.stringify(publishedPlan()) }));
+    expect(unauthorized.status).toBe(401);
+
+    const authorized = await handler(new Request('https://mes.local/api/mes/v1/workforce/plans', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer secret', 'Content-Type': 'application/json' },
+      body: JSON.stringify(publishedPlan())
+    }));
+    expect(authorized.status).toBe(202);
   });
 
   it('rejects a non-published plan with a client error', async () => {
