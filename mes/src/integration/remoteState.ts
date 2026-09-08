@@ -29,12 +29,46 @@ async function selectAll(client: SupabaseClient, table: string): Promise<Array<R
   return rows(data);
 }
 
-function buildRoute(tasks: ProductionTask[]): Map<string, RouteOperation[]> {
+function buildRoutes(routeRows: Array<Record<string, unknown>>): Map<string, RouteOperation[]> {
+  const grouped = new Map<string, RouteOperation[]>();
+  for (const row of routeRows) {
+    const productId = str(row.product_id);
+    const operation: RouteOperation = {
+      id: str(row.id),
+      sequence: num(row.sequence),
+      code: str(row.code),
+      name: str(row.name),
+      workCenter: str(row.work_center),
+      requiredQualification: row.required_qualification == null ? undefined : num(row.required_qualification),
+      requiredEquipmentIds: stringArray(row.required_equipment_ids),
+      setupMinutes: num(row.setup_minutes),
+      runMinutesPerUnit: num(row.run_minutes_per_unit)
+    };
+    if (!productId || !operation.id || !operation.sequence) continue;
+    const route = grouped.get(productId) ?? [];
+    route.push(operation);
+    grouped.set(productId, route);
+  }
+  for (const route of grouped.values()) route.sort((a, b) => a.sequence - b.sequence);
+  return grouped;
+}
+
+function fallbackRoutesByOrder(tasks: ProductionTask[]): Map<string, RouteOperation[]> {
   const grouped = new Map<string, RouteOperation[]>();
   for (const task of tasks) {
     const route = grouped.get(task.orderId) ?? [];
     if (!route.some(operation => operation.id === task.operationId)) {
-      route.push({ id: task.operationId, sequence: task.operationSequence, code: task.operationId, name: task.operationId, workCenter: '—', setupMinutes: 0, runMinutesPerUnit: task.plannedQuantity > 0 ? Math.max(0, (new Date(task.plannedEnd).getTime() - new Date(task.plannedStart).getTime()) / 60000 / task.plannedQuantity) : 0 });
+      route.push({
+        id: task.operationId,
+        sequence: task.operationSequence,
+        code: task.operationId,
+        name: task.operationId,
+        workCenter: '—',
+        setupMinutes: 0,
+        runMinutesPerUnit: task.plannedQuantity > 0
+          ? Math.max(0, (new Date(task.plannedEnd).getTime() - new Date(task.plannedStart).getTime()) / 60000 / task.plannedQuantity)
+          : 0
+      });
     }
     grouped.set(task.orderId, route);
   }
@@ -43,11 +77,11 @@ function buildRoute(tasks: ProductionTask[]): Map<string, RouteOperation[]> {
 }
 
 export async function loadMesStateFromSupabase(client: SupabaseClient, fallback: MesState): Promise<RemoteSnapshot> {
-  const [plans, productsRows, employeeRows, equipmentRows, shiftRows, calendarRows, scheduleRows, orderRows, taskRows, assignmentRows, downtimeRows, maintenanceRows, resultRows, eventRows] = await Promise.all([
+  const [plans, productsRows, employeeRows, equipmentRows, shiftRows, calendarRows, scheduleRows, orderRows, taskRows, assignmentRows, downtimeRows, maintenanceRows, resultRows, eventRows, routeRows] = await Promise.all([
     selectAll(client, 'operational_plans'), selectAll(client, 'products'), selectAll(client, 'employees'), selectAll(client, 'equipment'),
     selectAll(client, 'shift_definitions'), selectAll(client, 'calendar_days'), selectAll(client, 'employee_schedules'),
     selectAll(client, 'production_orders'), selectAll(client, 'production_tasks'), selectAll(client, 'task_assignments'), selectAll(client, 'downtime_events'),
-    selectAll(client, 'maintenance_orders'), selectAll(client, 'production_results'), selectAll(client, 'production_events')
+    selectAll(client, 'maintenance_orders'), selectAll(client, 'production_results'), selectAll(client, 'production_events'), selectAll(client, 'route_operations')
   ]);
 
   const latestPlan = [...plans].sort((a, b) => (num(b.version) - num(a.version)) || str(b.created_at).localeCompare(str(a.created_at)))[0];
@@ -63,8 +97,20 @@ export async function loadMesStateFromSupabase(client: SupabaseClient, fallback:
   }
   for (const task of tasks) { const assignment = assignmentByTask.get(task.id); if (assignment) { task.assignedEmployeeIds = assignment.employeeIds; task.assignedEquipmentIds = assignment.equipmentIds; } }
 
-  const routeByOrder = buildRoute(tasks);
-  const orders: ProductionOrder[] = orderRows.map(row => ({ id: str(row.id), externalId: row.external_id ? str(row.external_id) : undefined, number: str(row.number), productId: str(row.product_id), quantity: num(row.quantity), completedQuantity: num(row.completed_quantity), dueAt: str(row.due_at), priority: str(row.priority) as ProductionOrder['priority'], status: str(row.status) as ProductionOrder['status'], route: routeByOrder.get(str(row.id)) ?? [] }));
+  const routesByProduct = buildRoutes(routeRows);
+  const fallbackRouteByOrder = fallbackRoutesByOrder(tasks);
+  const orders: ProductionOrder[] = orderRows.map(row => ({
+    id: str(row.id),
+    externalId: row.external_id ? str(row.external_id) : undefined,
+    number: str(row.number),
+    productId: str(row.product_id),
+    quantity: num(row.quantity),
+    completedQuantity: num(row.completed_quantity),
+    dueAt: str(row.due_at),
+    priority: str(row.priority) as ProductionOrder['priority'],
+    status: str(row.status) as ProductionOrder['status'],
+    route: routesByProduct.get(str(row.product_id)) ?? fallbackRouteByOrder.get(str(row.id)) ?? []
+  }));
 
   return {
     plan: latestPlan ? { id: str(latestPlan.id), version: num(latestPlan.version, 1), horizonStart: str(latestPlan.horizon_start, fallback.plan.horizonStart), horizonEnd: str(latestPlan.horizon_end, fallback.plan.horizonEnd), status: str(latestPlan.status) as MesState['plan']['status'], sourcePlanId: latestPlan.source_plan_id ? str(latestPlan.source_plan_id) : undefined, sourcePlanVersion: latestPlan.source_plan_version ? num(latestPlan.source_plan_version) : undefined } : fallback.plan,
