@@ -53,17 +53,17 @@ export class SupabaseWorkforceOutboxStore implements AsyncWorkforceOutboxStore {
 
   async enqueue(events: MesActualEventDto[]): Promise<number> {
     if (events.length === 0) return 0;
-    const { data, error } = await this.client.rpc<number>(this.enqueueRpcFunction, { p_events: events });
+    const { data, error } = await this.client.rpc(this.enqueueRpcFunction, { p_events: events });
     if (error) throw rpcError(this.enqueueRpcFunction, error);
     if (typeof data !== 'number') throw new Error(`MES Supabase RPC ${this.enqueueRpcFunction}: некорректный ответ`);
     return data;
   }
 
   async claim(limit = 50): Promise<WorkforceOutboxEntry[]> {
-    const { data, error } = await this.client.rpc<ClaimRow[]>(this.claimRpcFunction, { p_limit: limit });
+    const { data, error } = await this.client.rpc(this.claimRpcFunction, { p_limit: limit });
     if (error) throw rpcError(this.claimRpcFunction, error);
     if (!Array.isArray(data)) throw new Error(`MES Supabase RPC ${this.claimRpcFunction}: некорректный ответ`);
-    return data.map(row => ({
+    return (data as ClaimRow[]).map(row => ({
       id: row.id,
       idempotencyKey: row.idempotency_key,
       event: structuredClone(row.event_payload),
