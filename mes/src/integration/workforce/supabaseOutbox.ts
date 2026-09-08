@@ -1,6 +1,6 @@
 import { MesActualEventDto } from './types';
 import { SupabaseRpcClient, SupabaseRpcError } from './supabase';
-import { WorkforceOutboxEntry, WorkforceOutboxStatus, WorkforceOutboxStore } from './outbox';
+import { WorkforceOutboxEntry, WorkforceOutboxStatus } from './outbox';
 
 export interface SupabaseOutboxRpcClient extends SupabaseRpcClient {}
 
@@ -21,6 +21,13 @@ function rpcError(functionName: string, error: SupabaseRpcError): Error {
   return new Error(`MES Supabase RPC ${functionName}: ${detail || 'операция отклонена'}`);
 }
 
+export interface AsyncWorkforceOutboxStore {
+  enqueue(events: MesActualEventDto[]): Promise<number>;
+  claim(limit?: number): Promise<WorkforceOutboxEntry[]>;
+  markSent(id: string, sentAt?: string): Promise<void>;
+  markFailed(id: string, errorMessage: string): Promise<void>;
+}
+
 export interface SupabaseWorkforceOutboxOptions {
   enqueueRpcFunction?: string;
   claimRpcFunction?: string;
@@ -28,7 +35,7 @@ export interface SupabaseWorkforceOutboxOptions {
   failedRpcFunction?: string;
 }
 
-export class SupabaseWorkforceOutboxStore implements WorkforceOutboxStore {
+export class SupabaseWorkforceOutboxStore implements AsyncWorkforceOutboxStore {
   private readonly enqueueRpcFunction: string;
   private readonly claimRpcFunction: string;
   private readonly sentRpcFunction: string;
@@ -70,14 +77,62 @@ export class SupabaseWorkforceOutboxStore implements WorkforceOutboxStore {
   }
 
   async markSent(id: string, sentAt?: string): Promise<void> {
-    const { error } = await this.client.rpc(this.sentRpcFunction, { p_id: id, p_sent_at: sentAt ?? new Date().toISOString() });
+    const { error } = await this.client.rpc(this.sentRpcFunction, {
+      p_id: id,
+      p_sent_at: sentAt ?? new Date().toISOString()
+    });
     if (error) throw rpcError(this.sentRpcFunction, error);
   }
 
   async markFailed(id: string, errorMessage: string): Promise<void> {
-    const { error } = await this.client.rpc(this.failedRpcFunction, { p_id: id, p_error: errorMessage });
+    const { error } = await this.client.rpc(this.failedRpcFunction, {
+      p_id: id,
+      p_error: errorMessage
+    });
     if (error) throw rpcError(this.failedRpcFunction, error);
   }
 }
 
 export type SupabaseWorkforceOutboxAdapter = SupabaseWorkforceOutboxStore;
+
+export interface AsyncWorkforceOutboxDispatcherOptions {
+  batchSize?: number;
+}
+
+export interface AsyncWorkforceFeedbackSender {
+  sendActualFeedback(dto: import('./types').MesActualFeedbackBatchDto): Promise<void>;
+}
+
+export class AsyncWorkforceOutboxDispatcher {
+  private readonly batchSize: number;
+
+  constructor(
+    private readonly store: AsyncWorkforceOutboxStore,
+    private readonly sender: AsyncWorkforceFeedbackSender,
+    options: AsyncWorkforceOutboxDispatcherOptions = {}
+  ) {
+    this.batchSize = Math.max(1, Math.floor(options.batchSize ?? 50));
+  }
+
+  async dispatchOnce(sourceSiteExternalId: string, sentAt = new Date().toISOString()): Promise<{ sent: number; failed: number }> {
+    const entries = await this.store.claim(this.batchSize);
+    if (entries.length === 0) return { sent: 0, failed: 0 };
+    const batch = {
+      contractVersion: '1.0' as const,
+      sentAt,
+      sourceSiteExternalId,
+      events: entries.map(entry => entry.event)
+    };
+
+    try {
+      await this.sender.sendActualFeedback(batch);
+      const completedAt = new Date().toISOString();
+      for (const entry of entries) await this.store.markSent(entry.id, completedAt);
+      return { sent: entries.length, failed: 0 };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      for (const entry of entries) await this.store.markFailed(entry.id, message);
+      return { sent: 0, failed: entries.length };
+    }
+  }
+}
