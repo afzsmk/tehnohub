@@ -1,5 +1,5 @@
 import { IntegrationLogEntry, MesActualFeedbackBatchDto, WorkforcePublishedPlanDto } from './types';
-import { WorkforceIntegrationStore } from './service';
+import type { WorkforceIntegrationStore } from './service';
 
 export interface WorkforceIntegrationStorage {
   getItem(key: string): string | null;
@@ -48,9 +48,7 @@ export class PersistentWorkforceIntegrationStore implements WorkforceIntegration
     this.state = readState(storage, key);
   }
 
-  hasProcessed(key: string): boolean {
-    return this.state.processedKeys.includes(key);
-  }
+  hasProcessed(key: string): boolean { return this.state.processedKeys.includes(key); }
 
   markProcessed(key: string): void {
     if (this.hasProcessed(key)) return;
@@ -73,17 +71,9 @@ export class PersistentWorkforceIntegrationStore implements WorkforceIntegration
     this.persist();
   }
 
-  getLog(): IntegrationLogEntry[] {
-    return structuredClone(this.state.log);
-  }
-
-  getImportedPlans(): WorkforcePublishedPlanDto[] {
-    return structuredClone(this.state.importedPlans);
-  }
-
-  getActualFeedbackBatches(): MesActualFeedbackBatchDto[] {
-    return structuredClone(this.state.actualFeedbackBatches);
-  }
+  getLog(): IntegrationLogEntry[] { return structuredClone(this.state.log); }
+  getImportedPlans(): WorkforcePublishedPlanDto[] { return structuredClone(this.state.importedPlans); }
+  getActualFeedbackBatches(): MesActualFeedbackBatchDto[] { return structuredClone(this.state.actualFeedbackBatches); }
 
   private persist(): void {
     this.storage.setItem(this.key, JSON.stringify(this.state));
