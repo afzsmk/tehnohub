@@ -6,3 +6,4 @@ export * from './feedback';
 export * from './http';
 export * from './api';
 export * from './persistence';
+export * from './supabase';
