@@ -5,4 +5,5 @@ export * from './mesExecutionRpc';
 export * from './mesPlanningRpc';
 export * from './mesReplanRpc';
 export * from './mesCalendarRpc';
+export * from './mesRouteRpc';
 export * from './workforce';
