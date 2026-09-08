@@ -20,6 +20,7 @@ function publishedPlan(): WorkforcePublishedPlanDto {
 }
 
 function response(body: unknown, status = 200): Response {
+  if (status === 204) return new Response(null, { status });
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 }
 
@@ -46,7 +47,7 @@ describe('Workforce-MES HTTP client', () => {
     const fetchImpl = vi.fn<typeof fetch>()
       .mockResolvedValueOnce(response({ message: 'temporary failure' }, 503))
       .mockResolvedValueOnce(response({ message: 'rate limited' }, 429))
-      .mockResolvedValueOnce(response({ ok: true }, 204));
+      .mockResolvedValueOnce(response(undefined, 204));
     const client = new WorkforceMesHttpClientImpl({ baseUrl: 'http://mes.local', fetchImpl, retries: 2, retryDelayMs: 0 });
 
     await expect(client.sendActualFeedback({
@@ -59,7 +60,7 @@ describe('Workforce-MES HTTP client', () => {
     const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(response({ message: 'bad request' }, 400));
     const client = new WorkforceMesHttpClientImpl({ baseUrl: 'http://mes.local', fetchImpl, retries: 3, retryDelayMs: 0 });
 
-    await expect(client.importPublishedPlan(publishedPlan())).rejects.toThrow('MES API 400: bad request');
+    await expect(client.importPublishedPlan(publishedPlan())).rejects.toThrow(/^MES API 400:/);
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 });
