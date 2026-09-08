@@ -15,19 +15,19 @@ declare
   v_plan_id text := p_payload->>'planId';
   v_version integer := (p_payload->>'version')::integer;
   v_status text := p_payload->>'status';
-  v_source_site text := p_payload->>'siteExternalId';
   v_idempotency text := p_payload->>'idempotencyKey';
   v_operational_plan_id text := concat('WF:', v_plan_id, ':', v_version);
   v_imported_at timestamptz := now();
   v_item jsonb;
   v_product jsonb;
   v_month text;
+  v_first_month text;
+  v_last_month text;
   v_product_external_id text;
   v_quantity numeric;
   v_order_external_id text;
   v_order_number text;
   v_product_id text;
-  v_duplicate boolean := false;
 begin
   if coalesce(trim(p_imported_by), '') = '' then
     raise exception 'importedBy обязателен';
@@ -45,11 +45,13 @@ begin
   if v_status <> 'PUBLISHED' then
     raise exception 'Принимаются только опубликованные планы';
   end if;
+  if jsonb_typeof(p_payload->'monthlyPlan') <> 'array' or jsonb_array_length(p_payload->'monthlyPlan') = 0 then
+    raise exception 'monthlyPlan не должен быть пустым';
+  end if;
 
   perform pg_advisory_xact_lock(hashtext(v_idempotency));
 
   if exists(select 1 from integration_messages where idempotency_key = v_idempotency) then
-    v_duplicate := true;
     return jsonb_build_object(
       'contractVersion', v_contract_version,
       'idempotencyKey', v_idempotency,
@@ -62,17 +64,21 @@ begin
     );
   end if;
 
+  select min(item->>'month'), max(item->>'month')
+    into v_first_month, v_last_month
+    from jsonb_array_elements(p_payload->'monthlyPlan') as item;
+
   insert into operational_plans (
     id, version, horizon_start, horizon_end, status, source_plan_id, source_plan_version
   )
   values (
     v_operational_plan_id,
     v_version,
-    make_timestamptz((split_part((p_payload->'monthlyPlan'->0->>'month'), '-', 1))::integer,
-                     (split_part((p_payload->'monthlyPlan'->0->>'month'), '-', 2))::integer,
+    make_timestamptz((split_part(v_first_month, '-', 1))::integer,
+                     (split_part(v_first_month, '-', 2))::integer,
                      1, 0, 0, 0, 'UTC'),
-    make_timestamptz((split_part((p_payload->'monthlyPlan'->-1->>'month'), '-', 1))::integer,
-                     (split_part((p_payload->'monthlyPlan'->-1->>'month'), '-', 2))::integer,
+    make_timestamptz((split_part(v_last_month, '-', 1))::integer,
+                     (split_part(v_last_month, '-', 2))::integer,
                      1, 0, 0, 0, 'UTC') + interval '1 month' - interval '1 second',
     'DRAFT',
     v_plan_id,
@@ -95,7 +101,7 @@ begin
       unit = excluded.unit;
   end loop;
 
-  for v_item in select * from jsonb_array_elements(coalesce(p_payload->'monthlyPlan', '[]'::jsonb)) loop
+  for v_item in select * from jsonb_array_elements(p_payload->'monthlyPlan') loop
     v_month := v_item->>'month';
     v_product_external_id := v_item->>'productExternalId';
     v_quantity := (v_item->>'quantity')::numeric;
@@ -115,7 +121,7 @@ begin
       0,
       make_timestamptz((split_part(v_month, '-', 1))::integer,
                        (split_part(v_month, '-', 2))::integer,
-                       1, 23, 59, 59, 'UTC') + interval '1 month' - interval '1 second',
+                       1, 0, 0, 0, 'UTC') + interval '1 month' - interval '1 second',
       'NORMAL',
       'IMPORTED'
     )
@@ -139,7 +145,6 @@ begin
     'message', 'План принят и импортирован'
   );
 exception when unique_violation then
-  -- The unique idempotency key is the authoritative duplicate guard.
   if exists(select 1 from integration_messages where idempotency_key = v_idempotency) then
     return jsonb_build_object(
       'contractVersion', v_contract_version,
