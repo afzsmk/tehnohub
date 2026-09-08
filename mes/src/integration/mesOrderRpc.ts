@@ -45,4 +45,19 @@ export class SupabaseMesOrderRpc {
       route: []
     };
   }
+
+  async planOrder(orderId: string): Promise<{ orderId: string; createdTasks: number; existingTasks: number; status: 'PLANNED' }> {
+    const { data, error } = await this.client.rpc('mes_plan_order', { p_order_id: orderId });
+    if (error) throw error;
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      throw new Error('MES RPC mes_plan_order вернул пустой результат');
+    }
+    const row = data as Record<string, unknown>;
+    return {
+      orderId: String(row.orderId ?? orderId),
+      createdTasks: Number(row.createdTasks ?? 0),
+      existingTasks: Number(row.existingTasks ?? 0),
+      status: 'PLANNED'
+    };
+  }
 }
