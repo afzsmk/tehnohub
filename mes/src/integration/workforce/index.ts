@@ -9,3 +9,4 @@ export * from './persistence';
 export * from './supabase';
 export * from './outbox';
 export * from './outboxBridge';
+export * from './supabaseOutbox';
