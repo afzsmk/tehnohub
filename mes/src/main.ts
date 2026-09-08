@@ -2,17 +2,29 @@ import './styles.css';
 import { buildDefaultCalendar } from './core/operationalCalendar';
 import { buildDeterministicSchedule } from './core/scheduler';
 import { renderDispatchBoard } from './ui/dispatchBoard';
+import { bindCalendarEditor, renderCalendarEditor } from './ui/calendarEditor';
 import { MesState, ProductionTask } from './types';
 import { loadState, saveState } from './services/storage';
 
+const DAY_MS = 86_400_000;
+const HORIZON_DAYS = 30;
 const horizonStart = new Date(Date.now()).toISOString();
-const horizonEnd = new Date(Date.now() + 14 * 86400000).toISOString();
+const horizonEnd = new Date(Date.now() + HORIZON_DAYS * DAY_MS).toISOString();
 
 const shifts = [
   { id: 'SHIFT-DAY', name: 'Дневная 08:00–20:00', startMinute: 8 * 60, durationMinutes: 12 * 60 },
   { id: 'SHIFT-NIGHT', name: 'Ночная 20:00–08:00', startMinute: 20 * 60, durationMinutes: 12 * 60 }
 ];
-const calendar = buildDefaultCalendar(horizonStart, horizonEnd, shifts.map(s => s.id));
+const calendar = buildDefaultCalendar(horizonStart, horizonEnd, shifts.map(s => s.id)).slice(0, HORIZON_DAYS);
+
+function defaultEmployeeSchedules(days = calendar) {
+  const workingDays = days.filter(d => d.isWorking);
+  return [
+    ...workingDays.map(d => ({ employeeId: 'E-001', date: d.date, shiftIds: ['SHIFT-DAY'], status: 'WORK' as const })),
+    ...workingDays.map(d => ({ employeeId: 'E-002', date: d.date, shiftIds: ['SHIFT-DAY'], status: 'WORK' as const })),
+    ...workingDays.map(d => ({ employeeId: 'E-003', date: d.date, shiftIds: ['SHIFT-NIGHT'], status: 'WORK' as const }))
+  ];
+}
 
 const seed: MesState = {
   plan: { id: 'mes-demo-plan', version: 1, horizonStart, horizonEnd, status: 'DRAFT' },
@@ -31,18 +43,14 @@ const seed: MesState = {
   ],
   shifts,
   calendar,
-  employeeSchedules: [
-    ...calendar.filter(d => d.isWorking).map(d => ({ employeeId: 'E-001', date: d.date, shiftIds: ['SHIFT-DAY'], status: 'WORK' as const })),
-    ...calendar.filter(d => d.isWorking).map(d => ({ employeeId: 'E-002', date: d.date, shiftIds: ['SHIFT-DAY'], status: 'WORK' as const })),
-    ...calendar.filter(d => d.isWorking).map(d => ({ employeeId: 'E-003', date: d.date, shiftIds: ['SHIFT-NIGHT'], status: 'WORK' as const }))
-  ],
+  employeeSchedules: defaultEmployeeSchedules(),
   equipmentBlocks: [
-    { id: 'EB-001', equipmentId: 'EQ-001', start: new Date(Date.now() + 2 * 86400000 + 12 * 3600000).toISOString(), end: new Date(Date.now() + 2 * 86400000 + 16 * 3600000).toISOString(), reason: 'MAINTENANCE', comment: 'Плановое ТО' }
+    { id: 'EB-001', equipmentId: 'EQ-001', start: new Date(Date.now() + 2 * DAY_MS + 12 * 3600000).toISOString(), end: new Date(Date.now() + 2 * DAY_MS + 16 * 3600000).toISOString(), reason: 'MAINTENANCE', comment: 'Плановое ТО' }
   ],
   orders: [
     {
       id: 'O-001', number: 'ЗК-1001', productId: 'P-001', quantity: 120, completedQuantity: 0,
-      dueAt: new Date(Date.now() + 5 * 86400000).toISOString(), priority: 'URGENT', status: 'RELEASED',
+      dueAt: new Date(Date.now() + 5 * DAY_MS).toISOString(), priority: 'URGENT', status: 'RELEASED',
       route: [
         { id: 'OP-001', sequence: 10, code: 'CUT', name: 'Раскрой', workCenter: 'Лазерная резка', requiredQualification: 2, requiredEquipmentIds: ['EQ-001'], setupMinutes: 30, runMinutesPerUnit: 1.2 },
         { id: 'OP-002', sequence: 20, code: 'GLUE', name: 'Склейка', workCenter: 'Склейка', requiredQualification: 2, requiredEquipmentIds: ['EQ-002'], setupMinutes: 20, runMinutesPerUnit: 2.0 }
@@ -50,7 +58,7 @@ const seed: MesState = {
     },
     {
       id: 'O-002', number: 'ЗК-1002', productId: 'P-002', quantity: 80, completedQuantity: 0,
-      dueAt: new Date(Date.now() + 9 * 86400000).toISOString(), priority: 'NORMAL', status: 'PLANNED',
+      dueAt: new Date(Date.now() + 9 * DAY_MS).toISOString(), priority: 'NORMAL', status: 'PLANNED',
       route: [
         { id: 'OP-003', sequence: 10, code: 'CUT', name: 'Раскрой', workCenter: 'Лазерная резка', requiredQualification: 2, requiredEquipmentIds: ['EQ-001'], setupMinutes: 30, runMinutesPerUnit: 1.0 },
         { id: 'OP-004', sequence: 20, code: 'GLUE', name: 'Склейка', workCenter: 'Склейка', requiredQualification: 2, requiredEquipmentIds: ['EQ-002'], setupMinutes: 20, runMinutesPerUnit: 1.7 }
@@ -65,6 +73,27 @@ const app = document.querySelector<HTMLDivElement>('#app');
 if (!app) throw new Error('Не найден контейнер приложения');
 const root = app;
 const operations = state.orders.flatMap(order => order.route);
+
+function ensureThirtyDayHorizon(): void {
+  const start = new Date(state.plan.horizonStart).getTime();
+  const requiredEnd = start + HORIZON_DAYS * DAY_MS;
+  if (new Date(state.plan.horizonEnd).getTime() >= requiredEnd && state.calendar.length >= HORIZON_DAYS) return;
+
+  const targetEnd = new Date(requiredEnd).toISOString();
+  state.plan.horizonEnd = targetEnd;
+  const generated = buildDefaultCalendar(state.plan.horizonStart, targetEnd, state.shifts.map(s => s.id)).slice(0, HORIZON_DAYS);
+  const existingByDate = new Map(state.calendar.map(day => [day.date, day]));
+  state.calendar = generated.map(day => existingByDate.get(day.date) ?? day);
+  for (const employee of state.employees) {
+    for (const day of state.calendar) {
+      const exists = state.employeeSchedules.some(s => s.employeeId === employee.id && s.date === day.date);
+      if (!exists) state.employeeSchedules.push({ employeeId: employee.id, date: day.date, shiftIds: [], status: 'OFF' });
+    }
+  }
+  saveState(state);
+}
+
+ensureThirtyDayHorizon();
 
 function calculate(): void {
   const result = buildDeterministicSchedule({
@@ -103,6 +132,45 @@ function moveTask(taskId: string, deltaMinutes: number): void {
   });
 }
 
+function updateCalendarDay(date: string, isWorking: boolean, shiftIds: string[]): void {
+  const day = state.calendar.find(item => item.date === date);
+  if (!day) return;
+  day.isWorking = isWorking;
+  day.shiftIds = isWorking ? shiftIds : [];
+  if (!isWorking) {
+    for (const schedule of state.employeeSchedules.filter(s => s.date === date)) {
+      schedule.status = 'OFF';
+      schedule.shiftIds = [];
+    }
+  }
+  calculate();
+  render();
+}
+
+function updateEmployeeSchedule(employeeId: string, date: string, status: 'WORK' | 'OFF' | 'VACATION' | 'SICK' | 'ABSENCE', shiftIds: string[]): void {
+  const existing = state.employeeSchedules.find(s => s.employeeId === employeeId && s.date === date);
+  if (existing) {
+    existing.status = status;
+    existing.shiftIds = shiftIds;
+  } else {
+    state.employeeSchedules.push({ employeeId, date, status, shiftIds });
+  }
+  calculate();
+  render();
+}
+
+function addEquipmentBlock(block: Omit<import('./types').EquipmentBlock, 'id'>): void {
+  state.equipmentBlocks.push({ ...block, id: `EB-${Date.now()}` });
+  calculate();
+  render();
+}
+
+function removeEquipmentBlock(blockId: string): void {
+  state.equipmentBlocks = state.equipmentBlocks.filter(block => block.id !== blockId);
+  calculate();
+  render();
+}
+
 function render(): void {
   const completed = state.results.reduce((sum, r) => sum + r.goodQuantity, 0);
   const blockedByMaintenance = state.equipmentBlocks.filter(b => b.reason === 'MAINTENANCE').length;
@@ -135,7 +203,7 @@ function render(): void {
       </section>
 
       <section class="panel">
-        <div class="panel-head"><div><h2>Оперативный план и диспетчеризация</h2><div class="subtle">14 дней · ${state.shifts.length} смены · ${blockedByMaintenance} блокировки</div></div><button id="recalc" class="primary">Пересчитать автоматически</button></div>
+        <div class="panel-head"><div><h2>Оперативный план и диспетчеризация</h2><div class="subtle">30 дней · ${state.shifts.length} смены · ${blockedByMaintenance} блокировки</div></div><button id="recalc" class="primary">Пересчитать автоматически</button></div>
         ${renderDispatchBoard({
           tasks: state.tasks,
           employees: state.employees,
@@ -147,6 +215,21 @@ function render(): void {
           onMove: moveTask,
           onAssignEmployee: (taskId, employeeId) => updateTask(taskId, { assignedEmployeeIds: employeeId ? [employeeId] : [] }),
           onAssignEquipment: (taskId, equipmentId) => updateTask(taskId, { assignedEquipmentIds: equipmentId ? [equipmentId] : [] })
+        })}
+      </section>
+
+      <section class="panel">
+        ${renderCalendarEditor({
+          calendar: state.calendar,
+          shifts: state.shifts,
+          employees: state.employees,
+          employeeSchedules: state.employeeSchedules,
+          equipment: state.equipment,
+          equipmentBlocks: state.equipmentBlocks,
+          onCalendarChange: updateCalendarDay,
+          onEmployeeScheduleChange: updateEmployeeSchedule,
+          onAddBlock: addEquipmentBlock,
+          onRemoveBlock: removeEquipmentBlock
         })}
       </section>
 
@@ -183,6 +266,18 @@ function render(): void {
   });
   root.querySelectorAll<HTMLSelectElement>('[data-equipment]').forEach(select => {
     select.addEventListener('change', () => updateTask(select.dataset.equipment ?? '', { assignedEquipmentIds: select.value ? [select.value] : [] }));
+  });
+  bindCalendarEditor(root, {
+    calendar: state.calendar,
+    shifts: state.shifts,
+    employees: state.employees,
+    employeeSchedules: state.employeeSchedules,
+    equipment: state.equipment,
+    equipmentBlocks: state.equipmentBlocks,
+    onCalendarChange: updateCalendarDay,
+    onEmployeeScheduleChange: updateEmployeeSchedule,
+    onAddBlock: addEquipmentBlock,
+    onRemoveBlock: removeEquipmentBlock
   });
 }
 
