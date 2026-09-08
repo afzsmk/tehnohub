@@ -178,8 +178,12 @@ async function handleResult(taskId: string, goodQuantity: number, scrapQuantity:
     const task = state.tasks.find(item => item.id === taskId);
     if (task) {
       task.actualQuantity += result.goodQuantity;
-      if (task.actualQuantity >= task.plannedQuantity) { task.status = 'COMPLETED'; task.actualEnd ??= result.recordedAt; }
-      else if (task.status === 'RUNNING' || task.status === 'PAUSED') task.status = 'PARTIALLY_COMPLETED';
+      if (task.actualQuantity >= task.plannedQuantity && (!task.qualityRequired || task.qualityStatus === 'APPROVED')) {
+        task.status = 'COMPLETED';
+        task.actualEnd ??= result.recordedAt;
+      } else if (task.status === 'RUNNING' || task.status === 'PAUSED') {
+        task.status = 'PARTIALLY_COMPLETED';
+      }
       task.version += 1;
     }
     saveState(state);
@@ -233,65 +237,31 @@ function render(): void {
   const totalGood = state.results.reduce((sum, r) => sum + r.goodQuantity, 0);
   const openDowntime = state.downtimes.filter(d => !d.endedAt).length;
   const summary = buildPlanFactSummary(state.tasks, state.results, state.downtimes);
-  const conflicts = state.tasks.filter(task => state.tasks.some(other => other.id !== task.id && new Date(task.plannedStart).getTime() < new Date(other.plannedEnd).getTime() && new Date(other.plannedStart).getTime() < new Date(task.plannedEnd).getTime() && (task.assignedEmployeeIds.some(id => other.assignedEmployeeIds.includes(id)) || task.assignedEquipmentIds.some(id => other.assignedEquipmentIds.includes(id)))));
-
-  const dispatchHtml = renderDispatchBoard({ tasks: state.tasks, employees: state.employees, equipment: state.equipment, shifts: state.shifts, calendar: state.calendar, equipmentBlocks: state.equipmentBlocks, operations, onMove: moveTask, onAssignEmployee: (taskId, employeeId) => updateTask(taskId, { assignedEmployeeIds: employeeId ? [employeeId] : [] }), onAssignEquipment: (taskId, equipmentId) => updateTask(taskId, { assignedEquipmentIds: equipmentId ? [equipmentId] : [] }) });
-  const executionHtml = renderExecutionPanel({
-    tasks: state.tasks, employees: state.employees, equipment: state.equipment, results: state.results, downtimes: state.downtimes,
-    onAction: (taskId, action) => { void handleAction(taskId, action).catch(showError); },
-    onResult: (taskId, goodQuantity, scrapQuantity, comment) => { void handleResult(taskId, goodQuantity, scrapQuantity, comment).catch(showError); },
-    onDowntimeStart: (equipmentId, reasonCode, comment) => { void handleDowntimeStart(equipmentId, reasonCode, comment).catch(showError); },
-    onDowntimeEnd: downtimeId => { void handleDowntimeEnd(downtimeId).catch(showError); }
-  });
-  const maintenanceHtml = renderMaintenancePanel({ state, actorId: currentActorId(), onChanged: onMaintenanceChanged, onError: showError });
-  const planFactHtml = renderPlanFactPanel({ orders: state.orders, tasks: state.tasks, results: state.results, downtimes: state.downtimes });
-  const replanHtml = renderReplanPanel({ tasks: state.tasks, downtimes: state.downtimes, plan: state.plan, onApply: applyControlledReplan });
-  const integrationHtml = renderIntegrationPanel({ store: integrationStore, onRefresh: render });
-  const calendarHtml = renderCalendarEditor({ calendar: state.calendar, shifts: state.shifts, employees: state.employees, employeeSchedules: state.employeeSchedules, equipment: state.equipment, equipmentBlocks: state.equipmentBlocks, onCalendarChange: updateCalendarDay, onEmployeeScheduleChange: updateEmployeeSchedule, onAddBlock: addEquipmentBlock, onRemoveBlock: removeEquipmentBlock });
-  const orderRows = state.orders.map(o => `<tr><td><strong>${o.number}</strong></td><td>${o.priority}</td><td>${new Date(o.dueAt).toLocaleDateString('ru-RU')}</td><td>${o.status}</td></tr>`).join('');
-  const taskRows = state.tasks.map(t => { const op = operations.find(o => o.id === t.operationId); const employee = state.employees.find(e => e.id === t.assignedEmployeeIds[0]); const equipment = state.equipment.find(e => e.id === t.assignedEquipmentIds[0]); const conflict = conflicts.some(c => c.id === t.id); return `<tr class="${conflict ? 'row-conflict' : ''}"><td>${t.id}</td><td>${op?.name ?? t.operationId}</td><td>${new Date(t.plannedStart).toLocaleString('ru-RU')} → ${new Date(t.plannedEnd).toLocaleString('ru-RU')}</td><td>${employee?.name ?? '—'}</td><td>${equipment?.name ?? '—'}</td><td>v${t.version}</td></tr>`; }).join('');
-
-  root.innerHTML = `<header class="topbar"><div><div class="eyebrow">ТЕХНОХАБ ЗСМК</div><h1>MES • Производственное управление</h1></div><div class="auth-box">${authHtml()}</div></header>
-  <main class="page"><section class="kpis"><article><span>Заказы</span><strong>${state.orders.length}</strong></article><article><span>Задания</span><strong>${state.tasks.length}</strong></article><article><span>Выпущено</span><strong>${totalGood}</strong></article><article class="${conflicts.length ? 'danger' : ''}"><span>Конфликты</span><strong>${conflicts.length}</strong></article><article><span>Открытые простои</span><strong>${openDowntime}</strong></article></section>
-  <section class="panel"><div class="panel-head"><div><h2>Диспетчерская доска</h2><div class="subtle">30 дней · ${state.shifts.length} смены · ${state.equipmentBlocks.length} блокировки</div></div><button id="recalc" class="primary">Пересчитать</button></div>${dispatchHtml}</section>
-  ${executionHtml}
-  ${maintenanceHtml}
-  ${replanHtml}
-  ${integrationHtml}
-  ${planFactHtml}
-  <section class="panel">${calendarHtml}</section>
-  <section class="panel"><div class="panel-head"><div><h2>Контроль выполнения</h2><div class="subtle">Активных заданий: ${summary.activeTasks} · Просроченных: ${summary.overdueTasks} · Простой: ${Math.round(summary.downtimeMinutes)} мин</div></div></div><div class="meta-row"><span>Выполнение: ${summary.completionPercent}%</span><span>Брак: ${summary.scrapQuantity}</span><span>Отклонение: ${summary.quantityVariance}</span></div></section>
-  <section class="grid-2"><div class="panel"><div class="panel-head"><h2>Заказы</h2></div><table><thead><tr><th>Заказ</th><th>Приоритет</th><th>Срок</th><th>Статус</th></tr></thead><tbody>${orderRows}</tbody></table></div><div class="panel"><div class="panel-head"><h2>Задания</h2></div><table><thead><tr><th>Задание</th><th>Операция</th><th>Интервал</th><th>Сотрудник</th><th>Оборудование</th><th>Версия</th></tr></thead><tbody>${taskRows}</tbody></table></div></section></main>`;
-
-  root.querySelector<HTMLButtonElement>('#recalc')?.addEventListener('click', () => { state.tasks = []; calculate(); render(); });
-  root.querySelectorAll<HTMLButtonElement>('[data-move]').forEach(button => button.addEventListener('click', () => moveTask(button.dataset.move ?? '', Number(button.dataset.delta ?? 0))));
-  root.querySelectorAll<HTMLSelectElement>('[data-employee]').forEach(select => select.addEventListener('change', () => { if (!authState.identity) updateTask(select.dataset.employee ?? '', { assignedEmployeeIds: select.value ? [select.value] : [] }); }));
-  root.querySelectorAll<HTMLSelectElement>('[data-equipment]').forEach(select => select.addEventListener('change', () => { if (!authState.identity) updateTask(select.dataset.equipment ?? '', { assignedEquipmentIds: select.value ? [select.value] : [] }); }));
-  root.querySelector<HTMLFormElement>('#login-form')?.addEventListener('submit', event => {
+  const conflicts = state.tasks.filter(task => state.tasks.some(other => other.id !== task.id && new Date(task.plannedStart).getTime() < new Date(other.plannedEnd).getTime() && new Date(other.plannedStart).getTime() < new Date(task.plannedEnd).getTime()));
+  root.innerHTML = `${authHtml()}<header><h1>MES — оперативное управление производством</h1><div class="subtitle">1–30 дней · План/Факт · исполнение · простой · ТО · перепланирование</div></header><section class="kpis"><div class="kpi"><span>Операции</span><strong>${operations.length}</strong></div><div class="kpi"><span>Задания</span><strong>${state.tasks.length}</strong></div><div class="kpi"><span>Выпущено</span><strong>${totalGood}</strong></div><div class="kpi"><span>Открытые простои</span><strong>${openDowntime}</strong></div><div class="kpi"><span>Конфликты</span><strong>${conflicts.length}</strong></div></section>${renderDispatchBoard(state)}${renderCalendarEditor(state)}${renderExecutionPanel(state)}${renderMaintenancePanel(state)}${renderPlanFactPanel(state, summary)}${renderReplanPanel(state)}${renderIntegrationPanel(integrationStore)}`;
+  bindCalendarEditor(root, updateCalendarDay, updateEmployeeSchedule);
+  bindExecutionPanel(root, handleAction, handleResult, handleDowntimeStart, handleDowntimeEnd);
+  bindMaintenancePanel(root, addEquipmentBlock, removeEquipmentBlock, onMaintenanceChanged);
+  bindReplanPanel(root, applyControlledReplan);
+  bindIntegrationPanel(root, integrationStore);
+  const loginForm = root.querySelector<HTMLFormElement>('#login-form');
+  loginForm?.addEventListener('submit', async event => {
     event.preventDefault();
-    const form = event.currentTarget as HTMLFormElement;
-    const data = new FormData(form);
-    void signInMes(supabase!, String(data.get('email') ?? ''), String(data.get('password') ?? '')).then(next => { authState = next; render(); }).catch(showError);
+    if (!supabase) return;
+    const form = new FormData(loginForm);
+    try { await signInMes(supabase, String(form.get('email') ?? ''), String(form.get('password') ?? '')); } catch (error) { showError(error); }
   });
-  root.querySelector<HTMLButtonElement>('#signout')?.addEventListener('click', () => { void signOutMes(supabase!).catch(showError); });
-  bindMaintenancePanel(root, { state, actorId: currentActorId(), onChanged: onMaintenanceChanged, onError: showError });
-  bindReplanPanel(root, { tasks: state.tasks, downtimes: state.downtimes, plan: state.plan, onApply: applyControlledReplan });
-  bindIntegrationPanel(root, { store: integrationStore, onRefresh: render });
-  bindExecutionPanel(root, { tasks: state.tasks, employees: state.employees, equipment: state.equipment, results: state.results, downtimes: state.downtimes, onAction: (id, action) => { void handleAction(id, action).catch(showError); }, onResult: (id, good, scrap, comment) => { void handleResult(id, good, scrap, comment).catch(showError); }, onDowntimeStart: (equipmentId, reasonCode, comment) => { void handleDowntimeStart(equipmentId, reasonCode, comment).catch(showError); }, onDowntimeEnd: id => { void handleDowntimeEnd(id).catch(showError); } });
-  bindCalendarEditor(root, { calendar: state.calendar, shifts: state.shifts, employees: state.employees, employeeSchedules: state.employeeSchedules, equipment: state.equipment, equipmentBlocks: state.equipmentBlocks, onCalendarChange: updateCalendarDay, onEmployeeScheduleChange: updateEmployeeSchedule, onAddBlock: addEquipmentBlock, onRemoveBlock: removeEquipmentBlock });
+  root.querySelector<HTMLButtonElement>('#signout')?.addEventListener('click', () => { if (supabase) void signOutMes(supabase).catch(showError); });
 }
 
-render();
-
-void (async () => {
-  if (!supabase) return;
-  try {
+if (supabase) {
+  authUnsubscribe = subscribeMesAuth(supabase, async () => {
     authState = await getMesAuthState(supabase);
     render();
-    authUnsubscribe = subscribeMesAuth(supabase, async next => { authState = next; render(); });
-  } catch (error) {
-    showError(error);
-  }
-})();
+  });
+  void getMesAuthState(supabase).then(result => { authState = result; render(); }).catch(showError);
+} else {
+  render();
+}
 
-window.addEventListener('beforeunload', () => authUnsubscribe?.());
+window.addEventListener('beforeunload', () => { authUnsubscribe?.(); });
