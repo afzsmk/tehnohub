@@ -6,6 +6,7 @@ import { mountRouteEditor } from './ui/routeEditor';
 import { mountQualityPage } from './ui/qualityPage';
 import { mountMesDashboardPage } from './ui/mesDashboardPage';
 import { mountOrdersPage } from './ui/ordersPage';
+import { mountEventJournalPage } from './ui/eventJournalPage';
 import { getMesSupabaseClient } from './services/supabase';
 
 const supabase = getMesSupabaseClient();
@@ -120,4 +121,5 @@ void import('./main').then(async () => {
   await mountQualityPage(app, supabase);
   await mountMesDashboardPage(app, supabase);
   await mountOrdersPage(app, supabase);
+  await mountEventJournalPage(app, supabase);
 }).catch(reportRemoteFailure);
