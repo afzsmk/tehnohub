@@ -19,25 +19,11 @@ export class InMemoryWorkforceIntegrationStore implements WorkforceIntegrationHi
   readonly importedPlans: WorkforcePublishedPlanDto[] = [];
   readonly actualFeedbackBatches: MesActualFeedbackBatchDto[] = [];
 
-  hasProcessed(key: string): boolean {
-    return this.processed.has(key);
-  }
-
-  markProcessed(key: string): void {
-    this.processed.add(key);
-  }
-
-  appendLog(entry: IntegrationLogEntry): void {
-    this.log.push(entry);
-  }
-
-  recordImportedPlan(dto: WorkforcePublishedPlanDto): void {
-    this.importedPlans.push(structuredClone(dto));
-  }
-
-  recordActualFeedback(dto: MesActualFeedbackBatchDto): void {
-    this.actualFeedbackBatches.push(structuredClone(dto));
-  }
+  hasProcessed(key: string): boolean { return this.processed.has(key); }
+  markProcessed(key: string): void { this.processed.add(key); }
+  appendLog(entry: IntegrationLogEntry): void { this.log.push(entry); }
+  recordImportedPlan(dto: WorkforcePublishedPlanDto): void { this.importedPlans.push(structuredClone(dto)); }
+  recordActualFeedback(dto: MesActualFeedbackBatchDto): void { this.actualFeedbackBatches.push(structuredClone(dto)); }
 }
 
 export interface WorkforcePlanImportResult {
@@ -103,9 +89,7 @@ export class WorkforceIntegrationService {
       this.store.markProcessed(event.idempotencyKey);
       this.store.appendLog({ direction: 'OUTBOUND', messageType: 'ACTUAL_FEEDBACK', idempotencyKey: event.idempotencyKey, receivedAt: new Date().toISOString(), accepted: true });
     }
-    if (newEvents.length && this.isHistoryStore(this.store)) {
-      this.store.recordActualFeedback({ ...structuredClone(dto), events: structuredClone(newEvents) });
-    }
+    if (newEvents.length && this.isHistoryStore(this.store)) this.store.recordActualFeedback({ ...structuredClone(dto), events: structuredClone(newEvents) });
   }
 
   private isHistoryStore(store: WorkforceIntegrationStore): store is WorkforceIntegrationHistoryStore {
