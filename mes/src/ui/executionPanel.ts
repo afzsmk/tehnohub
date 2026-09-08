@@ -6,7 +6,7 @@ export interface ExecutionPanelOptions {
   equipment: Equipment[];
   results: ProductionResult[];
   downtimes: DowntimeEvent[];
-  onAction: (taskId: string, action: 'START' | 'PAUSE' | 'RESUME' | 'BLOCK' | 'COMPLETE') => void;
+  onAction: (taskId: string, action: 'PREPARE' | 'START' | 'PAUSE' | 'RESUME' | 'BLOCK' | 'COMPLETE') => void;
   onResult: (taskId: string, goodQuantity: number, scrapQuantity: number, comment: string) => void;
   onDowntimeStart: (equipmentId: string, reasonCode: string, comment: string) => void;
   onDowntimeEnd: (downtimeId: string) => void;
@@ -14,12 +14,13 @@ export interface ExecutionPanelOptions {
 
 function actionButtons(task: ProductionTask): string {
   const buttons: string[] = [];
-  if (task.status === 'READY' || task.status === 'ASSIGNED') buttons.push(`<button class="tiny action-start" data-action="START" data-task="${task.id}">▶ Запуск</button>`);
+  if (task.status === 'PLANNED' || task.status === 'ASSIGNED') buttons.push(`<button class="tiny" data-action="PREPARE" data-task="${task.id}">Подготовить</button>`);
+  if (task.status === 'READY') buttons.push(`<button class="tiny action-start" data-action="START" data-task="${task.id}">▶ Запуск</button>`);
   if (task.status === 'RUNNING') buttons.push(`<button class="tiny" data-action="PAUSE" data-task="${task.id}">Ⅱ Пауза</button>`);
   if (task.status === 'PAUSED') buttons.push(`<button class="tiny action-start" data-action="RESUME" data-task="${task.id}">▶ Продолжить</button>`);
   if (task.status === 'RUNNING' || task.status === 'PARTIALLY_COMPLETED') buttons.push(`<button class="tiny" data-action="BLOCK" data-task="${task.id}">⚠ Блок</button>`);
   if (task.status === 'RUNNING' || task.status === 'PARTIALLY_COMPLETED') buttons.push(`<button class="tiny action-complete" data-action="COMPLETE" data-task="${task.id}">✓ Завершить</button>`);
-  return buttons.join(' ');
+  return buttons.join(' ') || '<span class="subtle">—</span>';
 }
 
 export function renderExecutionPanel(options: ExecutionPanelOptions): string {
@@ -46,7 +47,7 @@ export function renderExecutionPanel(options: ExecutionPanelOptions): string {
   }).join('');
 
   return `<section class="panel execution-panel">
-    <div class="panel-head"><div><h2>Фактическое производство</h2><div class="subtle">Управление выполнением заданий, выпуском и простоями</div></div></div>
+    <div class="panel-head"><div><h2>Фактическое производство</h2><div class="subtle">Запуск, пауза, завершение, выпуск годной продукции и брак</div></div></div>
     <div class="execution-grid">
       <div class="execution-table-wrap"><table><thead><tr><th>Задание</th><th>Оборудование</th><th>Сотрудник</th><th>Факт / план</th><th>Действия</th></tr></thead><tbody>${rows || '<tr><td colspan="5">Нет активных заданий</td></tr>'}</tbody></table></div>
       <div class="execution-side">
@@ -73,7 +74,7 @@ export function renderExecutionPanel(options: ExecutionPanelOptions): string {
 
 export function bindExecutionPanel(root: ParentNode, options: ExecutionPanelOptions): void {
   root.querySelectorAll<HTMLButtonElement>('[data-action]').forEach(button => {
-    button.addEventListener('click', () => options.onAction(button.dataset.task ?? '', button.dataset.action as 'START' | 'PAUSE' | 'RESUME' | 'BLOCK' | 'COMPLETE'));
+    button.addEventListener('click', () => options.onAction(button.dataset.task ?? '', button.dataset.action as 'PREPARE' | 'START' | 'PAUSE' | 'RESUME' | 'BLOCK' | 'COMPLETE'));
   });
   root.querySelectorAll<HTMLButtonElement>('[data-end-downtime]').forEach(button => {
     button.addEventListener('click', () => options.onDowntimeEnd(button.dataset.endDowntime ?? ''));
