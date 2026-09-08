@@ -64,6 +64,7 @@ const state = loadState(seed);
 const app = document.querySelector<HTMLDivElement>('#app');
 if (!app) throw new Error('Не найден контейнер приложения');
 const root = app;
+const operations = state.orders.flatMap(order => order.route);
 
 function calculate(): void {
   const result = buildDeterministicSchedule({
@@ -142,6 +143,7 @@ function render(): void {
           shifts: state.shifts,
           calendar: state.calendar,
           equipmentBlocks: state.equipmentBlocks,
+          operations,
           onMove: moveTask,
           onAssignEmployee: (taskId, employeeId) => updateTask(taskId, { assignedEmployeeIds: employeeId ? [employeeId] : [] }),
           onAssignEquipment: (taskId, equipmentId) => updateTask(taskId, { assignedEquipmentIds: equipmentId ? [equipmentId] : [] })
@@ -157,7 +159,7 @@ function render(): void {
         <div class="panel"><div class="panel-head"><h2>Задания</h2></div>
           <table><thead><tr><th>Задание</th><th>Операция</th><th>Интервал</th><th>Сотрудник</th><th>Оборудование</th><th>Версия</th></tr></thead><tbody>
             ${state.tasks.map(t => {
-              const op = state.orders.flatMap(o => o.route).find(x => x.id === t.operationId);
+              const op = operations.find(x => x.id === t.operationId);
               const e = state.employees.find(x => x.id === t.assignedEmployeeIds[0]);
               const eq = state.equipment.find(x => x.id === t.assignedEquipmentIds[0]);
               const conflict = conflicts.some(c => c.id === t.id);
