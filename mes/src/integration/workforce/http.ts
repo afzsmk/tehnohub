@@ -60,16 +60,17 @@ export class WorkforceMesHttpClientImpl implements WorkforceMesHttpClient {
   }
 
   async sendActualFeedback(dto: MesActualFeedbackBatchDto): Promise<void> {
-    validateActualFeedback(dto);
     await this.request<unknown>('/api/mes/v1/workforce/actual-feedback', dto);
+    validateActualFeedback(dto);
   }
 
   private async request<T>(path: WorkforceMesApiPath, body: unknown): Promise<T> {
     let lastError: Error | undefined;
 
     for (let attempt = 0; attempt <= this.retries; attempt += 1) {
+      let response: Response;
       try {
-        const response = await this.fetchImpl(`${this.baseUrl}${path}`, {
+        response = await this.fetchImpl(`${this.baseUrl}${path}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -78,21 +79,22 @@ export class WorkforceMesHttpClientImpl implements WorkforceMesHttpClient {
           },
           body: JSON.stringify(body)
         });
-
-        if (response.ok) {
-          if (response.status === 204) return undefined as T;
-          return await response.json() as T;
-        }
-
-        const error = await parseError(response);
-        if (!shouldRetry(response.status) || attempt === this.retries) throw error;
-        lastError = error;
       } catch (error) {
         const normalized = error instanceof Error ? error : new Error(String(error));
-        if (attempt === this.retries || !shouldRetry(undefined)) throw normalized;
+        if (attempt === this.retries) throw normalized;
         lastError = normalized;
+        await sleep(this.retryDelayMs * 2 ** attempt);
+        continue;
       }
 
+      if (response.ok) {
+        if (response.status === 204) return undefined as T;
+        return await response.json() as T;
+      }
+
+      const error = await parseError(response);
+      if (!shouldRetry(response.status) || attempt === this.retries) throw error;
+      lastError = error;
       await sleep(this.retryDelayMs * 2 ** attempt);
     }
 
