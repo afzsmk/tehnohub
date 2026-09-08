@@ -9,14 +9,12 @@ export interface ExecutionState {
 }
 
 export type ExecutionAction =
+  | 'PREPARE'
   | 'START'
   | 'PAUSE'
   | 'RESUME'
   | 'BLOCK'
-  | 'COMPLETE'
-  | 'REPORT_RESULT'
-  | 'START_DOWNTIME'
-  | 'END_DOWNTIME';
+  | 'COMPLETE';
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -28,10 +26,8 @@ function eventType(action: ExecutionAction): ProductionEvent['type'] {
     case 'PAUSE': return 'TASK_PAUSED';
     case 'RESUME': return 'TASK_RESUMED';
     case 'COMPLETE': return 'TASK_COMPLETED';
-    case 'REPORT_RESULT': return 'RESULT_RECORDED';
-    case 'START_DOWNTIME': return 'DOWNTIME_STARTED';
-    case 'END_DOWNTIME': return 'DOWNTIME_ENDED';
     case 'BLOCK': return 'TASK_PAUSED';
+    case 'PREPARE': return 'TASK_STARTED';
   }
 }
 
@@ -39,34 +35,34 @@ export function executeTaskAction(state: ExecutionState, taskId: string, action:
   const task = state.tasks.find(item => item.id === taskId);
   if (!task) throw new Error(`Задание не найдено: ${taskId}`);
 
-  const target: Record<ExecutionAction, TaskStatus> = {
-    START: 'RUNNING',
-    PAUSE: 'PAUSED',
-    RESUME: 'RUNNING',
-    BLOCK: 'BLOCKED',
-    COMPLETE: 'COMPLETED',
-    REPORT_RESULT: task.status,
-    START_DOWNTIME: task.status,
-    END_DOWNTIME: task.status
-  };
-  const nextStatus = target[action];
-  if (action !== 'REPORT_RESULT' && action !== 'START_DOWNTIME' && action !== 'END_DOWNTIME' && !canTransition(task.status, nextStatus)) {
-    throw new Error(`Недопустимое действие ${action} для статуса ${task.status}`);
+  if (action === 'PREPARE') {
+    const next = task.status === 'PLANNED' ? 'ASSIGNED' : task.status === 'ASSIGNED' ? 'READY' : task.status;
+    if (next === task.status) throw new Error(`Задание уже подготовлено: ${task.status}`);
+    if (!canTransition(task.status, next)) throw new Error(`Недопустимая подготовка: ${task.status}`);
+    task.status = next;
+  } else {
+    const target: Record<Exclude<ExecutionAction, 'PREPARE'>, TaskStatus> = {
+      START: 'RUNNING',
+      PAUSE: 'PAUSED',
+      RESUME: 'RUNNING',
+      BLOCK: 'BLOCKED',
+      COMPLETE: 'COMPLETED'
+    };
+    const nextStatus = target[action];
+    if (!canTransition(task.status, nextStatus)) throw new Error(`Недопустимое действие ${action} для статуса ${task.status}`);
+    if (action === 'START') task.actualStart ??= at;
+    if (action === 'COMPLETE') task.actualEnd = at;
+    task.status = nextStatus;
   }
 
-  const timestamp = at;
-  if (action === 'START') task.actualStart ??= timestamp;
-  if (action === 'COMPLETE') task.actualEnd = timestamp;
-  if (action === 'START' || action === 'PAUSE' || action === 'RESUME' || action === 'BLOCK' || action === 'COMPLETE') task.status = nextStatus;
   task.version += 1;
-
   state.events.push({
     id: `EV-${Date.now()}-${state.events.length + 1}`,
     taskId,
     type: eventType(action),
-    occurredAt: timestamp,
+    occurredAt: at,
     actorId,
-    payload: { fromStatus: action === 'REPORT_RESULT' ? task.status : undefined, action }
+    payload: { action, status: task.status }
   });
   return task;
 }
