@@ -3,6 +3,7 @@ import { SupabaseMesPlanningRpc } from './integration/mesPlanningRpc';
 import { SupabaseMesReplanRpc, MesReplanChange } from './integration/mesReplanRpc';
 import { SupabaseMesCalendarRpc } from './integration/mesCalendarRpc';
 import { mountRouteEditor } from './ui/routeEditor';
+import { mountQualityPage } from './ui/qualityPage';
 import { getMesSupabaseClient } from './services/supabase';
 
 const supabase = getMesSupabaseClient();
@@ -33,28 +34,20 @@ function enqueueCalendarSave(job: () => Promise<void>): void {
 document.addEventListener('change', event => {
   const target = event.target;
   if (!(target instanceof HTMLSelectElement) || !supabase) return;
-
   const employeeTaskId = target.dataset.employee;
   const equipmentTaskId = target.dataset.equipment;
   const taskId = employeeTaskId ?? equipmentTaskId;
   if (!taskId) return;
-
   const domVersion = Number(target.dataset.version);
   if (!Number.isInteger(domVersion) || domVersion <= 0) return;
-
   const isEmployee = Boolean(employeeTaskId);
   const value = target.value;
   if (!assignmentVersions.has(taskId)) assignmentVersions.set(taskId, domVersion);
-
   enqueue(assignmentQueues, taskId, async () => {
     const auth = await getMesAuthState(supabase);
     if (!auth.identity) return;
     const expectedVersion = assignmentVersions.get(taskId) ?? domVersion;
-    await new SupabaseMesPlanningRpc(supabase).assignTask(
-      taskId,
-      isEmployee ? { employeeIds: value ? [value] : [] } : { equipmentIds: value ? [value] : [] },
-      expectedVersion
-    );
+    await new SupabaseMesPlanningRpc(supabase).assignTask(taskId, isEmployee ? { employeeIds: value ? [value] : [] } : { equipmentIds: value ? [value] : [] }, expectedVersion);
     assignmentVersions.set(taskId, expectedVersion + 1);
   });
 }, true);
@@ -63,25 +56,18 @@ document.addEventListener('change', event => {
   const target = event.target;
   if (!(target instanceof HTMLInputElement) && !(target instanceof HTMLSelectElement)) return;
   if (!supabase || !target.matches('[data-working], [data-day][data-shift], [data-employee-day]')) return;
-
   enqueueCalendarSave(async () => {
     const auth = await getMesAuthState(supabase);
     if (!auth.identity) return;
-
     const calendar = Array.from(document.querySelectorAll<HTMLInputElement>('[data-working]')).map(input => {
       const date = input.dataset.working ?? '';
-      const shiftIds = Array.from(document.querySelectorAll<HTMLInputElement>(`[data-day="${CSS.escape(date)}"][data-shift]`))
-        .filter(item => item.checked)
-        .map(item => item.dataset.shift ?? '')
-        .filter(Boolean);
+      const shiftIds = Array.from(document.querySelectorAll<HTMLInputElement>(`[data-day="${CSS.escape(date)}"][data-shift]`)).filter(item => item.checked).map(item => item.dataset.shift ?? '').filter(Boolean);
       return { date, isWorking: input.checked, shiftIds };
     }).filter(day => day.date);
-
     const employeeSchedules = Array.from(document.querySelectorAll<HTMLSelectElement>('[data-employee-day]')).map(select => {
       const [employeeId, date] = (select.dataset.employeeDay ?? '|').split('|');
       return { employeeId, date, shiftIds: select.value ? [select.value] : [], status: select.value ? 'WORK' as const : 'OFF' as const };
     }).filter(item => item.employeeId && item.date);
-
     await new SupabaseMesCalendarRpc(supabase).saveCalendar(calendar, employeeSchedules);
   });
 }, true);
@@ -89,11 +75,9 @@ document.addEventListener('change', event => {
 document.addEventListener('click', event => {
   const target = event.target;
   if (!(target instanceof HTMLButtonElement) || !supabase) return;
-
   if (target.dataset.action === 'PREPARE') {
     const taskId = target.dataset.task;
     if (!taskId) return;
-
     event.stopImmediatePropagation();
     enqueue(prepareQueues, taskId, async () => {
       const auth = await getMesAuthState(supabase);
@@ -103,14 +87,11 @@ document.addEventListener('click', event => {
     });
     return;
   }
-
   if (target.id !== 'replan-apply') return;
-
   const planId = target.dataset.planId;
   const planVersion = Number(target.dataset.planVersion);
   const encoded = target.dataset.changes;
   if (!planId || !Number.isInteger(planVersion) || planVersion <= 0 || !encoded) return;
-
   let changes: MesReplanChange[];
   try {
     const parsed = JSON.parse(decodeURIComponent(encoded)) as MesReplanChange[];
@@ -120,7 +101,6 @@ document.addEventListener('click', event => {
     reportRemoteFailure(new Error('Не удалось подготовить данные перепланирования'));
     return;
   }
-
   enqueue(replanQueues, planId, async () => {
     const auth = await getMesAuthState(supabase);
     if (!auth.identity) return;
@@ -133,5 +113,7 @@ void import('./main').then(async () => {
   if (!supabase) return;
   const auth = await getMesAuthState(supabase);
   if (!auth.identity) return;
-  await mountRouteEditor(document.querySelector<HTMLDivElement>('#app') ?? document.body, supabase);
+  const app = document.querySelector<HTMLDivElement>('#app') ?? document.body;
+  await mountRouteEditor(app, supabase);
+  await mountQualityPage(app, supabase);
 }).catch(reportRemoteFailure);
