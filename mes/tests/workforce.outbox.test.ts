@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
-import { InMemoryWorkforceOutboxStore, WorkforceOutboxDispatcher } from '../src/integration/workforce/outbox';
+import { InMemoryWorkforceOutboxStore, PersistentWorkforceOutboxStore, WorkforceOutboxDispatcher } from '../src/integration/workforce/outbox';
 import { MesActualEventDto } from '../src/integration/workforce/types';
+
+class MemoryStorage {
+  private readonly data = new Map<string, string>();
+  getItem(key: string): string | null { return this.data.get(key) ?? null; }
+  setItem(key: string, value: string): void { this.data.set(key, value); }
+}
 
 function event(id: string): MesActualEventDto {
   return {
@@ -47,5 +53,21 @@ describe('Workforce actual-feedback outbox', () => {
     const retried = await dispatcher.dispatchOnce();
     expect(retried).toEqual({ sent: 1, failed: 0 });
     expect(store.list('SENT')[0].attempts).toBe(2);
+  });
+
+  it('persists pending and sent entries across store recreation', async () => {
+    const storage = new MemoryStorage();
+    const first = new PersistentWorkforceOutboxStore(storage, 'outbox-test');
+    first.enqueue([event('EV-PERSIST')]);
+    expect(first.list('PENDING')).toHaveLength(1);
+
+    const restored = new PersistentWorkforceOutboxStore(storage, 'outbox-test');
+    expect(restored.list('PENDING')).toHaveLength(1);
+    const sender = { sendActualFeedback: vi.fn().mockResolvedValue(undefined) };
+    const dispatcher = new WorkforceOutboxDispatcher(restored, sender, { sourceSiteExternalId: 'SITE-1', clock: () => '2026-09-08T14:20:00.000Z' });
+    await dispatcher.dispatchOnce();
+
+    const reloaded = new PersistentWorkforceOutboxStore(storage, 'outbox-test');
+    expect(reloaded.list('SENT')).toHaveLength(1);
   });
 });
