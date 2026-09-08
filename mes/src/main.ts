@@ -13,6 +13,7 @@ import { bindIntegrationPanel, renderIntegrationPanel } from './ui/integrationPa
 import { browserWorkforceIntegrationStore } from './integration/workforce';
 import { getMesAuthState, signInMes, signOutMes, subscribeMesAuth, MesAuthState } from './integration/auth';
 import { SupabaseMesExecutionRpc, MesExecutionAction } from './integration/mesExecutionRpc';
+import { SupabaseMesCalendarRpc } from './integration/mesCalendarRpc';
 import { getMesSupabaseClient } from './services/supabase';
 import { MesState, ProductionTask } from './types';
 import { loadState, saveState } from './services/storage';
@@ -68,14 +69,24 @@ const state = loadState(seed);
 const integrationStore = browserWorkforceIntegrationStore();
 const supabase = getMesSupabaseClient();
 const remoteExecution = supabase ? new SupabaseMesExecutionRpc(supabase) : null;
+const remoteCalendar = supabase ? new SupabaseMesCalendarRpc(supabase) : null;
 let authState: MesAuthState = { user: null, identity: null };
 let authUnsubscribe: (() => void) | null = null;
+let calendarSaveChain: Promise<void> = Promise.resolve();
 const app = document.querySelector<HTMLDivElement>('#app');
 if (!app) throw new Error('Не найден контейнер приложения');
 const root = app;
 
 function currentActorId(): string { return authState.identity?.userId ?? 'demo-dispatcher'; }
 function remoteReady(): boolean { return Boolean(remoteExecution && authState.identity); }
+
+function queueCalendarSave(): void {
+  if (!remoteCalendar || !authState.identity) return;
+  calendarSaveChain = calendarSaveChain
+    .catch(() => undefined)
+    .then(() => remoteCalendar.saveCalendar(state.calendar, state.employeeSchedules))
+    .catch(showError);
+}
 
 function ensureHorizon(): void {
   const requiredEnd = new Date(state.plan.horizonStart).getTime() + HORIZON_DAYS * DAY_MS;
@@ -114,18 +125,25 @@ function updateCalendarDay(date: string, isWorking: boolean, shiftIds: string[])
   const day = state.calendar.find(d => d.date === date); if (!day) return;
   day.isWorking = isWorking; day.shiftIds = isWorking ? shiftIds : [];
   if (!isWorking) state.employeeSchedules.filter(s => s.date === date).forEach(s => { s.status = 'OFF'; s.shiftIds = []; });
-  calculate(); render();
+  calculate();
+  render();
+  queueCalendarSave();
 }
 
 function updateEmployeeSchedule(employeeId: string, date: string, status: 'WORK' | 'OFF' | 'VACATION' | 'SICK' | 'ABSENCE', shiftIds: string[]): void {
   const item = state.employeeSchedules.find(s => s.employeeId === employeeId && s.date === date);
   if (item) { item.status = status; item.shiftIds = shiftIds; } else state.employeeSchedules.push({ employeeId, date, status, shiftIds });
-  calculate(); render();
+  calculate();
+  render();
+  queueCalendarSave();
 }
 
 function addEquipmentBlock(block: Omit<import('./types').EquipmentBlock, 'id'>): void { state.equipmentBlocks.push({ ...block, id: `EB-${Date.now()}` }); calculate(); render(); }
 function removeEquipmentBlock(blockId: string): void { state.equipmentBlocks = state.equipmentBlocks.filter(b => b.id !== blockId); calculate(); render(); }
-function applyControlledReplan(preview: import('./core/planFact').ReplanPreview): void { applyApprovedReplan(state.tasks, preview); state.plan.version += 1; state.plan.status = 'DRAFT'; saveState(state); render(); }
+function applyControlledReplan(preview: import('./core/planFact').ReplanPreview): void {
+  if (remoteReady()) return;
+  applyApprovedReplan(state.tasks, preview); state.plan.version += 1; state.plan.status = 'DRAFT'; saveState(state); render();
+}
 function showError(error: unknown): void { window.alert(error instanceof Error ? error.message : 'Операция не выполнена'); }
 
 function onMaintenanceChanged(): void { saveState(state); calculate(); render(); }
@@ -247,8 +265,8 @@ function render(): void {
 
   root.querySelector<HTMLButtonElement>('#recalc')?.addEventListener('click', () => { state.tasks = []; calculate(); render(); });
   root.querySelectorAll<HTMLButtonElement>('[data-move]').forEach(button => button.addEventListener('click', () => moveTask(button.dataset.move ?? '', Number(button.dataset.delta ?? 0))));
-  root.querySelectorAll<HTMLSelectElement>('[data-employee]').forEach(select => select.addEventListener('change', () => updateTask(select.dataset.employee ?? '', { assignedEmployeeIds: select.value ? [select.value] : [] })));
-  root.querySelectorAll<HTMLSelectElement>('[data-equipment]').forEach(select => select.addEventListener('change', () => updateTask(select.dataset.equipment ?? '', { assignedEquipmentIds: select.value ? [select.value] : [] })));
+  root.querySelectorAll<HTMLSelectElement>('[data-employee]').forEach(select => select.addEventListener('change', () => { if (!authState.identity) updateTask(select.dataset.employee ?? '', { assignedEmployeeIds: select.value ? [select.value] : [] }); }));
+  root.querySelectorAll<HTMLSelectElement>('[data-equipment]').forEach(select => select.addEventListener('change', () => { if (!authState.identity) updateTask(select.dataset.equipment ?? '', { assignedEquipmentIds: select.value ? [select.value] : [] }); }));
   root.querySelector<HTMLFormElement>('#login-form')?.addEventListener('submit', event => {
     event.preventDefault();
     const form = event.currentTarget as HTMLFormElement;
