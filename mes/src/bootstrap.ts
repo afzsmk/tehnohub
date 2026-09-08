@@ -7,18 +7,21 @@ const supabase = getMesSupabaseClient();
 const assignmentQueues = new Map<string, Promise<void>>();
 const replanQueues = new Map<string, Promise<void>>();
 
-function enqueue<T>(queues: Map<string, Promise<void>>, key: string, job: () => Promise<T>): void {
+function reportRemoteFailure(error: unknown): void {
+  window.alert(error instanceof Error ? error.message : 'Серверная операция MES не выполнена');
+  window.location.reload();
+}
+
+function enqueue(queues: Map<string, Promise<void>>, key: string, job: () => Promise<void>): void {
   const previous = queues.get(key) ?? Promise.resolve();
-  const next = previous.catch(() => undefined).then(async () => { await job(); });
+  const next = previous
+    .catch(() => undefined)
+    .then(job)
+    .catch(reportRemoteFailure);
   queues.set(key, next);
   void next.finally(() => {
     if (queues.get(key) === next) queues.delete(key);
   });
-}
-
-function reportRemoteFailure(error: unknown): void {
-  window.alert(error instanceof Error ? error.message : 'Серверная операция MES не выполнена');
-  window.location.reload();
 }
 
 document.addEventListener('change', event => {
@@ -78,7 +81,3 @@ document.addEventListener('click', event => {
 // The existing main module remains the UI/state coordinator. This bootstrap
 // only adds server-side persistence guards before it is evaluated.
 void import('./main');
-
-window.addEventListener('unhandledrejection', event => {
-  if (event.reason) reportRemoteFailure(event.reason);
-});
