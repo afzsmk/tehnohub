@@ -55,7 +55,7 @@ begin
     when v_new_actual >= v_task.planned_quantity
       and (not v_task.quality_required or v_task.quality_status = 'APPROVED')
       then 'COMPLETED'
-    when can_transition_status(v_task.status, 'PARTIALLY_COMPLETED')\      then 'PARTIALLY_COMPLETED'
+    when can_transition_status(v_task.status, 'PARTIALLY_COMPLETED') then 'PARTIALLY_COMPLETED'
     else v_task.status
   end;
 
