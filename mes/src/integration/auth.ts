@@ -7,9 +7,9 @@ export interface MesAuthState {
 }
 
 export async function getMesAuthState(client: SupabaseClient): Promise<MesAuthState> {
-  const { data, error } = await client.auth.getUser();
-  if (error && error.message) throw error;
-  const user = data.user;
+  const { data, error } = await client.auth.getSession();
+  if (error) throw error;
+  const user = data.session?.user ?? null;
   if (!user) return { user: null, identity: null };
   return { user, identity: await resolveMesIdentity(client) };
 }
@@ -33,7 +33,7 @@ export function subscribeMesAuth(client: SupabaseClient, callback: (state: MesAu
         return;
       }
       await callback({ user: session.user, identity: await resolveMesIdentity(client) });
-    })();
+    })().catch(() => undefined);
   });
   return () => data.subscription.unsubscribe();
 }
