@@ -85,22 +85,24 @@ export function bindCalendarEditor(root: ParentNode, options: CalendarEditorOpti
     });
   });
 
-  root.querySelector<HTMLFormElement>('#block-form')?.addEventListener('submit', event => {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const data = new FormData(form);
-    const equipmentId = String(data.get('equipment') ?? '');
-    const start = String(data.get('start') ?? '');
-    const end = String(data.get('end') ?? '');
-    if (!equipmentId || !start || !end || new Date(start).getTime() >= new Date(end).getTime()) return;
-    options.onAddBlock({
-      equipmentId,
-      start: new Date(start).toISOString(),
-      end: new Date(end).toISOString(),
-      reason: String(data.get('reason') ?? 'OTHER') as EquipmentBlockReason,
-      comment: String(data.get('comment') ?? '') || undefined
+  const form = root.querySelector<HTMLFormElement>('#block-form');
+  if (form) {
+    form.addEventListener('submit', event => {
+      event.preventDefault();
+      const data = new FormData(form);
+      const equipmentId = String(data.get('equipment') ?? '');
+      const start = String(data.get('start') ?? '');
+      const end = String(data.get('end') ?? '');
+      if (!equipmentId || !start || !end || new Date(start).getTime() >= new Date(end).getTime()) return;
+      options.onAddBlock({
+        equipmentId,
+        start: new Date(start).toISOString(),
+        end: new Date(end).toISOString(),
+        reason: String(data.get('reason') ?? 'OTHER') as EquipmentBlockReason,
+        comment: String(data.get('comment') ?? '') || undefined
+      });
     });
-  });
+  }
 
   root.querySelectorAll<HTMLButtonElement>('[data-remove-block]').forEach(button => {
     button.addEventListener('click', () => options.onRemoveBlock(button.dataset.removeBlock ?? ''));
