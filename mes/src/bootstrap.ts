@@ -12,6 +12,8 @@ import { mountOperationalWorkflowPage } from './ui/operationalWorkflowPage';
 import { mountWorkflowMonitorPage } from './ui/workflowMonitorPage';
 import { mountProductionEntryPage } from './ui/productionEntryPage';
 import { mountEquipmentOperationsPage } from './ui/equipmentOperationsPage';
+import { mountDispatchGanttPage } from './ui/dispatchGanttPage';
+import { subscribeMesRealtime } from './integration/mesRealtime';
 import { getMesSupabaseClient } from './services/supabase';
 
 const supabase = getMesSupabaseClient();
@@ -126,10 +128,12 @@ void import('./main').then(async () => {
   await mountOperationalWorkflowPage(app, supabase);
   await mountProductionEntryPage(app, supabase);
   await mountEquipmentOperationsPage(app, supabase);
+  await mountDispatchGanttPage(app, supabase);
   await mountOrdersPage(app, supabase);
   await mountQualityPage(app, supabase);
   await mountEventJournalPage(app, supabase);
   await mountIntegrityPage(app, supabase);
   await mountWorkflowMonitorPage(app, supabase);
   await mountRouteEditor(app, supabase);
+  subscribeMesRealtime(supabase, { tables: ['production_orders','production_tasks','task_assignments','production_results','quality_inspections','downtime_events','maintenance_orders','equipment_blocks','production_events'], onChange: () => window.dispatchEvent(new CustomEvent('mes-realtime-update')) });
 }).catch(reportRemoteFailure);
