@@ -251,7 +251,6 @@ function render(): void {
     onAssignEmployee: (taskId: string, employeeId: string) => {
       const task = state.tasks.find(item => item.id === taskId);
       if (!task) return;
-      void new SupabaseMesExecutionRpc(supabase!).executeTaskAction(taskId, 'START').catch(() => undefined);
       task.assignedEmployeeIds = employeeId ? [employeeId] : [];
       task.version += 1;
       saveState(state);
