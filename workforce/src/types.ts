@@ -85,6 +85,7 @@ export interface NormConfigEntry {
 }
 
 export interface ScenarioData {
+  scenarioId?: string;
   professions: Profession[];
   products: Product[];
   months: string[];
