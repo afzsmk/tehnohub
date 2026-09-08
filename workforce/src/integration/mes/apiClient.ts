@@ -1,4 +1,4 @@
-import { MesActualReport, MesImportResult, WorkforcePublishedPlan } from './types';
+import { MesImportResult, WorkforcePublishedPlan } from './types';
 
 export interface MesApiClientOptions {
   baseUrl: string;
@@ -22,14 +22,6 @@ export class MesApiClient {
 
   async publishPlan(payload: WorkforcePublishedPlan): Promise<MesImportResult> {
     return this.post<MesImportResult>('/api/v1/integrations/workforce/plans', payload, payload.idempotencyKey);
-  }
-
-  async sendActualReport(payload: MesActualReport): Promise<{ accepted: boolean; messageId: string }> {
-    return this.post<{ accepted: boolean; messageId: string }>(
-      '/api/v1/integrations/mes/actuals',
-      payload,
-      payload.idempotencyKey,
-    );
   }
 
   private async post<T>(path: string, body: unknown, idempotencyKey: string): Promise<T> {
