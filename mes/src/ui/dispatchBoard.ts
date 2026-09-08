@@ -43,7 +43,16 @@ function findShift(taskStart: number, shifts: ShiftDefinition[], calendar: Calen
   return undefined;
 }
 
-function issuesFor(task: ProductionTask, tasks: ProductionTask[], calendar: CalendarDay[], equipmentBlocks: EquipmentBlock[], shifts: ShiftDefinition[], operation?: RouteOperation, employees: Employee[] = [], equipment: Equipment[] = []): TaskIssue[] {
+function issuesFor(
+  task: ProductionTask,
+  tasks: ProductionTask[],
+  calendar: CalendarDay[],
+  equipmentBlocks: EquipmentBlock[],
+  shifts: ShiftDefinition[],
+  operation: RouteOperation | undefined,
+  employees: Employee[] = [],
+  equipment: Equipment[] = []
+): TaskIssue[] {
   const issues: TaskIssue[] = [];
   const start = new Date(task.plannedStart).getTime();
   const end = new Date(task.plannedEnd).getTime();
@@ -56,10 +65,15 @@ function issuesFor(task: ProductionTask, tasks: ProductionTask[], calendar: Cale
     if (!assignedEmployee) issues.push({ kind: 'QUALIFICATION', message: `Требуется квалификация ${operation.requiredQualification}; сотрудник не назначен.` });
     else if (assignedEmployee.qualificationLevel < operation.requiredQualification) issues.push({ kind: 'QUALIFICATION', message: `Квалификация сотрудника (${assignedEmployee.qualificationLevel}) ниже требуемой (${operation.requiredQualification}).` });
   }
+
   const assignedEquipment = equipment.find(e => e.id === task.assignedEquipmentIds[0]);
   if (!assignedEquipment) issues.push({ kind: 'EQUIPMENT', message: 'Оборудование не назначено.' });
-  if (operation?.requiredEquipmentIds?.length && task.assignedEquipmentIds[0] && !operation.requiredEquipmentIds.includes(task.assignedEquipmentIds[0])) issues.push({ kind: 'EQUIPMENT', message: 'Назначенное оборудование не соответствует операции.' });
-  if (operation && !operation.requiredEquipmentIds?.length && assignedEquipment && assignedEquipment.workCenter !== operation.workCenter) issues.push({ kind: 'EQUIPMENT', message: 'У оборудования другой производственный участок.' });
+  if (operation?.requiredEquipmentIds?.length && task.assignedEquipmentIds[0] && !operation.requiredEquipmentIds.includes(task.assignedEquipmentIds[0])) {
+    issues.push({ kind: 'EQUIPMENT', message: 'Назначенное оборудование не соответствует операции.' });
+  }
+  if (operation && !operation.requiredEquipmentIds?.length && assignedEquipment && assignedEquipment.workCenter !== operation.workCenter) {
+    issues.push({ kind: 'EQUIPMENT', message: 'У оборудования другой производственный участок.' });
+  }
 
   for (const other of tasks) {
     if (other.id === task.id) continue;
@@ -99,7 +113,16 @@ export function renderDispatchBoard(options: DispatchBoardOptions): string {
   return `<div class="dispatch-toolbar"><div><strong>Диспетчерская доска</strong><span>${calendar.length} дней · ${tasks.length} заданий</span></div><div class="legend"><span><i class="dot normal"></i>Норма</span><span><i class="dot conflict-dot"></i>Конфликт</span></div></div><div class="dispatch-grid">${cells}</div>`;
 }
 
-function renderTaskCard(task: ProductionTask, tasks: ProductionTask[], employees: Employee[], equipment: Equipment[], shifts: ShiftDefinition[], calendar: CalendarDay[], equipmentBlocks: EquipmentBlock[], operations: RouteOperation[]): string {
+function renderTaskCard(
+  task: ProductionTask,
+  tasks: ProductionTask[],
+  employees: Employee[],
+  equipment: Equipment[],
+  shifts: ShiftDefinition[],
+  calendar: CalendarDay[],
+  equipmentBlocks: EquipmentBlock[],
+  operations: RouteOperation[]
+): string {
   const operation = operations.find(op => op.id === task.operationId);
   const issues = issuesFor(task, tasks, calendar, equipmentBlocks, shifts, operation, employees, equipment);
   const employeeId = task.assignedEmployeeIds[0] ?? '';
@@ -110,8 +133,18 @@ function renderTaskCard(task: ProductionTask, tasks: ProductionTask[], employees
   const duration = Math.max(1, Math.round((new Date(task.plannedEnd).getTime() - new Date(task.plannedStart).getTime()) / MINUTE_MS));
   const conflictHtml = issues.length ? `<div class="task-issues">${issues.map(issue => `<div>⚠ ${issue.message}</div>`).join('')}</div>` : '';
   const requiredQualification = operation?.requiredQualification ?? 0;
-  const employeeOptions = employees.filter(e => e.active && e.qualificationLevel >= requiredQualification).map(e => `<option value="${e.id}" ${e.id === employeeId ? 'selected' : ''}>${e.name} · разряд ${e.qualificationLevel}</option>`).join('');
-  const equipmentOptions = equipment.filter(e => e.active && (!operation?.requiredEquipmentIds?.length || operation.requiredEquipmentIds.includes(e.id)) && (!operation?.requiredEquipmentIds?.length ? e.workCenter === operation.workCenter : true)).map(e => `<option value="${e.id}" ${e.id === equipmentId ? 'selected' : ''}>${e.name}</option>`).join('');
+  const employeeOptions = employees
+    .filter(e => e.active && e.qualificationLevel >= requiredQualification)
+    .map(e => `<option value="${e.id}" ${e.id === employeeId ? 'selected' : ''}>${e.name} · разряд ${e.qualificationLevel}</option>`)
+    .join('');
+  const equipmentOptions = equipment
+    .filter(e =>
+      e.active &&
+      (!operation?.requiredEquipmentIds?.length || operation.requiredEquipmentIds.includes(e.id)) &&
+      (!operation?.requiredEquipmentIds?.length ? e.workCenter === operation?.workCenter : true)
+    )
+    .map(e => `<option value="${e.id}" ${e.id === equipmentId ? 'selected' : ''}>${e.name}</option>`)
+    .join('');
   return `<article class="task-card ${issues.length ? 'has-conflict' : ''}">
     <div class="task-card-top"><strong>${task.id}</strong><span>${shift?.name ?? 'вне смены'}</span></div>
     <div class="task-card-title">${formatTime(task.plannedStart)}–${formatTime(task.plannedEnd)} · ${duration} мин</div>
