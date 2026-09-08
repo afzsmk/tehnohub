@@ -38,13 +38,12 @@ export function preparePublication(data: ScenarioData, options: PublishPlanOptio
 
   const payload = buildWorkforcePublishedPlan(data, {
     scenarioId: options.scenarioId,
+    scenarioName: options.scenarioName,
     applicationVersion: options.applicationVersion,
     planId: publication.planId,
     version: publication.version,
     publishedAt: publication.publishedAt,
   });
-
-  if (options.scenarioName) payload.scenarioName = options.scenarioName;
 
   const errors = validatePublishedPlan(payload);
   if (errors.length) {
