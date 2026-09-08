@@ -4,6 +4,7 @@ import { SupabaseMesReplanRpc, MesReplanChange } from './integration/mesReplanRp
 import { SupabaseMesCalendarRpc } from './integration/mesCalendarRpc';
 import { mountRouteEditor } from './ui/routeEditor';
 import { mountQualityPage } from './ui/qualityPage';
+import { mountMesDashboardPage } from './ui/mesDashboardPage';
 import { getMesSupabaseClient } from './services/supabase';
 
 const supabase = getMesSupabaseClient();
@@ -116,4 +117,5 @@ void import('./main').then(async () => {
   const app = document.querySelector<HTMLDivElement>('#app') ?? document.body;
   await mountRouteEditor(app, supabase);
   await mountQualityPage(app, supabase);
+  await mountMesDashboardPage(app, supabase);
 }).catch(reportRemoteFailure);
