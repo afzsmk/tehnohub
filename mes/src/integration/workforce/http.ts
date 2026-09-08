@@ -60,8 +60,8 @@ export class WorkforceMesHttpClientImpl implements WorkforceMesHttpClient {
   }
 
   async sendActualFeedback(dto: MesActualFeedbackBatchDto): Promise<void> {
-    await this.request<unknown>('/api/mes/v1/workforce/actual-feedback', dto);
     validateActualFeedback(dto);
+    await this.request<unknown>('/api/mes/v1/workforce/actual-feedback', dto);
   }
 
   private async request<T>(path: WorkforceMesApiPath, body: unknown): Promise<T> {
