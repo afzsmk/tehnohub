@@ -1,3 +1,4 @@
+import './ordersPage.css';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ProductionOrder } from '../types';
 import { getMesAuthState } from '../integration/auth';
@@ -16,8 +17,7 @@ export async function mountOrdersPage(root: HTMLElement, client: SupabaseClient)
   if (!role) return;
   const canPlan = PLANNING_ROLES.includes(role);
   const canRelease = RELEASE_ROLES.includes(role);
-  const query = client.from('production_orders').select('id,external_id,number,product_id,quantity,completed_quantity,due_at,priority,status').order('due_at',{ascending:true});
-  const { data, error } = await query;
+  const { data, error } = await client.from('production_orders').select('id,external_id,number,product_id,quantity,completed_quantity,due_at,priority,status').order('due_at',{ascending:true});
   if (error) throw error;
   const orders = (Array.isArray(data) ? data : []) as Array<Omit<ProductionOrder,'route'> & { external_id:string|null }>;
   const host=document.createElement('section');
@@ -34,7 +34,7 @@ export async function mountOrdersPage(root: HTMLElement, client: SupabaseClient)
     }).join('')||'<tr><td colspan="7">Заказов нет</td></tr>'}</tbody></table></div>`;
   root.appendChild(host);
   const rpc=new SupabaseMesOrderRpc(client);
-  host.querySelector('#orders-refresh')?.addEventListener('click',()=>window.location.reload());
+  host.querySelector<HTMLButtonElement>('#orders-refresh')?.addEventListener('click',()=>window.location.reload());
   host.querySelectorAll<HTMLButtonElement>('[data-plan-order]').forEach(button=>button.addEventListener('click',async()=>{try{const r=await rpc.planOrder(button.dataset.planOrder??'');window.alert(`Создано заданий: ${r.createdTasks}; существовало: ${r.existingTasks}`);window.location.reload();}catch(error){window.alert(error instanceof Error?error.message:'Не удалось спланировать заказ');}}));
   const change=async(button:HTMLButtonElement,next:ProductionOrder['status'])=>{try{await rpc.changeStatus(button.dataset.orderId??'',next);window.location.reload();}catch(error){window.alert(error instanceof Error?error.message:'Не удалось изменить статус заказа');}};
   host.querySelectorAll<HTMLButtonElement>('[data-release-order]').forEach(button=>{button.dataset.orderId=button.dataset.releaseOrder??'';button.addEventListener('click',()=>void change(button,'RELEASED'));});
