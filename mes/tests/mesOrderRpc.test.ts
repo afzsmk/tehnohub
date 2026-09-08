@@ -36,6 +36,23 @@ describe('Supabase MES order RPC', () => {
     expect(order.route).toEqual([]);
   });
 
+  it('plans an order and returns created-task count', async () => {
+    let called: { name: string; args: Record<string, unknown> } | undefined;
+    const rpc = new SupabaseMesOrderRpc(fakeClient(
+      { orderId: 'O-001', createdTasks: 2, existingTasks: 0, status: 'PLANNED' },
+      null,
+      (name, args) => { called = { name, args }; }
+    ));
+
+    await expect(rpc.planOrder('O-001')).resolves.toEqual({
+      orderId: 'O-001',
+      createdTasks: 2,
+      existingTasks: 0,
+      status: 'PLANNED'
+    });
+    expect(called).toEqual({ name: 'mes_plan_order', args: { p_order_id: 'O-001' } });
+  });
+
   it('propagates server validation errors', async () => {
     const rpc = new SupabaseMesOrderRpc(fakeClient(null, new Error('Нельзя планировать заказ без активного технологического маршрута')));
     await expect(rpc.changeStatus('O-001', 'PLANNED')).rejects.toThrow('активного технологического маршрута');
