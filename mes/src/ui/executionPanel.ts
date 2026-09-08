@@ -12,6 +12,16 @@ export interface ExecutionPanelOptions {
   onDowntimeEnd: (downtimeId: string) => void;
 }
 
+function qualityLabel(task: ProductionTask): string {
+  if (!task.qualityRequired) return '<span class="subtle">Не требуется</span>';
+  switch (task.qualityStatus) {
+    case 'APPROVED': return '<strong>✓ Одобрено</strong>';
+    case 'REJECTED': return '<strong>✕ Отклонено</strong>';
+    case 'PENDING': return '<strong>◷ Ожидает ОТК</strong>';
+    default: return '<strong>◷ Требуется ОТК</strong>';
+  }
+}
+
 function actionButtons(task: ProductionTask): string {
   const buttons: string[] = [];
   if (task.status === 'PLANNED' || task.status === 'ASSIGNED') buttons.push(`<button class="tiny" data-action="PREPARE" data-task="${task.id}">Подготовить</button>`);
@@ -19,7 +29,10 @@ function actionButtons(task: ProductionTask): string {
   if (task.status === 'RUNNING') buttons.push(`<button class="tiny" data-action="PAUSE" data-task="${task.id}">Ⅱ Пауза</button>`);
   if (task.status === 'PAUSED') buttons.push(`<button class="tiny action-start" data-action="RESUME" data-task="${task.id}">▶ Продолжить</button>`);
   if (task.status === 'RUNNING' || task.status === 'PARTIALLY_COMPLETED') buttons.push(`<button class="tiny" data-action="BLOCK" data-task="${task.id}">⚠ Блок</button>`);
-  if (task.status === 'RUNNING' || task.status === 'PARTIALLY_COMPLETED') buttons.push(`<button class="tiny action-complete" data-action="COMPLETE" data-task="${task.id}">✓ Завершить</button>`);
+  if (task.status === 'RUNNING' || task.status === 'PARTIALLY_COMPLETED') {
+    const qualityBlocked = Boolean(task.qualityRequired) && task.qualityStatus !== 'APPROVED';
+    buttons.push(`<button class="tiny action-complete" data-action="COMPLETE" data-task="${task.id}" ${qualityBlocked ? 'disabled title="Сначала получить одобрение ОТК"' : ''}>✓ Завершить</button>`);
+  }
   return buttons.join(' ') || '<span class="subtle">—</span>';
 }
 
@@ -37,6 +50,7 @@ export function renderExecutionPanel(options: ExecutionPanelOptions): string {
       <td>${equipment?.name ?? '—'}</td>
       <td>${employee?.name ?? '—'}</td>
       <td>${good} / ${task.plannedQuantity}<br><span class="subtle">брак: ${scrap}</span></td>
+      <td>${qualityLabel(task)}</td>
       <td>${actionButtons(task)}</td>
     </tr>`;
   }).join('');
@@ -49,11 +63,11 @@ export function renderExecutionPanel(options: ExecutionPanelOptions): string {
   return `<section class="panel execution-panel">
     <div class="panel-head"><div><h2>Фактическое производство</h2><div class="subtle">Запуск, пауза, завершение, выпуск годной продукции и брак</div></div></div>
     <div class="execution-grid">
-      <div class="execution-table-wrap"><table><thead><tr><th>Задание</th><th>Оборудование</th><th>Сотрудник</th><th>Факт / план</th><th>Действия</th></tr></thead><tbody>${rows || '<tr><td colspan="5">Нет активных заданий</td></tr>'}</tbody></table></div>
+      <div class="execution-table-wrap"><table><thead><tr><th>Задание</th><th>Оборудование</th><th>Сотрудник</th><th>Факт / план</th><th>ОТК</th><th>Действия</th></tr></thead><tbody>${rows || '<tr><td colspan="6">Нет активных заданий</td></tr>'}</tbody></table></div>
       <div class="execution-side">
         <form id="result-form" class="result-form">
           <h3>Записать выпуск</h3>
-          <select name="task" required><option value="">Выберите задание</option>${activeTasks.map(t => `<option value="${t.id}">${t.id} · план ${t.plannedQuantity}</option>`).join('')}</select>
+          <select name="task" required><option value="">Выберите задание</option>${activeTasks.map(t => `<option value="${t.id}">${t.id} · план ${t.plannedQuantity}${t.qualityRequired ? ' · ОТК' : ''}</option>`).join('')}</select>
           <input name="good" type="number" min="0" step="1" placeholder="Годная продукция" required>
           <input name="scrap" type="number" min="0" step="1" value="0" placeholder="Брак" required>
           <input name="comment" placeholder="Комментарий">
