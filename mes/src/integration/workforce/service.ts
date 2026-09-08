@@ -8,9 +8,16 @@ export interface WorkforceIntegrationStore {
   appendLog(entry: IntegrationLogEntry): void;
 }
 
-export class InMemoryWorkforceIntegrationStore implements WorkforceIntegrationStore {
+export interface WorkforceIntegrationHistoryStore extends WorkforceIntegrationStore {
+  recordImportedPlan(dto: WorkforcePublishedPlanDto): void;
+  recordActualFeedback(dto: MesActualFeedbackBatchDto): void;
+}
+
+export class InMemoryWorkforceIntegrationStore implements WorkforceIntegrationHistoryStore {
   private readonly processed = new Set<string>();
   readonly log: IntegrationLogEntry[] = [];
+  readonly importedPlans: WorkforcePublishedPlanDto[] = [];
+  readonly actualFeedbackBatches: MesActualFeedbackBatchDto[] = [];
 
   hasProcessed(key: string): boolean {
     return this.processed.has(key);
@@ -22,6 +29,14 @@ export class InMemoryWorkforceIntegrationStore implements WorkforceIntegrationSt
 
   appendLog(entry: IntegrationLogEntry): void {
     this.log.push(entry);
+  }
+
+  recordImportedPlan(dto: WorkforcePublishedPlanDto): void {
+    this.importedPlans.push(structuredClone(dto));
+  }
+
+  recordActualFeedback(dto: MesActualFeedbackBatchDto): void {
+    this.actualFeedbackBatches.push(structuredClone(dto));
   }
 }
 
@@ -63,6 +78,7 @@ export class WorkforceIntegrationService {
       accepted: true,
       message: mapped.warnings.join('; ') || undefined
     });
+    if (this.isHistoryStore(this.store)) this.store.recordImportedPlan(dto);
 
     return {
       receipt: {
@@ -87,5 +103,13 @@ export class WorkforceIntegrationService {
       this.store.markProcessed(event.idempotencyKey);
       this.store.appendLog({ direction: 'OUTBOUND', messageType: 'ACTUAL_FEEDBACK', idempotencyKey: event.idempotencyKey, receivedAt: new Date().toISOString(), accepted: true });
     }
+    if (newEvents.length && this.isHistoryStore(this.store)) {
+      this.store.recordActualFeedback({ ...structuredClone(dto), events: structuredClone(newEvents) });
+    }
+  }
+
+  private isHistoryStore(store: WorkforceIntegrationStore): store is WorkforceIntegrationHistoryStore {
+    return typeof (store as Partial<WorkforceIntegrationHistoryStore>).recordImportedPlan === 'function'
+      && typeof (store as Partial<WorkforceIntegrationHistoryStore>).recordActualFeedback === 'function';
   }
 }
