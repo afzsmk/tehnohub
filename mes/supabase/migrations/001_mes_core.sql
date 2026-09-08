@@ -70,10 +70,11 @@ create table if not exists production_tasks (
 );
 
 create table if not exists task_assignments (
+  id bigserial primary key,
   task_id text not null references production_tasks(id) on delete cascade,
   employee_id text references employees(id),
   equipment_id text references equipment(id),
-  primary key (task_id, employee_id, equipment_id)
+  check (employee_id is not null or equipment_id is not null)
 );
 
 create table if not exists equipment_blocks (
@@ -159,6 +160,9 @@ create index if not exists idx_results_task on production_results(task_id, recor
 create index if not exists idx_downtime_equipment on downtime_events(equipment_id, started_at);
 create index if not exists idx_blocks_equipment on equipment_blocks(equipment_id, start_at, end_at);
 create index if not exists idx_maintenance_equipment on maintenance_orders(equipment_id, planned_start, planned_end);
+create index if not exists idx_assignments_task on task_assignments(task_id);
+create index if not exists idx_assignments_employee on task_assignments(employee_id);
+create index if not exists idx_assignments_equipment on task_assignments(equipment_id);
 
 -- Execution history is append-only. Corrections must be represented by a new corrective event/result.
 create or replace function prevent_append_only_mutation() returns trigger as $$
