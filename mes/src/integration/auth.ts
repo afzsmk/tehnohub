@@ -74,6 +74,7 @@ export async function signOutMes(client: SupabaseClient): Promise<void> {
   const { error } = await client.auth.signOut();
   if (error) throw error;
   restoreDemoState();
+  if (typeof window !== 'undefined') window.location.reload();
 }
 
 export function subscribeMesAuth(client: SupabaseClient, callback: (state: MesAuthState) => void | Promise<void>): () => void {
