@@ -32,15 +32,15 @@ begin
     raise exception 'Версия плана устарела: ожидается %, фактически %', p_plan_version, v_plan.version;
   end if;
 
-  create temporary table if not exists pg_temp.mes_replan_changes (
+  create temporary table if not exists mes_replan_changes (
     task_id text primary key,
     expected_version integer not null,
     proposed_start timestamptz not null,
     proposed_end timestamptz not null
   ) on commit drop;
-  truncate pg_temp.mes_replan_changes;
+  truncate mes_replan_changes;
 
-  insert into pg_temp.mes_replan_changes(task_id, expected_version, proposed_start, proposed_end)
+  insert into mes_replan_changes(task_id, expected_version, proposed_start, proposed_end)
   select
     item->>'taskId',
     (item->>'expectedVersion')::integer,
@@ -49,14 +49,14 @@ begin
   from jsonb_array_elements(p_changes) as item;
 
   if exists (
-    select 1 from pg_temp.mes_replan_changes c
+    select 1 from mes_replan_changes c
     join production_tasks t on t.id = c.task_id
     join production_orders o on o.id = t.order_id
     where o.plan_id <> p_plan_id
   ) then raise exception 'Все задания перепланирования должны принадлежать указанному плану'; end if;
 
   if exists (
-    select 1 from pg_temp.mes_replan_changes c
+    select 1 from mes_replan_changes c
     left join production_tasks t on t.id = c.task_id
     where t.id is null
        or t.status in ('COMPLETED','CANCELLED')
@@ -64,17 +64,16 @@ begin
   ) then raise exception 'Конфликт версий или попытка изменить завершённое задание'; end if;
 
   if exists (
-    select 1 from pg_temp.mes_replan_changes
+    select 1 from mes_replan_changes
     where proposed_end <= proposed_start
        or proposed_start < v_plan.horizon_start
        or proposed_end > v_plan.horizon_end
   ) then raise exception 'Изменённый интервал выходит за горизонт плана'; end if;
 
-  -- Changed tasks must not overlap each other when they share an employee/equipment.
   if exists (
     select 1
-      from pg_temp.mes_replan_changes a
-      join pg_temp.mes_replan_changes b on a.task_id < b.task_id
+      from mes_replan_changes a
+      join mes_replan_changes b on a.task_id < b.task_id
       join task_assignments aa on aa.task_id = a.task_id
       join task_assignments ab on ab.task_id = b.task_id
                                   and (aa.employee_id is not distinct from ab.employee_id
@@ -82,10 +81,9 @@ begin
      where a.proposed_start < b.proposed_end and b.proposed_start < a.proposed_end
   ) then raise exception 'Перепланирование создаёт конфликт ресурсов между заданиями'; end if;
 
-  -- Changed tasks must not overlap unchanged tasks sharing a resource.
   if exists (
     select 1
-      from pg_temp.mes_replan_changes c
+      from mes_replan_changes c
       join task_assignments ca on ca.task_id = c.task_id
       join production_tasks t on t.id <> c.task_id
       join task_assignments ta on ta.task_id = t.id
@@ -93,12 +91,12 @@ begin
                                            or ca.equipment_id is not distinct from ta.equipment_id)
       join production_orders o on o.id = t.order_id and o.plan_id = p_plan_id
       where t.status not in ('COMPLETED','CANCELLED')
-        and t.id not in (select task_id from pg_temp.mes_replan_changes)
+        and t.id not in (select task_id from mes_replan_changes)
         and c.proposed_start < t.planned_end
         and t.planned_start < c.proposed_end
   ) then raise exception 'Перепланирование создаёт конфликт с существующим заданием'; end if;
 
-  for v_change in select c.*, t.planned_start, t.planned_end, t.version from pg_temp.mes_replan_changes c join production_tasks t on t.id = c.task_id loop
+  for v_change in select c.*, t.planned_start, t.planned_end, t.version from mes_replan_changes c join production_tasks t on t.id = c.task_id loop
     v_before := jsonb_build_object('plannedStart', v_change.planned_start, 'plannedEnd', v_change.planned_end, 'version', v_change.version);
     update production_tasks
        set planned_start = v_change.proposed_start,
