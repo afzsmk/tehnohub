@@ -92,9 +92,9 @@ function publishCurrentPlan(baseUrl: string): void {
   void (async () => {
     try {
       const state = await storageService.loadState();
-      const scenarioId = state.scenarios[state.currentScenario]?.publication?.planId || state.currentScenario;
       const data = state.scenarios[state.currentScenario];
       if (!data) throw new Error('Не найден активный сценарий.');
+      const scenarioId = data.scenarioId || state.currentScenario;
 
       const prepared = preparePublication(data, {
         scenarioId,
