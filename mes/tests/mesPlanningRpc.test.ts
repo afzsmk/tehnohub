@@ -1,12 +1,25 @@
 import { describe, expect, it } from 'vitest';
 import { SupabaseMesPlanningRpc } from '../src/integration/mesPlanningRpc';
 
-function fakeClient(response: unknown, responseError: unknown = null, capture?: (name: string, args: Record<string, unknown>) => void) {
+function fakeClient(
+  response: unknown,
+  responseError: unknown = null,
+  capture?: (name: string, args: Record<string, unknown>) => void,
+  assignmentRows: Array<{ employee_id: string | null; equipment_id: string | null }> = []
+) {
   return {
     rpc: async (name: string, args: Record<string, unknown>) => {
       capture?.(name, args);
       return { data: response, error: responseError };
-    }
+    },
+    from: (table: string) => ({
+      select: (_columns: string) => ({
+        eq: (_column: string, _value: string) => Promise.resolve({
+          data: table === 'task_assignments' ? assignmentRows : [],
+          error: null
+        })
+      })
+    })
   } as never;
 }
 
@@ -19,7 +32,14 @@ const dbTask = {
 describe('Supabase MES planning RPC', () => {
   it('sends partial employee assignment without clearing equipment', async () => {
     let called: { name: string; args: Record<string, unknown> } | undefined;
-    const rpc = new SupabaseMesPlanningRpc(fakeClient(dbTask, null, (name, args) => { called = { name, args }; }));
+    const rpc = new SupabaseMesPlanningRpc(
+      fakeClient(
+        dbTask,
+        null,
+        (name, args) => { called = { name, args }; },
+        [{ employee_id: 'E-1', equipment_id: 'M-1' }]
+      )
+    );
 
     const task = await rpc.assignTask('TASK-1', { employeeIds: ['E-1', 'E-1'] }, 3);
 
@@ -31,7 +51,7 @@ describe('Supabase MES planning RPC', () => {
       p_expected_version: 3
     });
     expect(task.assignedEmployeeIds).toEqual(['E-1']);
-    expect(task.assignedEquipmentIds).toEqual([]);
+    expect(task.assignedEquipmentIds).toEqual(['M-1']);
     expect(task.version).toBe(4);
   });
 
