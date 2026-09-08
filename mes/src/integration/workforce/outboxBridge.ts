@@ -2,22 +2,16 @@ import { buildActualFeedbackBatch } from './feedback';
 import { MesState } from '../../types';
 import { WorkforceOutboxStore } from './outbox';
 
-/**
- * Adds only newly-created MES production events to the outbound Workforce outbox.
- * The production event itself remains the source of truth; the outbox only tracks delivery.
- */
+/** Enqueue newly created, exportable MES events without depending on array position. */
 export function enqueueNewActualFeedbackEvents(
   state: MesState,
-  previousEventCount: number,
+  previousEventIds: ReadonlySet<string>,
   store: WorkforceOutboxStore,
   sourceSiteExternalId: string,
   sentAt?: string
 ): number {
   const batch = buildActualFeedbackBatch(state, sourceSiteExternalId, sentAt);
-  if (previousEventCount < 0 || previousEventCount > batch.events.length) {
-    throw new Error('Некорректная граница новых событий');
-  }
-  const newEvents = batch.events.slice(previousEventCount);
+  const newEvents = batch.events.filter(event => !previousEventIds.has(event.eventId));
   store.enqueue(newEvents);
   return newEvents.length;
 }
