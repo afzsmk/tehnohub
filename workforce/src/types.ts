@@ -7,6 +7,7 @@ export type NormMethod = 'stat' | 'chrono';
 export interface Profession {
   id: string;
   name: string;
+  externalId?: string;
   pool: PoolType;
   machines?: number; // ❗️ Добавлен знак вопроса: machines?: number
   crew: number;
@@ -18,6 +19,7 @@ export interface Profession {
 export interface Product {
   id: string;
   name: string;
+  externalId?: string;
   unit: string;
   scrap: number;
   norms: Record<string, number>; // profId -> norm (hours/unit)
@@ -40,6 +42,16 @@ export interface Settings {
   extendedShiftHours: number;
   fNomExtended: number;
   fEffExtended: number;
+}
+
+export type PlanPublicationStatus = 'draft' | 'published' | 'archived';
+
+export interface PlanPublication {
+  planId: string;
+  version: number;
+  status: PlanPublicationStatus;
+  publishedAt?: string;
+  publishedBy?: string;
 }
 
 export interface StatNormConfig {
@@ -80,6 +92,7 @@ export interface ScenarioData {
   settings: Settings;
   normConfigs?: Record<string, NormConfigEntry>; // key: `${prodId}___${profId}`
   _planSnapshot?: Record<string, number[]>;
+  publication?: PlanPublication;
 }
 
 export interface AppState {
