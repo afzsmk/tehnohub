@@ -2,12 +2,12 @@ import { getMesAuthState } from './integration/auth';
 import { SupabaseMesPlanningRpc } from './integration/mesPlanningRpc';
 import { SupabaseMesReplanRpc, MesReplanChange } from './integration/mesReplanRpc';
 import { SupabaseMesCalendarRpc } from './integration/mesCalendarRpc';
+import { mountRouteEditor } from './ui/routeEditor';
 import { getMesSupabaseClient } from './services/supabase';
 
 const supabase = getMesSupabaseClient();
 const assignmentQueues = new Map<string, Promise<void>>();
 const replanQueues = new Map<string, Promise<void>>();
-const calendarQueueKey = 'calendar';
 let calendarSaveQueue: Promise<void> = Promise.resolve();
 const assignmentVersions = new Map<string, number>();
 
@@ -18,10 +18,7 @@ function reportRemoteFailure(error: unknown): void {
 
 function enqueue(queues: Map<string, Promise<void>>, key: string, job: () => Promise<void>): void {
   const previous = queues.get(key) ?? Promise.resolve();
-  const next = previous
-    .catch(() => undefined)
-    .then(job)
-    .catch(reportRemoteFailure);
+  const next = previous.catch(() => undefined).then(job).catch(reportRemoteFailure);
   queues.set(key, next);
   void next.finally(() => {
     if (queues.get(key) === next) queues.delete(key);
@@ -29,10 +26,7 @@ function enqueue(queues: Map<string, Promise<void>>, key: string, job: () => Pro
 }
 
 function enqueueCalendarSave(job: () => Promise<void>): void {
-  calendarSaveQueue = calendarSaveQueue
-    .catch(() => undefined)
-    .then(job)
-    .catch(reportRemoteFailure);
+  calendarSaveQueue = calendarSaveQueue.catch(() => undefined).then(job).catch(reportRemoteFailure);
 }
 
 document.addEventListener('change', event => {
@@ -55,8 +49,7 @@ document.addEventListener('change', event => {
     const auth = await getMesAuthState(supabase);
     if (!auth.identity) return;
     const expectedVersion = assignmentVersions.get(taskId) ?? domVersion;
-    const rpc = new SupabaseMesPlanningRpc(supabase);
-    await rpc.assignTask(
+    await new SupabaseMesPlanningRpc(supabase).assignTask(
       taskId,
       isEmployee ? { employeeIds: value ? [value] : [] } : { equipmentIds: value ? [value] : [] },
       expectedVersion
@@ -68,13 +61,11 @@ document.addEventListener('change', event => {
 document.addEventListener('change', event => {
   const target = event.target;
   if (!(target instanceof HTMLInputElement) && !(target instanceof HTMLSelectElement)) return;
-  if (!supabase) return;
-  if (!target.matches('[data-working], [data-day][data-shift], [data-employee-day]')) return;
+  if (!supabase || !target.matches('[data-working], [data-day][data-shift], [data-employee-day]')) return;
 
   enqueueCalendarSave(async () => {
     const auth = await getMesAuthState(supabase);
     if (!auth.identity) return;
-    await Promise.resolve();
 
     const calendar = Array.from(document.querySelectorAll<HTMLInputElement>('[data-working]')).map(input => {
       const date = input.dataset.working ?? '';
@@ -87,12 +78,7 @@ document.addEventListener('change', event => {
 
     const employeeSchedules = Array.from(document.querySelectorAll<HTMLSelectElement>('[data-employee-day]')).map(select => {
       const [employeeId, date] = (select.dataset.employeeDay ?? '|').split('|');
-      return {
-        employeeId,
-        date,
-        shiftIds: select.value ? [select.value] : [],
-        status: select.value ? 'WORK' as const : 'OFF' as const
-      };
+      return { employeeId, date, shiftIds: select.value ? [select.value] : [], status: select.value ? 'WORK' as const : 'OFF' as const };
     }).filter(item => item.employeeId && item.date);
 
     await new SupabaseMesCalendarRpc(supabase).saveCalendar(calendar, employeeSchedules);
@@ -121,10 +107,14 @@ document.addEventListener('click', event => {
   enqueue(replanQueues, planId, async () => {
     const auth = await getMesAuthState(supabase);
     if (!auth.identity) return;
-    const rpc = new SupabaseMesReplanRpc(supabase);
-    await rpc.apply(planId, planVersion, changes);
+    await new SupabaseMesReplanRpc(supabase).apply(planId, planVersion, changes);
     window.location.reload();
   });
-}, true);
+});
 
-void import('./main');
+void import('./main').then(async () => {
+  if (!supabase) return;
+  const auth = await getMesAuthState(supabase);
+  if (!auth.identity) return;
+  await mountRouteEditor(document.querySelector<HTMLDivElement>('#app') ?? document.body, supabase);
+}).catch(reportRemoteFailure);
