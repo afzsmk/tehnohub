@@ -94,14 +94,11 @@ document.addEventListener('click', event => {
     const taskId = target.dataset.task;
     if (!taskId) return;
 
+    event.stopImmediatePropagation();
     enqueue(prepareQueues, taskId, async () => {
       const auth = await getMesAuthState(supabase);
       if (!auth.identity) return;
-      const version = Number(target.closest('tr')?.querySelector<HTMLElement>('[data-version]')?.dataset.version);
-      await new SupabaseMesPlanningRpc(supabase).prepareTask(
-        taskId,
-        Number.isInteger(version) && version > 0 ? version : undefined
-      );
+      await new SupabaseMesPlanningRpc(supabase).prepareTask(taskId);
       window.location.reload();
     });
     return;
