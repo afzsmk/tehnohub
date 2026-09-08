@@ -7,6 +7,7 @@ import { renderDispatchBoard } from './ui/dispatchBoard';
 import { bindCalendarEditor, renderCalendarEditor } from './ui/calendarEditor';
 import { bindExecutionPanel, renderExecutionPanel } from './ui/executionPanel';
 import { bindReplanPanel, renderReplanPanel, applyApprovedReplan } from './ui/replanPanel';
+import { bindMaintenancePanel, renderMaintenancePanel } from './ui/maintenancePanel';
 import { renderPlanFactPanel } from './ui/planFactPanel';
 import { MesState, ProductionTask } from './types';
 import { loadState, saveState } from './services/storage';
@@ -115,6 +116,8 @@ function removeEquipmentBlock(blockId: string): void { state.equipmentBlocks = s
 function applyControlledReplan(preview: import('./core/planFact').ReplanPreview): void { applyApprovedReplan(state.tasks, preview); state.plan.version += 1; state.plan.status = 'DRAFT'; saveState(state); render(); }
 function showError(error: unknown): void { window.alert(error instanceof Error ? error.message : 'Операция не выполнена'); }
 
+function onMaintenanceChanged(): void { saveState(state); calculate(); render(); }
+
 ensureHorizon();
 if (state.tasks.length === 0) calculate();
 
@@ -135,6 +138,7 @@ function render(): void {
     onDowntimeEnd: downtimeId => { try { endDowntime(state, downtimeId, actorId); saveState(state); render(); } catch (error) { showError(error); } }
   });
 
+  const maintenanceHtml = renderMaintenancePanel({ state, actorId, onChanged: onMaintenanceChanged, onError: showError });
   const planFactHtml = renderPlanFactPanel({ orders: state.orders, tasks: state.tasks, results: state.results, downtimes: state.downtimes });
   const replanHtml = renderReplanPanel({ tasks: state.tasks, downtimes: state.downtimes, plan: state.plan, onApply: applyControlledReplan });
   const calendarHtml = renderCalendarEditor({ calendar: state.calendar, shifts: state.shifts, employees: state.employees, employeeSchedules: state.employeeSchedules, equipment: state.equipment, equipmentBlocks: state.equipmentBlocks, onCalendarChange: updateCalendarDay, onEmployeeScheduleChange: updateEmployeeSchedule, onAddBlock: addEquipmentBlock, onRemoveBlock: removeEquipmentBlock });
@@ -145,6 +149,7 @@ function render(): void {
   <main class="page"><section class="kpis"><article><span>Заказы</span><strong>${state.orders.length}</strong></article><article><span>Задания</span><strong>${state.tasks.length}</strong></article><article><span>Выпущено</span><strong>${totalGood}</strong></article><article class="${conflicts.length ? 'danger' : ''}"><span>Конфликты</span><strong>${conflicts.length}</strong></article><article><span>Открытые простои</span><strong>${openDowntime}</strong></article></section>
   <section class="panel"><div class="panel-head"><div><h2>Диспетчерская доска</h2><div class="subtle">30 дней · ${state.shifts.length} смены · ${state.equipmentBlocks.length} блокировки</div></div><button id="recalc" class="primary">Пересчитать</button></div>${dispatchHtml}</section>
   ${executionHtml}
+  ${maintenanceHtml}
   ${replanHtml}
   ${planFactHtml}
   <section class="panel">${calendarHtml}</section>
@@ -155,6 +160,7 @@ function render(): void {
   root.querySelectorAll<HTMLButtonElement>('[data-move]').forEach(button => button.addEventListener('click', () => moveTask(button.dataset.move ?? '', Number(button.dataset.delta ?? 0))));
   root.querySelectorAll<HTMLSelectElement>('[data-employee]').forEach(select => select.addEventListener('change', () => updateTask(select.dataset.employee ?? '', { assignedEmployeeIds: select.value ? [select.value] : [] })));
   root.querySelectorAll<HTMLSelectElement>('[data-equipment]').forEach(select => select.addEventListener('change', () => updateTask(select.dataset.equipment ?? '', { assignedEquipmentIds: select.value ? [select.value] : [] })));
+  bindMaintenancePanel(root, { state, actorId, onChanged: onMaintenanceChanged, onError: showError });
   bindReplanPanel(root, { tasks: state.tasks, downtimes: state.downtimes, plan: state.plan, onApply: applyControlledReplan });
   bindExecutionPanel(root, { tasks: state.tasks, employees: state.employees, equipment: state.equipment, results: state.results, downtimes: state.downtimes, onAction: (id, action) => { try { executeTaskAction(state, id, action, actorId); saveState(state); render(); } catch (e) { showError(e); } }, onResult: (id, good, scrap, comment) => { try { const task = state.tasks.find(t => t.id === id); recordProductionResult(state, id, { goodQuantity: good, scrapQuantity: scrap, comment, employeeIds: task?.assignedEmployeeIds ?? [], equipmentIds: task?.assignedEquipmentIds ?? [] }, actorId); saveState(state); render(); } catch (e) { showError(e); } }, onDowntimeStart: (equipmentId, reasonCode, comment) => { try { startDowntime(state, { equipmentId, reasonCode, comment }, actorId); saveState(state); render(); } catch (e) { showError(e); } }, onDowntimeEnd: id => { try { endDowntime(state, id, actorId); saveState(state); render(); } catch (e) { showError(e); } } });
   bindCalendarEditor(root, { calendar: state.calendar, shifts: state.shifts, employees: state.employees, employeeSchedules: state.employeeSchedules, equipment: state.equipment, equipmentBlocks: state.equipmentBlocks, onCalendarChange: updateCalendarDay, onEmployeeScheduleChange: updateEmployeeSchedule, onAddBlock: addEquipmentBlock, onRemoveBlock: removeEquipmentBlock });
