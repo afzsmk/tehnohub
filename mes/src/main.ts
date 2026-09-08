@@ -238,12 +238,43 @@ function render(): void {
   const openDowntime = state.downtimes.filter(d => !d.endedAt).length;
   const summary = buildPlanFactSummary(state.tasks, state.results, state.downtimes);
   const conflicts = state.tasks.filter(task => state.tasks.some(other => other.id !== task.id && new Date(task.plannedStart).getTime() < new Date(other.plannedEnd).getTime() && new Date(other.plannedStart).getTime() < new Date(task.plannedEnd).getTime()));
-  root.innerHTML = `${authHtml()}<header><h1>MES — оперативное управление производством</h1><div class="subtitle">1–30 дней · План/Факт · исполнение · простой · ТО · перепланирование</div></header><section class="kpis"><div class="kpi"><span>Операции</span><strong>${operations.length}</strong></div><div class="kpi"><span>Задания</span><strong>${state.tasks.length}</strong></div><div class="kpi"><span>Выпущено</span><strong>${totalGood}</strong></div><div class="kpi"><span>Открытые простои</span><strong>${openDowntime}</strong></div><div class="kpi"><span>Конфликты</span><strong>${conflicts.length}</strong></div></section>${renderDispatchBoard(state)}${renderCalendarEditor(state)}${renderExecutionPanel(state)}${renderMaintenancePanel(state)}${renderPlanFactPanel(state, summary)}${renderReplanPanel(state)}${renderIntegrationPanel(integrationStore)}`;
-  bindCalendarEditor(root, updateCalendarDay, updateEmployeeSchedule);
-  bindExecutionPanel(root, handleAction, handleResult, handleDowntimeStart, handleDowntimeEnd);
-  bindMaintenancePanel(root, addEquipmentBlock, removeEquipmentBlock, onMaintenanceChanged);
-  bindReplanPanel(root, applyControlledReplan);
-  bindIntegrationPanel(root, integrationStore);
+
+  const dispatchOptions = {
+    tasks: state.tasks,
+    employees: state.employees,
+    equipment: state.equipment,
+    shifts: state.shifts,
+    calendar: state.calendar,
+    equipmentBlocks: state.equipmentBlocks,
+    operations,
+    onMove: moveTask,
+    onAssignEmployee: (taskId: string, employeeId: string) => {
+      const task = state.tasks.find(item => item.id === taskId);
+      if (!task) return;
+      void new SupabaseMesExecutionRpc(supabase!).executeTaskAction(taskId, 'START').catch(() => undefined);
+      task.assignedEmployeeIds = employeeId ? [employeeId] : [];
+      task.version += 1;
+      saveState(state);
+      render();
+    },
+    onAssignEquipment: (taskId: string, equipmentId: string) => {
+      const task = state.tasks.find(item => item.id === taskId);
+      if (!task) return;
+      task.assignedEquipmentIds = equipmentId ? [equipmentId] : [];
+      task.version += 1;
+      saveState(state);
+      render();
+    }
+  };
+
+  root.innerHTML = `${authHtml()}<header><h1>MES — оперативное управление производством</h1><div class="subtitle">1–30 дней · План/Факт · исполнение · простой · ТО · перепланирование</div></header><section class="kpis"><div class="kpi"><span>Операции</span><strong>${operations.length}</strong></div><div class="kpi"><span>Задания</span><strong>${state.tasks.length}</strong></div><div class="kpi"><span>Выпущено</span><strong>${totalGood}</strong></div><div class="kpi"><span>Открытые простои</span><strong>${openDowntime}</strong></div><div class="kpi"><span>Конфликты</span><strong>${conflicts.length}</strong></div></section>${renderDispatchBoard(dispatchOptions)}${renderCalendarEditor({ calendar: state.calendar, shifts: state.shifts, employees: state.employees, employeeSchedules: state.employeeSchedules, equipment: state.equipment, equipmentBlocks: state.equipmentBlocks, onCalendarChange: updateCalendarDay, onEmployeeScheduleChange: updateEmployeeSchedule, onAddBlock: addEquipmentBlock, onRemoveBlock: removeEquipmentBlock })}${renderExecutionPanel({ tasks: state.tasks, employees: state.employees, equipment: state.equipment, results: state.results, downtimes: state.downtimes, onAction: handleAction, onResult: handleResult, onDowntimeStart: handleDowntimeStart, onDowntimeEnd: handleDowntimeEnd })}${renderMaintenancePanel({ state, actorId: currentActorId(), onChanged: onMaintenanceChanged, onError: showError })}${renderPlanFactPanel({ orders: state.orders, tasks: state.tasks, results: state.results, downtimes: state.downtimes, now: new Date() })}${renderReplanPanel({ tasks: state.tasks, downtimes: state.downtimes, plan: state.plan, onApply: applyControlledReplan })}${renderIntegrationPanel({ store: integrationStore, onRefresh: () => render() })}`;
+
+  bindCalendarEditor(root, { calendar: state.calendar, shifts: state.shifts, employees: state.employees, employeeSchedules: state.employeeSchedules, equipment: state.equipment, equipmentBlocks: state.equipmentBlocks, onCalendarChange: updateCalendarDay, onEmployeeScheduleChange: updateEmployeeSchedule, onAddBlock: addEquipmentBlock, onRemoveBlock: removeEquipmentBlock });
+  bindExecutionPanel(root, { tasks: state.tasks, employees: state.employees, equipment: state.equipment, results: state.results, downtimes: state.downtimes, onAction: handleAction, onResult: handleResult, onDowntimeStart: handleDowntimeStart, onDowntimeEnd: handleDowntimeEnd });
+  bindMaintenancePanel(root, { state, actorId: currentActorId(), onChanged: onMaintenanceChanged, onError: showError });
+  bindReplanPanel(root, { tasks: state.tasks, downtimes: state.downtimes, plan: state.plan, onApply: applyControlledReplan });
+  bindIntegrationPanel(root, { store: integrationStore, onRefresh: () => render() });
+
   const loginForm = root.querySelector<HTMLFormElement>('#login-form');
   loginForm?.addEventListener('submit', async event => {
     event.preventDefault();
