@@ -42,6 +42,7 @@ const seed: MesState = {
 const state = loadState(seed);
 const app = document.querySelector<HTMLDivElement>('#app');
 if (!app) throw new Error('Не найден контейнер приложения');
+const root = app;
 
 function render(): void {
   const schedule = buildDeterministicSchedule({ orders: state.orders, employees: state.employees, equipment: state.equipment, horizonStart: state.plan.horizonStart, horizonEnd: state.plan.horizonEnd });
@@ -52,7 +53,7 @@ function render(): void {
   const downtime = state.downtimes.length;
   const blocked = schedule.conflicts.length;
 
-  app.innerHTML = `
+  root.innerHTML = `
     <header class="topbar">
       <div><div class="eyebrow">ТЕХНОХАБ ЗСМК</div><h1>MES • Производственное управление</h1></div>
       <div class="plan-badge">План v${state.plan.version} · ${state.plan.status}</div>
