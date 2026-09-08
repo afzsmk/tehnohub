@@ -105,27 +105,14 @@ function formatDate(value: string): string {
 
 async function persistAssignment(
   task: ProductionTask,
-  assignment: { employeeIds?: string[]; equipmentIds?: string[] },
-  callback: () => void
+  assignment: { employeeIds?: string[]; equipmentIds?: string[] }
 ): Promise<void> {
   const supabase = getMesSupabaseClient();
-  if (!supabase) {
-    callback();
-    return;
-  }
-
+  if (!supabase) return;
   const auth = await getMesAuthState(supabase);
-  if (!auth.identity) {
-    callback();
-    return;
-  }
-
+  if (!auth.identity) return;
   const rpc = new SupabaseMesPlanningRpc(supabase);
-  await rpc.assignTask(task.id, {
-    employeeIds: assignment.employeeIds ?? task.assignedEmployeeIds,
-    equipmentIds: assignment.equipmentIds ?? task.assignedEquipmentIds
-  }, task.version);
-  callback();
+  await rpc.assignTask(task.id, assignment, task.version);
 }
 
 export function renderDispatchBoard(options: DispatchBoardOptions): string {
@@ -180,8 +167,8 @@ function renderTaskCard(
     <div class="task-controls">
       <button class="tiny" data-move="${task.id}" data-delta="-30">−30м</button>
       <button class="tiny" data-move="${task.id}" data-delta="30">+30м</button>
-      <select data-employee="${task.id}" aria-label="Сотрудник"><option value="">Сотрудник</option>${employeeOptions}</select>
-      <select data-equipment="${task.id}" aria-label="Оборудование"><option value="">Оборудование</option>${equipmentOptions}</select>
+      <select data-employee="${task.id}" data-version="${task.version}" aria-label="Сотрудник"><option value="">Сотрудник</option>${employeeOptions}</select>
+      <select data-equipment="${task.id}" data-version="${task.version}" aria-label="Оборудование"><option value="">Оборудование</option>${equipmentOptions}</select>
     </div>
     ${conflictHtml}
   </article>`;
