@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -9,6 +9,12 @@ function migration(name: string): string {
 }
 
 describe('MES SQL security baseline', () => {
+  it('keeps migration version prefixes unique', () => {
+    const files = readdirSync(migrationsDir).filter((name) => /^\d+_.+\.sql$/.test(name));
+    const versions = files.map((name) => name.match(/^(\d+)_/)![1]);
+    expect(new Set(versions).size).toBe(versions.length);
+  });
+
   it('locks master and runtime tables against direct authenticated writes', () => {
     const sql = migration('054_mes_master_runtime_write_lockdown.sql');
     for (const table of [
@@ -26,8 +32,8 @@ describe('MES SQL security baseline', () => {
 
   it('adds defense-in-depth DML revokes for every browser-mutable MES table', () => {
     const sql = migration('055_mes_authenticated_dml_privilege_lockdown.sql');
-    expect(sql).toContain("execute format(");
-    expect(sql).toContain("'revoke insert, update, delete on public.%I from authenticated'");
+    expect(sql).toContain('execute format(');
+    expect(sql).toContain('revoke insert, update, delete on public.%I from authenticated');
     for (const table of [
       'operational_plans',
       'products',
