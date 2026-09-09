@@ -1,7 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { MesState } from '../types';
 
-export type MesRuntimeSnapshot = Partial<MesState> & { plan: MesState['plan'] | null };
+export type MesRuntimeSnapshot = Partial<MesState> & {
+  plan: MesState['plan'] | null;
+  calendarRevision?: number;
+};
 
 function requireSnapshot(data: unknown): MesRuntimeSnapshot {
   if (!data || typeof data !== 'object' || Array.isArray(data)) {
