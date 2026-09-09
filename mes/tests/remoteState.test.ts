@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyRemoteSnapshot, RemoteSnapshot } from '../src/integration/remoteState';
+import { applyRemoteSnapshot, loadMesStateFromSupabase, RemoteSnapshot } from '../src/integration/remoteState';
 import type { MesState } from '../src/types';
 
 const baseState: MesState = {
@@ -17,6 +17,14 @@ const snapshot: RemoteSnapshot = {
   }]
 };
 
+function fakeClient(rowsByTable: Record<string, unknown[]>) {
+  return {
+    from: (table: string) => ({
+      select: async () => ({ data: rowsByTable[table] ?? [], error: null })
+    })
+  } as never;
+}
+
 describe('MES remote state hydration', () => {
   it('keeps quality inspection history when applying the remote snapshot', () => {
     const state: MesState = { ...baseState, qualityInspections: undefined };
@@ -24,5 +32,19 @@ describe('MES remote state hydration', () => {
     applyRemoteSnapshot(state, snapshot);
 
     expect(state.qualityInspections).toEqual(snapshot.qualityInspections);
+  });
+
+  it('loads quality inspection history from the remote state source', async () => {
+    const qualityRows = [{
+      id: 'QI-1', task_id: 'TASK-1', inspected_at: '2026-01-02T10:00:00Z', inspector_id: 'USER-Q',
+      status: 'APPROVED', good_quantity: '10', scrap_quantity: '0', defect_code: null, comment: 'approved'
+    }];
+
+    const remote = await loadMesStateFromSupabase(fakeClient({ quality_inspections: qualityRows }), baseState);
+
+    expect(remote.qualityInspections).toEqual([{
+      id: 'QI-1', taskId: 'TASK-1', inspectedAt: '2026-01-02T10:00:00Z', inspectorId: 'USER-Q',
+      status: 'APPROVED', goodQuantity: 10, scrapQuantity: 0, defectCode: undefined, comment: 'approved'
+    }]);
   });
 });
