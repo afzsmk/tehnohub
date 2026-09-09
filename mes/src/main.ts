@@ -16,6 +16,7 @@ import { SupabaseMesExecutionRpc, MesExecutionAction } from './integration/mesEx
 import { SupabaseMesCalendarRpc } from './integration/mesCalendarRpc';
 import { SupabaseMesPlanningRpc } from './integration/mesPlanningRpc';
 import { SupabaseMesReplanRpc } from './integration/mesReplanRpc';
+import { SupabaseMesEquipmentBlockRpc } from './integration/mesEquipmentBlockRpc';
 import { getMesSupabaseClient } from './services/supabase';
 import { MesState, ProductionTask } from './types';
 import { loadState, saveState } from './services/storage';
@@ -74,6 +75,7 @@ const remoteExecution = supabase ? new SupabaseMesExecutionRpc(supabase) : null;
 const remoteCalendar = supabase ? new SupabaseMesCalendarRpc(supabase) : null;
 const remotePlanning = supabase ? new SupabaseMesPlanningRpc(supabase) : null;
 const remoteReplan = supabase ? new SupabaseMesReplanRpc(supabase) : null;
+const remoteEquipmentBlocks = supabase ? new SupabaseMesEquipmentBlockRpc(supabase) : null;
 let authState: MesAuthState = { user: null, identity: null };
 let authUnsubscribe: (() => void) | null = null;
 let calendarSaveChain: Promise<void> = Promise.resolve();
@@ -83,6 +85,7 @@ const root = app;
 
 function currentActorId(): string { return authState.identity?.userId ?? 'demo-dispatcher'; }
 function remoteReady(): boolean { return Boolean(remoteExecution && authState.identity); }
+function remoteEquipmentBlocksReady(): boolean { return Boolean(remoteEquipmentBlocks && authState.identity); }
 
 function queueCalendarSave(): void {
   if (!remoteCalendar || !authState.identity) return;
@@ -161,8 +164,36 @@ function updateEmployeeSchedule(employeeId: string, date: string, status: 'WORK'
   queueCalendarSave();
 }
 
-function addEquipmentBlock(block: Omit<import('./types').EquipmentBlock, 'id'>): void { state.equipmentBlocks.push({ ...block, id: `EB-${Date.now()}` }); calculate(); render(); }
-function removeEquipmentBlock(blockId: string): void { state.equipmentBlocks = state.equipmentBlocks.filter(b => b.id !== blockId); calculate(); render(); }
+async function addEquipmentBlock(block: Omit<import('./types').EquipmentBlock, 'id'>): Promise<void> {
+  if (remoteEquipmentBlocksReady()) {
+    try {
+      const remoteBlock = await remoteEquipmentBlocks!.createBlock(block);
+      state.equipmentBlocks.push(remoteBlock);
+      calculate();
+      render();
+    } catch (error) { showError(error); }
+    return;
+  }
+  state.equipmentBlocks.push({ ...block, id: `EB-${Date.now()}` });
+  calculate();
+  render();
+}
+
+async function removeEquipmentBlock(blockId: string): Promise<void> {
+  if (remoteEquipmentBlocksReady()) {
+    try {
+      const remoteBlock = await remoteEquipmentBlocks!.deleteBlock(blockId);
+      state.equipmentBlocks = state.equipmentBlocks.filter(block => block.id !== remoteBlock.id);
+      calculate();
+      render();
+    } catch (error) { showError(error); }
+    return;
+  }
+  state.equipmentBlocks = state.equipmentBlocks.filter(b => b.id !== blockId);
+  calculate();
+  render();
+}
+
 async function applyControlledReplan(preview: import('./core/planFact').ReplanPreview): Promise<void> {
   if (remoteReady() && remoteReplan) {
     if (preview.conflicts.length > 0) return;
