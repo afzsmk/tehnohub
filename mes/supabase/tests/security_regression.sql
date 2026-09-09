@@ -73,6 +73,18 @@ select ok(not exists (
     and has_function_privilege('anon', p.oid, 'execute')
 ), 'no SECURITY DEFINER MES function is executable by anon');
 
+-- SECURITY DEFINER MES functions must pin the search_path so callers cannot
+-- influence name resolution through a hostile session search_path.
+select ok(not exists (
+  select 1
+  from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'public'
+    and p.prosecdef
+    and p.proname like 'mes_%'
+    and not ('search_path=public' = any(coalesce(p.proconfig, array[]::text[])))
+), 'all SECURITY DEFINER MES functions pin search_path to public');
+
 -- Core browser-facing RPCs must remain callable by authenticated clients.
 select ok(exists (
   select 1
