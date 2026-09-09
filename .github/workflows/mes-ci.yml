@@ -9,15 +9,20 @@ on:
       - 'mes/**'
       - '.github/workflows/mes-ci.yml'
       - '.github/workflows/deploy.yml'
+      - '.github/workflows/mes-supabase.yml'
   pull_request:
     paths:
       - 'mes/**'
       - '.github/workflows/mes-ci.yml'
       - '.github/workflows/deploy.yml'
+      - '.github/workflows/mes-supabase.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   test-and-build:
@@ -34,9 +39,22 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: mes/package.json
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: 2.105.0
       - name: Install dependencies
         run: npm install
+      - name: Start local Supabase
+        run: supabase start
+      - name: Reset local database from migrations
+        run: supabase db reset --local --no-seed
+      - name: Run database security regression tests
+        run: supabase test db --local
       - name: Run tests
         run: npm test
       - name: Build
         run: npm run build
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop
