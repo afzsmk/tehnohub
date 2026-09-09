@@ -160,5 +160,5 @@ $$;
 
 grant execute on function mes_record_production_result(text,numeric,numeric,jsonb,text,timestamptz) to authenticated;
 
-comment on function mes_record_production_result(text,numeric,numeric,jsonb,text,text,timestamptz) is
+comment on function mes_record_production_result(text,numeric,numeric,jsonb,text,timestamptz) is
 'Production facts cannot rely on stale partial quality approval; newly produced quantity beyond the approved snapshot reopens the Quality Gate.';
