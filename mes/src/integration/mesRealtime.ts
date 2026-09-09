@@ -2,11 +2,16 @@ import type { SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
 
 export const MES_REALTIME_TABLES = [
   'operational_plans',
+  'products',
+  'employees',
+  'equipment',
+  'shift_definitions',
+  'calendar_days',
+  'employee_schedules',
+  'route_operations',
   'production_orders',
   'production_tasks',
   'task_assignments',
-  'calendar_days',
-  'employee_schedules',
   'production_results',
   'quality_inspections',
   'downtime_events',
