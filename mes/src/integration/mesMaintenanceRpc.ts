@@ -31,9 +31,9 @@ export class SupabaseMesMaintenanceRpc {
     return mapMaintenance(row<DbMaintenance>(data,'mes_create_maintenance_order'));
   }
 
-  async changeStatus(orderId:string,action:MaintenanceAction):Promise<MaintenanceOrder> {
+  async changeStatus(orderId:string,action:MaintenanceAction,expectedStatus?:MaintenanceStatus):Promise<MaintenanceOrder> {
     const next:MaintenanceStatus = action==='START'?'IN_PROGRESS':action==='COMPLETE'?'DONE':'CANCELLED';
-    const {data,error}=await this.client.rpc('mes_change_maintenance_status',{p_order_id:orderId,p_next_status:next});
+    const {data,error}=await this.client.rpc('mes_change_maintenance_status',{p_order_id:orderId,p_next_status:next,p_expected_status:expectedStatus??null});
     if(error) throw error;
     return mapMaintenance(row<DbMaintenance>(data,'mes_change_maintenance_status'));
   }
