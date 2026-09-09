@@ -58,7 +58,11 @@ describe('Supabase MES maintenance RPC', () => {
 
     await rpc.changeStatus(order.id, 'START');
     expect(called?.name).toBe('mes_change_maintenance_status');
-    expect(called?.args).toEqual({ p_order_id: order.id, p_next_status: 'IN_PROGRESS' });
+    expect(called?.args).toEqual({
+      p_order_id: order.id,
+      p_next_status: 'IN_PROGRESS',
+      p_expected_status: null
+    });
   });
 
   it('propagates RPC errors', async () => {
