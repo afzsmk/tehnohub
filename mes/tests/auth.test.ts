@@ -127,6 +127,8 @@ describe('MES auth remote hydration', () => {
       null
     ));
 
-    expect(result.identity).toEqual({ userId: 'USER-2', employeeId: null, role: 'MASTER' });
+    // Master users may legitimately have no employee mapping. The identity
+    // contract represents an absent mapping as an empty string, not null.
+    expect(result.identity).toEqual({ userId: 'USER-2', employeeId: '', role: 'MASTER' });
   });
 });
