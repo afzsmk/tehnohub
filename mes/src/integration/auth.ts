@@ -14,6 +14,7 @@ export interface MesAuthState {
 
 function browserStorage(): Storage | null {
   try {
+    if (typeof window !== 'undefined' && window.localStorage) return window.localStorage;
     return typeof localStorage === 'undefined' ? null : localStorage;
   } catch {
     return null;
