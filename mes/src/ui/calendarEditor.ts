@@ -11,6 +11,7 @@ export interface CalendarEditorOptions {
   onEmployeeScheduleChange: (employeeId: string, date: string, status: EmployeeSchedule['status'], shiftIds: string[]) => void | Promise<void>;
   onAddBlock: (block: Omit<EquipmentBlock, 'id'>) => void | Promise<void>;
   onRemoveBlock: (blockId: string) => void | Promise<void>;
+  onError: (error: unknown) => void;
 }
 
 function dateLabel(date: string): string {
@@ -20,13 +21,11 @@ function dateLabel(date: string): string {
 export function renderCalendarEditor(options: CalendarEditorOptions): string {
   const { calendar, shifts, employees, employeeSchedules, equipment, equipmentBlocks } = options;
   const days = calendar.slice(0, 30);
-
   const calendarRows = days.map(day => {
     const selected = new Set(day.shiftIds);
     const checks = shifts.map(shift => `<label class="shift-check"><input type="checkbox" data-day="${day.date}" data-shift="${shift.id}" ${selected.has(shift.id) ? 'checked' : ''}>${shift.name}</label>`).join('');
     return `<div class="calendar-day-row ${day.isWorking ? '' : 'off'}"><div><strong>${dateLabel(day.date)}</strong><span>${day.isWorking ? 'Рабочий' : 'Выходной'}</span></div><label class="working-toggle"><input type="checkbox" data-working="${day.date}" ${day.isWorking ? 'checked' : ''}> работа</label><div class="shift-checks">${checks}</div></div>`;
   }).join('');
-
   const employeeRows = employees.filter(e => e.active).map(employee => {
     const cells = days.map(day => {
       const schedule = employeeSchedules.find(s => s.employeeId === employee.id && s.date === day.date);
@@ -36,12 +35,10 @@ export function renderCalendarEditor(options: CalendarEditorOptions): string {
     }).join('');
     return `<tr><th>${employee.name}<span>разряд ${employee.qualificationLevel}</span></th>${cells}</tr>`;
   }).join('');
-
   const blockRows = equipmentBlocks.map(block => {
     const eq = equipment.find(item => item.id === block.equipmentId);
     return `<tr><td>${eq?.name ?? block.equipmentId}</td><td>${new Date(block.start).toLocaleString('ru-RU')} → ${new Date(block.end).toLocaleString('ru-RU')}</td><td>${block.reason}</td><td><button class="tiny danger-button" data-remove-block="${block.id}">Удалить</button></td></tr>`;
   }).join('');
-
   return `<div class="calendar-editor">
     <div class="editor-head"><div><h3>Операционный календарь · 30 дней</h3><p>Календарь, персональные смены и блокировки оборудования управляются из MES.</p></div></div>
     <div class="calendar-section"><div class="section-title">Производственный календарь</div><div class="calendar-day-list">${calendarRows}</div></div>
@@ -65,26 +62,23 @@ export function bindCalendarEditor(root: ParentNode, options: CalendarEditorOpti
     input.addEventListener('change', () => {
       const date = input.dataset.working ?? '';
       const shifts = Array.from(root.querySelectorAll<HTMLInputElement>(`[data-day="${date}"][data-shift]`)).filter(i => i.checked).map(i => i.dataset.shift ?? '').filter(Boolean);
-      void Promise.resolve(options.onCalendarChange(date, input.checked, input.checked ? shifts : [])).catch(optionsOnError(options));
+      void Promise.resolve(options.onCalendarChange(date, input.checked, input.checked ? shifts : [])).catch(options.onError);
     });
   });
-
   root.querySelectorAll<HTMLInputElement>('[data-day][data-shift]').forEach(input => {
     input.addEventListener('change', () => {
       const date = input.dataset.day ?? '';
       const working = root.querySelector<HTMLInputElement>(`[data-working="${date}"]`)?.checked ?? false;
       const shifts = Array.from(root.querySelectorAll<HTMLInputElement>(`[data-day="${date}"][data-shift]`)).filter(i => i.checked).map(i => i.dataset.shift ?? '').filter(Boolean);
-      void Promise.resolve(options.onCalendarChange(date, working, working ? shifts : [])).catch(optionsOnError(options));
+      void Promise.resolve(options.onCalendarChange(date, working, working ? shifts : [])).catch(options.onError);
     });
   });
-
   root.querySelectorAll<HTMLSelectElement>('[data-employee-day]').forEach(select => {
     select.addEventListener('change', () => {
       const [employeeId, date] = (select.dataset.employeeDay ?? '|').split('|');
-      void Promise.resolve(options.onEmployeeScheduleChange(employeeId, date, select.value ? 'WORK' : 'OFF', select.value ? [select.value] : [])).catch(optionsOnError(options));
+      void Promise.resolve(options.onEmployeeScheduleChange(employeeId, date, select.value ? 'WORK' : 'OFF', select.value ? [select.value] : [])).catch(options.onError);
     });
   });
-
   const form = root.querySelector<HTMLFormElement>('#block-form');
   if (form) {
     form.addEventListener('submit', event => {
@@ -100,20 +94,10 @@ export function bindCalendarEditor(root: ParentNode, options: CalendarEditorOpti
         end: new Date(end).toISOString(),
         reason: String(data.get('reason') ?? 'OTHER') as EquipmentBlockReason,
         comment: String(data.get('comment') ?? '') || undefined
-      })).catch(optionsOnError(options));
+      })).catch(options.onError);
     });
   }
-
   root.querySelectorAll<HTMLButtonElement>('[data-remove-block]').forEach(button => {
-    button.addEventListener('click', () => { void Promise.resolve(options.onRemoveBlock(button.dataset.removeBlock ?? '')).catch(optionsOnError(options)); });
+    button.addEventListener('click', () => { void Promise.resolve(options.onRemoveBlock(button.dataset.removeBlock ?? '')).catch(options.onError); });
   });
-}
-
-function optionsOnError(options: CalendarEditorOptions): (error: unknown) => void {
-  return error => {
-    // CalendarEditorOptions intentionally keeps the error boundary outside the UI,
-    // so rejecting server mutations is never an unhandled promise.
-    const handler = (options as CalendarEditorOptions & { onError?: (error: unknown) => void }).onError;
-    handler?.(error);
-  };
 }
