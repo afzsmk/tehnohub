@@ -11,10 +11,11 @@ function fakeClient(response: unknown, error: unknown = null, capture?: (name: s
 }
 
 describe('Supabase MES runtime snapshot RPC', () => {
-  it('requests a plan-aware authoritative snapshot', async () => {
+  it('requests a plan-aware authoritative snapshot with calendar revision', async () => {
     let called: { name: string; args: Record<string, unknown> } | undefined;
     const snapshot = {
-      plan: { id: 'PLAN-1', version: 7, horizonStart: '2026-09-09T00:00:00.000Z', horizonEnd: '2026-10-09T00:00:00.000Z', status: 'RELEASED' }
+      plan: { id: 'PLAN-1', version: 7, horizonStart: '2026-09-09T00:00:00.000Z', horizonEnd: '2026-10-09T00:00:00.000Z', status: 'RELEASED' },
+      calendarRevision: 12
     };
     const rpc = new SupabaseMesRuntimeSnapshotRpc(fakeClient(snapshot, null, (name, args) => { called = { name, args }; }));
 
@@ -24,7 +25,7 @@ describe('Supabase MES runtime snapshot RPC', () => {
 
   it('passes null when no preferred plan is available', async () => {
     let called: { name: string; args: Record<string, unknown> } | undefined;
-    const rpc = new SupabaseMesRuntimeSnapshotRpc(fakeClient({ plan: null }, null, (name, args) => { called = { name, args }; }));
+    const rpc = new SupabaseMesRuntimeSnapshotRpc(fakeClient({ plan: null, calendarRevision: 1 }, null, (name, args) => { called = { name, args }; }));
 
     await rpc.load();
     expect(called?.name).toBe('mes_get_runtime_snapshot');
