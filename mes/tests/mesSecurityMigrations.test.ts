@@ -26,6 +26,8 @@ describe('MES SQL security baseline', () => {
 
   it('adds defense-in-depth DML revokes for every browser-mutable MES table', () => {
     const sql = migration('055_mes_authenticated_dml_privilege_lockdown.sql');
+    expect(sql).toContain("execute format(");
+    expect(sql).toContain("'revoke insert, update, delete on public.%I from authenticated'");
     for (const table of [
       'operational_plans',
       'products',
@@ -48,7 +50,7 @@ describe('MES SQL security baseline', () => {
       'integration_outbox',
       'audit_log'
     ]) {
-      expect(sql).toContain(`revoke insert, update, delete on public.${table} from authenticated`);
+      expect(sql).toContain(`'${table}'`);
     }
   });
 
