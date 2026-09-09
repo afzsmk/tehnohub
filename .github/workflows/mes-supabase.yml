@@ -39,8 +39,11 @@ jobs:
       - name: Reset local database from migrations
         run: supabase db reset --local --no-seed
 
+      - name: Run database security regression tests
+        run: supabase test db --local
+
       - name: Lint database schema
-        run: supabase db lint --local
+        run: supabase db lint --local --level error
 
       - name: Stop local Supabase
         if: always()
