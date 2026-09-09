@@ -35,13 +35,17 @@ function readLocalState(): MesState | null {
 async function cacheRemoteState(client: SupabaseClient, userId: string): Promise<boolean> {
   const storage = browserStorage();
   if (!storage) return false;
-  if (storage.getItem(REMOTE_USER_KEY) === userId) return false;
   const current = readLocalState();
   if (!current) return false;
-  if (!storage.getItem(DEMO_BACKUP_KEY)) storage.setItem(DEMO_BACKUP_KEY, JSON.stringify(current));
 
-  // Use the same authoritative RPC used by the live runtime hydration path.
-  // This avoids a torn snapshot assembled from many independent table reads.
+  const hadRemoteUser = storage.getItem(REMOTE_USER_KEY) === userId;
+  if (!storage.getItem(DEMO_BACKUP_KEY) && !hadRemoteUser) {
+    storage.setItem(DEMO_BACKUP_KEY, JSON.stringify(current));
+  }
+
+  // Always refresh from the authoritative RPC for an authenticated session.
+  // The persisted user marker only prevents unnecessary demo backups; it must
+  // never suppress a refresh after a page reload or a concurrent server update.
   const snapshot = await new SupabaseMesRuntimeSnapshotRpc(client).load(current.plan.id);
   const merged: MesState = {
     ...current,
@@ -61,6 +65,12 @@ async function cacheRemoteState(client: SupabaseClient, userId: string): Promise
     qualityInspections: snapshot.qualityInspections ?? [],
     events: snapshot.events ?? []
   };
+
+  const changed = JSON.stringify(current) !== JSON.stringify(merged);
+  if (!changed) {
+    storage.setItem(REMOTE_USER_KEY, userId);
+    return false;
+  }
 
   storage.setItem(MES_STATE_KEY, JSON.stringify(merged));
   storage.setItem(REMOTE_USER_KEY, userId);
