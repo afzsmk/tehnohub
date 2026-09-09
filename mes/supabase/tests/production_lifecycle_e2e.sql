@@ -22,6 +22,15 @@ values ('E2E-PRODUCT', 'E2E', 'E2E MES Test Product', 'шт');
 insert into employees(id, personnel_no, name, profession, qualification_level, active)
 values ('E2E-EMP', 'E2E-001', 'E2E Operator', 'Оператор', 3, true);
 
+insert into shift_definitions(id, name, start_minute, duration_minutes, active)
+values ('E2E-SHIFT', 'E2E Shift', 480, 120, true);
+
+insert into calendar_days(date, is_working, shift_ids)
+values ('2026-01-02', true, '["E2E-SHIFT"]'::jsonb);
+
+insert into employee_schedules(employee_id, date, shift_ids, status)
+values ('E2E-EMP', '2026-01-02', '["E2E-SHIFT"]'::jsonb, 'WORK');
+
 insert into equipment(id, code, name, work_center, capabilities, active)
 values ('E2E-EQ', 'E2E-EQ', 'E2E Equipment', 'E2E WC', '["E2E-OP","E2E WC"]'::jsonb, true);
 
