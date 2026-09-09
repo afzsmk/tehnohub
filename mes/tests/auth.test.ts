@@ -1,5 +1,6 @@
-import { describe, expect, it, afterEach } from 'vitest';
-import { getMesAuthState, resolveMesIdentity } from '../src/integration/auth';
+import { afterEach, describe, expect, it } from 'vitest';
+import { getMesAuthState } from '../src/integration/auth';
+import { resolveMesIdentity } from '../src/integration/identitySession';
 import type { MesState } from '../src/types';
 
 function fakeIdentityClient(user: unknown, mapping: unknown, mappingError: unknown = null) {
