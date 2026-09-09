@@ -6,6 +6,14 @@ export interface MesTaskAssignment {
   equipmentIds?: string[];
 }
 
+export interface MesResourceRecommendation {
+  resourceType: 'EMPLOYEE' | 'EQUIPMENT';
+  resourceId: string;
+  resourceName: string;
+  score: number;
+  reasons: string[];
+}
+
 interface DbTask {
   id: string;
   order_id: string;
@@ -29,10 +37,7 @@ function requireRow(data: unknown): DbTask {
 }
 
 async function loadAssignments(client: SupabaseClient, taskId: string): Promise<{ employeeIds: string[]; equipmentIds: string[] }> {
-  const { data, error } = await client
-    .from('task_assignments')
-    .select('employee_id,equipment_id')
-    .eq('task_id', taskId);
+  const { data, error } = await client.from('task_assignments').select('employee_id,equipment_id').eq('task_id', taskId);
   if (error) throw error;
   const rows = Array.isArray(data) ? data as Array<{ employee_id: string | null; equipment_id: string | null }> : [];
   return {
@@ -89,5 +94,18 @@ export class SupabaseMesPlanningRpc {
     const row = requireRow(data);
     const assignments = await loadAssignments(this.client, taskId);
     return mapTask(row, assignments);
+  }
+
+  async recommendResources(taskId: string): Promise<MesResourceRecommendation[]> {
+    const { data, error } = await this.client.rpc('mes_recommend_task_resources', { p_task_id: taskId });
+    if (error) throw error;
+    const rows = Array.isArray(data) ? data as Array<{resource_type:string;resource_id:string;resource_name:string;score:number;reasons:unknown}> : [];
+    return rows.map(row => ({
+      resourceType: row.resource_type === 'EQUIPMENT' ? 'EQUIPMENT' : 'EMPLOYEE',
+      resourceId: row.resource_id,
+      resourceName: row.resource_name,
+      score: Number(row.score),
+      reasons: Array.isArray(row.reasons) ? row.reasons.map(String) : []
+    }));
   }
 }
