@@ -77,7 +77,7 @@ describe('MES SQL security baseline', () => {
   });
 
   it('pins all SECURITY DEFINER MES functions to the public schema path', () => {
-    const sql = migration('058_mes_security_definer_search_path.sql');
+    const sql = migration('059_mes_security_definer_search_path.sql');
     expect(sql).toContain('p.prosecdef');
     expect(sql).toContain("p.proname like 'mes_%'");
     expect(sql).toContain('pg_get_function_identity_arguments');
