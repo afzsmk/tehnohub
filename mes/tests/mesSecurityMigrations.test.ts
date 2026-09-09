@@ -24,6 +24,34 @@ describe('MES SQL security baseline', () => {
     expect(sql).toContain('using (false) with check (false)');
   });
 
+  it('adds defense-in-depth DML revokes for every browser-mutable MES table', () => {
+    const sql = migration('055_mes_authenticated_dml_privilege_lockdown.sql');
+    for (const table of [
+      'operational_plans',
+      'products',
+      'employees',
+      'equipment',
+      'shift_definitions',
+      'calendar_days',
+      'employee_schedules',
+      'route_operations',
+      'production_orders',
+      'production_tasks',
+      'task_assignments',
+      'equipment_blocks',
+      'downtime_events',
+      'maintenance_orders',
+      'production_results',
+      'quality_inspections',
+      'production_events',
+      'integration_messages',
+      'integration_outbox',
+      'audit_log'
+    ]) {
+      expect(sql).toContain(`revoke insert, update, delete on public.${table} from authenticated`);
+    }
+  });
+
   it('removes implicit PUBLIC execution from SECURITY DEFINER MES functions', () => {
     const sql = migration('052_mes_function_public_execute_lockdown.sql');
     expect(sql).toContain('p.prosecdef');
