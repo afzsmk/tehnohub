@@ -25,10 +25,17 @@ function requireOrder(data: unknown): DbOrder {
 export class SupabaseMesOrderRpc {
   constructor(private readonly client: SupabaseClient) {}
 
-  async changeStatus(orderId: string, nextStatus: MesOrderStatus): Promise<ProductionOrder> {
+  async changeStatus(
+    orderId: string,
+    nextStatus: MesOrderStatus,
+    expectedStatus?: MesOrderStatus,
+    expectedCompletedQuantity?: number
+  ): Promise<ProductionOrder> {
     const { data, error } = await this.client.rpc('mes_change_order_status', {
       p_order_id: orderId,
-      p_next_status: nextStatus
+      p_next_status: nextStatus,
+      p_expected_status: expectedStatus ?? null,
+      p_expected_completed_quantity: expectedCompletedQuantity ?? null
     });
     if (error) throw error;
     const row = requireOrder(data);
