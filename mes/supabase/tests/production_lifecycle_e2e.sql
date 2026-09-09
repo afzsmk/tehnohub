@@ -1,14 +1,16 @@
 select no_plan();
 
 -- Deterministic end-to-end MES lifecycle executed against the real local schema.
--- The test uses an ADMIN JWT context so controlled SECURITY DEFINER RPCs execute
--- through the same auth/role resolution used by browser clients.
+-- The test uses a persistent ADMIN JWT context so controlled SECURITY DEFINER RPCs
+-- execute through the same auth/role resolution used by browser clients.
+-- Session-level GUCs are intentional: pgTAP/pg_prove may run statements in
+-- separate transactions, while request.jwt.claims must remain available to each RPC.
 
-select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
+select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', false);
 select set_config(
   'request.jwt.claims',
   '{"sub":"11111111-1111-1111-1111-111111111111","app_metadata":{"mes_role":"ADMIN"}}',
-  true
+  false
 );
 
 insert into operational_plans(id, version, horizon_start, horizon_end, status)
