@@ -20,6 +20,7 @@ import { SupabaseMesReplanRpc } from './integration/mesReplanRpc';
 import { SupabaseMesEquipmentBlockRpc } from './integration/mesEquipmentBlockRpc';
 import { SupabaseMesMaintenanceRpc } from './integration/mesMaintenanceRpc';
 import { SupabaseMesRuntimeSnapshotRpc, MesRuntimeSnapshot } from './integration/mesRuntimeSnapshotRpc';
+import { subscribeMesRealtime } from './integration/mesRealtime';
 import { getMesSupabaseClient } from './services/supabase';
 import { CalendarDay, EmployeeSchedule, MaintenanceOrder, MesState, ProductionTask } from './types';
 import { loadState, saveState } from './services/storage';
@@ -83,8 +84,10 @@ const remoteMaintenance = supabase ? new SupabaseMesMaintenanceRpc(supabase) : n
 const remoteSnapshot = supabase ? new SupabaseMesRuntimeSnapshotRpc(supabase) : null;
 let authState: MesAuthState = { user: null, identity: null };
 let authUnsubscribe: (() => void) | null = null;
+let realtimeUnsubscribe: (() => void) | null = null;
 let calendarMutationChain: Promise<void> = Promise.resolve();
 let remoteHydrationPromise: Promise<void> | null = null;
+let remoteHydrationRequested = false;
 const app = document.querySelector<HTMLDivElement>('#app');
 if (!app) throw new Error('Не найден контейнер приложения');
 const root = app;
@@ -96,27 +99,50 @@ function remoteMaintenanceReady(): boolean { return Boolean(remoteMaintenance &&
 
 async function hydrateRemoteState(): Promise<void> {
   if (!remoteSnapshot || !authState.identity) return;
-  if (remoteHydrationPromise) return remoteHydrationPromise;
-  remoteHydrationPromise = remoteSnapshot.load(state.plan.id).then((snapshot: MesRuntimeSnapshot) => {
-    if (snapshot.plan) state.plan = snapshot.plan;
-    state.products = snapshot.products ?? [];
-    state.employees = snapshot.employees ?? [];
-    state.equipment = snapshot.equipment ?? [];
-    state.shifts = snapshot.shifts ?? [];
-    state.calendar = snapshot.calendar ?? [];
-    state.employeeSchedules = snapshot.employeeSchedules ?? [];
-    state.equipmentBlocks = snapshot.equipmentBlocks ?? [];
-    state.orders = snapshot.orders ?? [];
-    state.tasks = snapshot.tasks ?? [];
-    state.downtimes = snapshot.downtimes ?? [];
-    state.maintenance = snapshot.maintenance ?? [];
-    state.results = snapshot.results ?? [];
-    state.qualityInspections = snapshot.qualityInspections ?? [];
-    state.events = snapshot.events ?? [];
-    saveState(state);
-    render();
-  }).finally(() => { remoteHydrationPromise = null; });
-  return remoteHydrationPromise;
+  if (remoteHydrationPromise) {
+    remoteHydrationRequested = true;
+    await remoteHydrationPromise;
+    return;
+  }
+
+  remoteHydrationPromise = (async () => {
+    do {
+      remoteHydrationRequested = false;
+      const snapshot: MesRuntimeSnapshot = await remoteSnapshot.load(state.plan.id);
+      if (snapshot.plan) state.plan = snapshot.plan;
+      state.products = snapshot.products ?? [];
+      state.employees = snapshot.employees ?? [];
+      state.equipment = snapshot.equipment ?? [];
+      state.shifts = snapshot.shifts ?? [];
+      state.calendar = snapshot.calendar ?? [];
+      state.employeeSchedules = snapshot.employeeSchedules ?? [];
+      state.equipmentBlocks = snapshot.equipmentBlocks ?? [];
+      state.orders = snapshot.orders ?? [];
+      state.tasks = snapshot.tasks ?? [];
+      state.downtimes = snapshot.downtimes ?? [];
+      state.maintenance = snapshot.maintenance ?? [];
+      state.results = snapshot.results ?? [];
+      state.qualityInspections = snapshot.qualityInspections ?? [];
+      state.events = snapshot.events ?? [];
+      saveState(state);
+      render();
+    } while (remoteHydrationRequested && authState.identity);
+  })().finally(() => { remoteHydrationPromise = null; });
+
+  await remoteHydrationPromise;
+}
+
+function startRealtime(): void {
+  if (!supabase || !authState.identity || realtimeUnsubscribe) return;
+  realtimeUnsubscribe = subscribeMesRealtime(supabase, {
+    debounceMs: 350,
+    onChange: () => { void hydrateRemoteState().catch(showError); }
+  });
+}
+
+function stopRealtime(): void {
+  realtimeUnsubscribe?.();
+  realtimeUnsubscribe = null;
 }
 
 function enqueueCalendarMutation(mutator: (calendar: CalendarDay[], schedules: EmployeeSchedule[]) => void): Promise<void> {
@@ -126,7 +152,11 @@ function enqueueCalendarMutation(mutator: (calendar: CalendarDay[], schedules: E
       const nextCalendar = state.calendar.map(day => ({ ...day, shiftIds: [...day.shiftIds] }));
       const nextSchedules = state.employeeSchedules.map(schedule => ({ ...schedule, shiftIds: [...schedule.shiftIds] }));
       mutator(nextCalendar, nextSchedules);
-      if (remoteCalendar && authState.identity) await remoteCalendar.saveCalendar(nextCalendar, nextSchedules);
+      if (remoteCalendar && authState.identity) {
+        await remoteCalendar.saveCalendar(nextCalendar, nextSchedules);
+        await hydrateRemoteState();
+        return;
+      }
       state.calendar = nextCalendar;
       state.employeeSchedules = nextSchedules;
       calculate();
@@ -170,13 +200,8 @@ async function moveTask(taskId: string, deltaMinutes: number): Promise<void> {
   const plannedEnd = new Date(new Date(task.plannedEnd).getTime() + delta).toISOString();
   if (remoteReady() && remoteReplan) {
     try {
-      const plan = await remoteReplan.apply(state.plan.id, state.plan.version, [{ taskId: task.id, proposedStart: plannedStart, proposedEnd: plannedEnd, expectedVersion: task.version }]);
-      task.plannedStart = plannedStart;
-      task.plannedEnd = plannedEnd;
-      task.version += 1;
-      state.plan = plan;
-      saveState(state);
-      render();
+      await remoteReplan.apply(state.plan.id, state.plan.version, [{ taskId: task.id, proposedStart: plannedStart, proposedEnd: plannedEnd, expectedVersion: task.version }]);
+      await hydrateRemoteState();
     } catch (error) { showError(error); }
     return;
   }
@@ -267,8 +292,7 @@ async function applyControlledReplan(preview: import('./core/planFact').ReplanPr
     }).filter((change): change is { taskId: string; proposedStart: string; proposedEnd: string; expectedVersion: number } => Boolean(change));
     if (changes.length === 0) return;
     try {
-      const plan = await remoteReplan.apply(state.plan.id, state.plan.version, changes);
-      state.plan = plan;
+      await remoteReplan.apply(state.plan.id, state.plan.version, changes);
       await hydrateRemoteState();
     } catch (error) { showError(error); }
     return;
@@ -278,21 +302,13 @@ async function applyControlledReplan(preview: import('./core/planFact').ReplanPr
 
 function showError(error: unknown): void { window.alert(error instanceof Error ? error.message : 'Операция не выполнена'); }
 
-function mergeRemoteTask(remote: ProductionTask): void {
-  const local = state.tasks.find(task => task.id === remote.id);
-  if (!local) { state.tasks.push(remote); return; }
-  Object.assign(local, remote);
-}
-
 async function assignEmployee(taskId: string, employeeId: string): Promise<void> {
   const task = state.tasks.find(item => item.id === taskId);
   if (!task) return;
   if (remoteReady() && remotePlanning) {
     try {
-      const remoteTask = await remotePlanning.assignTask(taskId, { employeeIds: employeeId ? [employeeId] : [] }, task.version);
-      mergeRemoteTask(remoteTask);
-      saveState(state);
-      render();
+      await remotePlanning.assignTask(taskId, { employeeIds: employeeId ? [employeeId] : [] }, task.version);
+      await hydrateRemoteState();
     } catch (error) { showError(error); }
     return;
   }
@@ -307,10 +323,8 @@ async function assignEquipment(taskId: string, equipmentId: string): Promise<voi
   if (!task) return;
   if (remoteReady() && remotePlanning) {
     try {
-      const remoteTask = await remotePlanning.assignTask(taskId, { equipmentIds: equipmentId ? [equipmentId] : [] }, task.version);
-      mergeRemoteTask(remoteTask);
-      saveState(state);
-      render();
+      await remotePlanning.assignTask(taskId, { equipmentIds: equipmentId ? [equipmentId] : [] }, task.version);
+      await hydrateRemoteState();
     } catch (error) { showError(error); }
     return;
   }
@@ -323,10 +337,8 @@ async function assignEquipment(taskId: string, equipmentId: string): Promise<voi
 async function handleAction(taskId: string, action: 'PREPARE' | MesExecutionAction): Promise<void> {
   if (remoteReady() && action !== 'PREPARE') {
     try {
-      const task = await remoteExecution!.executeTaskAction(taskId, action, new Date().toISOString());
-      mergeRemoteTask(task);
-      saveState(state);
-      render();
+      await remoteExecution!.executeTaskAction(taskId, action, new Date().toISOString());
+      await hydrateRemoteState();
     } catch (error) { showError(error); }
     return;
   }
@@ -340,12 +352,8 @@ async function handleAction(taskId: string, action: 'PREPARE' | MesExecutionActi
 async function handleResult(taskId: string, goodQuantity: number, scrapQuantity: number, comment: string): Promise<void> {
   try {
     if (remoteReady()) {
-      const result = await remoteExecution!.recordProductionResult(taskId, goodQuantity, scrapQuantity, state.tasks.find(t => t.id === taskId)?.assignedEquipmentIds ?? [], comment, new Date().toISOString());
-      if (!state.results.some(item => item.id === result.id)) state.results.push(result);
-      const remoteTask = await remoteExecution!.getTask(taskId);
-      mergeRemoteTask(remoteTask);
-      saveState(state);
-      render();
+      await remoteExecution!.recordProductionResult(taskId, goodQuantity, scrapQuantity, state.tasks.find(t => t.id === taskId)?.assignedEquipmentIds ?? [], comment, new Date().toISOString());
+      await hydrateRemoteState();
       return;
     }
     const task = state.tasks.find(t => t.id === taskId);
@@ -358,10 +366,8 @@ async function handleResult(taskId: string, goodQuantity: number, scrapQuantity:
 async function handleDowntimeStart(equipmentId: string, reasonCode: string, comment: string): Promise<void> {
   try {
     if (remoteReady()) {
-      const event = await remoteExecution!.startDowntime(equipmentId, reasonCode, comment, new Date().toISOString());
-      state.downtimes.push(event);
-      saveState(state);
-      render();
+      await remoteExecution!.startDowntime(equipmentId, reasonCode, comment, new Date().toISOString());
+      await hydrateRemoteState();
       return;
     }
     startDowntime(state, { equipmentId, reasonCode, comment }, currentActorId());
@@ -373,11 +379,8 @@ async function handleDowntimeStart(equipmentId: string, reasonCode: string, comm
 async function handleDowntimeEnd(downtimeId: string): Promise<void> {
   try {
     if (remoteReady()) {
-      const event = await remoteExecution!.endDowntime(downtimeId, new Date().toISOString());
-      const local = state.downtimes.find(item => item.id === downtimeId);
-      if (local) Object.assign(local, event); else state.downtimes.push(event);
-      saveState(state);
-      render();
+      await remoteExecution!.endDowntime(downtimeId, new Date().toISOString());
+      await hydrateRemoteState();
       return;
     }
     endDowntime(state, downtimeId, currentActorId());
@@ -424,17 +427,22 @@ if (supabase) {
   authUnsubscribe = subscribeMesAuth(supabase, async () => {
     try {
       authState = await getMesAuthState(supabase);
-      if (authState.identity) await hydrateRemoteState();
-      else render();
+      if (authState.identity) {
+        startRealtime();
+        await hydrateRemoteState();
+      } else {
+        stopRealtime();
+        render();
+      }
     } catch (error) { showError(error); }
   });
   void getMesAuthState(supabase).then(async result => {
     authState = result;
-    if (authState.identity) await hydrateRemoteState();
-    else render();
+    if (authState.identity) {
+      startRealtime();
+      await hydrateRemoteState();
+    } else render();
   }).catch(showError);
-} else {
-  render();
-}
+} else render();
 
-window.addEventListener('beforeunload', () => { authUnsubscribe?.(); });
+window.addEventListener('beforeunload', () => { stopRealtime(); authUnsubscribe?.(); });
