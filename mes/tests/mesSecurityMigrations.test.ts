@@ -97,4 +97,16 @@ describe('MES SQL security baseline', () => {
     expect(operational).toContain('mes_no_direct_task_write');
     expect(operational).toContain('mes_no_direct_assignment_write');
   });
+
+  it('prevents stale quality approval from authorizing newly produced quantity', () => {
+    const sql = migration('057_mes_quality_approval_scope.sql');
+
+    expect(sql).toContain('v_approved_quantity');
+    expect(sql).toContain('v_quality_covers_actual');
+    expect(sql).toContain('and q.status = \'APPROVED\'');
+    expect(sql).toContain('v_task.quality_status = \'APPROVED\'');
+    expect(sql).toContain('and not v_quality_covers_actual');
+    expect(sql).toContain("then 'PENDING'");
+    expect(sql).toContain("then 'PARTIALLY_COMPLETED'");
+  });
 });
