@@ -1,0 +1,38 @@
+name: MES CI
+
+on:
+  push:
+    branches:
+      - 'feature/mes-independent'
+    paths:
+      - 'mes/**'
+      - '.github/workflows/mes-ci.yml'
+      - '.github/workflows/deploy.yml'
+  pull_request:
+    paths:
+      - 'mes/**'
+      - '.github/workflows/mes-ci.yml'
+      - '.github/workflows/deploy.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mes
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: npm install
+      - name: Run tests
+        run: npm test
+      - name: Build
+        run: npm run build
