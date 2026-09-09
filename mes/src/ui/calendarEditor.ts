@@ -7,10 +7,10 @@ export interface CalendarEditorOptions {
   employeeSchedules: EmployeeSchedule[];
   equipment: Equipment[];
   equipmentBlocks: EquipmentBlock[];
-  onCalendarChange: (date: string, isWorking: boolean, shiftIds: string[]) => void;
-  onEmployeeScheduleChange: (employeeId: string, date: string, status: EmployeeSchedule['status'], shiftIds: string[]) => void;
-  onAddBlock: (block: Omit<EquipmentBlock, 'id'>) => void;
-  onRemoveBlock: (blockId: string) => void;
+  onCalendarChange: (date: string, isWorking: boolean, shiftIds: string[]) => void | Promise<void>;
+  onEmployeeScheduleChange: (employeeId: string, date: string, status: EmployeeSchedule['status'], shiftIds: string[]) => void | Promise<void>;
+  onAddBlock: (block: Omit<EquipmentBlock, 'id'>) => void | Promise<void>;
+  onRemoveBlock: (blockId: string) => void | Promise<void>;
 }
 
 function dateLabel(date: string): string {
@@ -65,7 +65,7 @@ export function bindCalendarEditor(root: ParentNode, options: CalendarEditorOpti
     input.addEventListener('change', () => {
       const date = input.dataset.working ?? '';
       const shifts = Array.from(root.querySelectorAll<HTMLInputElement>(`[data-day="${date}"][data-shift]`)).filter(i => i.checked).map(i => i.dataset.shift ?? '').filter(Boolean);
-      options.onCalendarChange(date, input.checked, input.checked ? shifts : []);
+      void Promise.resolve(options.onCalendarChange(date, input.checked, input.checked ? shifts : [])).catch(optionsOnError(options));
     });
   });
 
@@ -74,14 +74,14 @@ export function bindCalendarEditor(root: ParentNode, options: CalendarEditorOpti
       const date = input.dataset.day ?? '';
       const working = root.querySelector<HTMLInputElement>(`[data-working="${date}"]`)?.checked ?? false;
       const shifts = Array.from(root.querySelectorAll<HTMLInputElement>(`[data-day="${date}"][data-shift]`)).filter(i => i.checked).map(i => i.dataset.shift ?? '').filter(Boolean);
-      options.onCalendarChange(date, working, working ? shifts : []);
+      void Promise.resolve(options.onCalendarChange(date, working, working ? shifts : [])).catch(optionsOnError(options));
     });
   });
 
   root.querySelectorAll<HTMLSelectElement>('[data-employee-day]').forEach(select => {
     select.addEventListener('change', () => {
       const [employeeId, date] = (select.dataset.employeeDay ?? '|').split('|');
-      options.onEmployeeScheduleChange(employeeId, date, select.value ? 'WORK' : 'OFF', select.value ? [select.value] : []);
+      void Promise.resolve(options.onEmployeeScheduleChange(employeeId, date, select.value ? 'WORK' : 'OFF', select.value ? [select.value] : [])).catch(optionsOnError(options));
     });
   });
 
@@ -94,17 +94,26 @@ export function bindCalendarEditor(root: ParentNode, options: CalendarEditorOpti
       const start = String(data.get('start') ?? '');
       const end = String(data.get('end') ?? '');
       if (!equipmentId || !start || !end || new Date(start).getTime() >= new Date(end).getTime()) return;
-      options.onAddBlock({
+      void Promise.resolve(options.onAddBlock({
         equipmentId,
         start: new Date(start).toISOString(),
         end: new Date(end).toISOString(),
         reason: String(data.get('reason') ?? 'OTHER') as EquipmentBlockReason,
         comment: String(data.get('comment') ?? '') || undefined
-      });
+      })).catch(optionsOnError(options));
     });
   }
 
   root.querySelectorAll<HTMLButtonElement>('[data-remove-block]').forEach(button => {
-    button.addEventListener('click', () => options.onRemoveBlock(button.dataset.removeBlock ?? ''));
+    button.addEventListener('click', () => { void Promise.resolve(options.onRemoveBlock(button.dataset.removeBlock ?? '')).catch(optionsOnError(options)); });
   });
+}
+
+function optionsOnError(options: CalendarEditorOptions): (error: unknown) => void {
+  return error => {
+    // CalendarEditorOptions intentionally keeps the error boundary outside the UI,
+    // so rejecting server mutations is never an unhandled promise.
+    const handler = (options as CalendarEditorOptions & { onError?: (error: unknown) => void }).onError;
+    handler?.(error);
+  };
 }
