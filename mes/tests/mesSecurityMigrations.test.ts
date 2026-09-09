@@ -76,6 +76,14 @@ describe('MES SQL security baseline', () => {
     expect(sql).toContain('from public');
   });
 
+  it('pins all SECURITY DEFINER MES functions to the public schema path', () => {
+    const sql = migration('058_mes_security_definer_search_path.sql');
+    expect(sql).toContain('p.prosecdef');
+    expect(sql).toContain("p.proname like 'mes_%'");
+    expect(sql).toContain('pg_get_function_identity_arguments');
+    expect(sql).toContain('alter function public.%s set search_path = public');
+  });
+
   it('protects calendar persistence with an explicit revision precondition', () => {
     const sql = migration('048_mes_calendar_optimistic_lock.sql');
     expect(sql).toContain('p_expected_revision bigint');
