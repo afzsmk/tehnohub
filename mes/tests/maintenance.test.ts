@@ -47,14 +47,12 @@ describe('maintenance lifecycle', () => {
 
   it('prevents maintenance from covering an equipment assignment', () => {
     const state = buildState();
-    state.employees = [{ id: 'E-1', personnelNo: '1', name: 'Оператор', profession: 'Оператор', qualificationLevel: 3, active: true }];
-    state.orders = [{ id: 'O-1', number: '1', productId: 'P-1', quantity: 10, completedQuantity: 0, dueAt: baseInput.plannedEnd, priority: 'NORMAL', status: 'PLANNED', route: [] }];
     state.tasks = [{
       id: 'T-1', orderId: 'O-1', operationId: 'OP-1', operationSequence: 10, status: 'PLANNED',
       plannedStart: '2026-01-10T09:00:00.000Z', plannedEnd: '2026-01-10T11:00:00.000Z',
-      plannedQuantity: 10, actualQuantity: 0, assignedEmployeeIds: ['E-1'], assignedEquipmentIds: ['EQ-1'], version: 1
+      plannedQuantity: 10, actualQuantity: 0, assignedEmployeeIds: [], assignedEquipmentIds: ['EQ-1'], version: 1
     }];
-    expect(() => createMaintenanceOrder(state, baseInput, 'A-1')).not.toThrow();
+    expect(() => createMaintenanceOrder(state, baseInput, 'A-1')).toThrow('активного производственного задания');
   });
 
   it('supports start and complete while preserving the historical block interval', () => {
