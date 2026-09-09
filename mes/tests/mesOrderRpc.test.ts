@@ -30,7 +30,12 @@ describe('Supabase MES order RPC', () => {
     const order = await rpc.changeStatus('O-001', 'RELEASED');
 
     expect(called?.name).toBe('mes_change_order_status');
-    expect(called?.args).toEqual({ p_order_id: 'O-001', p_next_status: 'RELEASED' });
+    expect(called?.args).toEqual({
+      p_order_id: 'O-001',
+      p_next_status: 'RELEASED',
+      p_expected_status: null,
+      p_expected_completed_quantity: null
+    });
     expect(order.id).toBe('O-001');
     expect(order.status).toBe('RELEASED');
     expect(order.route).toEqual([]);
