@@ -45,7 +45,6 @@ export function createMaintenanceOrder(state: MesState, input: Omit<MaintenanceO
   const order: MaintenanceOrder = { ...input, id: `MO-${Date.now()}`, status: 'PLANNED' };
   state.maintenance.push(order);
   syncMaintenanceBlock(state, order);
-  appendEvent(state, order, 'MAINTENANCE_STARTED', actorId, { action: 'CREATED' });
   return order;
 }
 
@@ -59,7 +58,6 @@ export function transitionMaintenance(state: MesState, orderId: string, action: 
   } else if (action === 'COMPLETE') {
     if (order.status !== 'IN_PROGRESS') throw new Error('Завершить ППР можно только из статуса IN_PROGRESS');
     order.status = 'DONE';
-    removeMaintenanceBlock(state, order.id);
     appendEvent(state, order, 'MAINTENANCE_COMPLETED', actorId, { action: 'COMPLETE' });
   } else {
     if (!activeStatuses.includes(order.status)) throw new Error('Отменить ППР можно только из активного статуса');
@@ -73,7 +71,7 @@ export function transitionMaintenance(state: MesState, orderId: string, action: 
 export function syncMaintenanceBlock(state: MesState, order: MaintenanceOrder): EquipmentBlock {
   const existing = state.equipmentBlocks.find(item => item.id === `MB-${order.id}`);
   const block: EquipmentBlock = { id: `MB-${order.id}`, equipmentId: order.equipmentId, start: order.plannedStart, end: order.plannedEnd, reason: order.type === 'REPAIR' ? 'REPAIR' : 'MAINTENANCE', comment: `${order.type}: ${order.comment ?? ''}`.trim() };
-  if (activeStatuses.includes(order.status)) {
+  if (activeStatuses.includes(order.status) || order.status === 'DONE') {
     if (existing) Object.assign(existing, block);
     else state.equipmentBlocks.push(block);
   }
