@@ -108,5 +108,9 @@ begin
 end;
 $$;
 
+-- Retire the legacy two-argument RPC so authenticated clients cannot bypass
+-- optimistic locking by calling the pre-v1.1 signature.
+revoke all on function mes_save_calendar(jsonb,jsonb) from public;
+revoke execute on function mes_save_calendar(jsonb,jsonb) from authenticated;
 revoke all on function mes_save_calendar(jsonb,jsonb,bigint) from public;
 grant execute on function mes_save_calendar(jsonb,jsonb,bigint) to authenticated;
