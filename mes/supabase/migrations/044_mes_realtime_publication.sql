@@ -1,4 +1,4 @@
--- Keep the MES operational dataset available to Supabase Realtime.
+-- Keep the MES dataset available to Supabase Realtime.
 -- The application reacts to changes by reloading the authoritative runtime snapshot;
 -- it never applies individual realtime payloads directly to local production state.
 
@@ -8,11 +8,16 @@ declare
 begin
   foreach table_name in array array[
     'operational_plans',
+    'products',
+    'employees',
+    'equipment',
+    'shift_definitions',
+    'calendar_days',
+    'employee_schedules',
+    'route_operations',
     'production_orders',
     'production_tasks',
     'task_assignments',
-    'calendar_days',
-    'employee_schedules',
     'production_results',
     'quality_inspections',
     'downtime_events',
