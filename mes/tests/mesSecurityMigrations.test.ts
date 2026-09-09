@@ -84,6 +84,14 @@ describe('MES SQL security baseline', () => {
     expect(sql).toContain('alter function public.%s set search_path = public');
   });
 
+  it('keeps internal order consistency helpers outside the browser RPC surface', () => {
+    const sql = migration('060_mes_internal_rpc_execute_lockdown.sql');
+    expect(sql).toContain('mes_sync_order_from_task(text)');
+    expect(sql).toContain('mes_sync_order_after_task_change()');
+    expect(sql).toContain('from authenticated');
+    expect(sql).toContain('from anon');
+  });
+
   it('protects calendar persistence with an explicit revision precondition', () => {
     const sql = migration('048_mes_calendar_optimistic_lock.sql');
     expect(sql).toContain('p_expected_revision bigint');
