@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getMesAuthState } from '../integration/auth';
-import { SupabaseMesPlanningRpc, MesReplanChange, MesResourceRecommendation } from '../integration/mesPlanningRpc';
-import { SupabaseMesReplanRpc } from '../integration/mesReplanRpc';
+import { SupabaseMesPlanningRpc, MesResourceRecommendation } from '../integration/mesPlanningRpc';
+import { MesReplanChange, SupabaseMesReplanRpc } from '../integration/mesReplanRpc';
 import { subscribeMesRealtime } from '../integration/mesRealtime';
 
 type TaskRow = { id:string; order_id:string; operation_sequence:number; status:string; planned_quantity:number; actual_quantity:number; planned_start:string; planned_end:string; version:number; };
@@ -14,7 +14,6 @@ const statusLabel = (v:string) => ({PLANNED:'Запланировано',ASSIGNE
 const statusClass = (v:string) => v === 'COMPLETED' ? 'status-ok' : ['RUNNING','PAUSED','PARTIALLY_COMPLETED'].includes(v) ? 'status-warning' : ['BLOCKED','CANCELLED'].includes(v) ? 'status-danger' : 'status-neutral';
 const canDrag = (status:string) => ['PLANNED','ASSIGNED','READY','BLOCKED'].includes(status);
 const MINUTE_MS = 60_000;
-
 function snapMinutes(value:number): number { return Math.round(value / 15) * 15; }
 function toIso(value:number): string { return new Date(value).toISOString(); }
 
@@ -40,7 +39,7 @@ export async function mountDispatchGanttPage(root: HTMLElement, client: Supabase
     recommendationTaskId = taskId;
     recommendationTaskVersion = taskVersion;
     const panel = host.querySelector<HTMLElement>('[data-recommendations]');
-    if (!panel) return;
+    if (!panel) { recommendationBusy = false; return; }
     panel.innerHTML = '<div class="subtle">Подбираем допустимые ресурсы…</div>';
     panel.hidden = false;
     try {
