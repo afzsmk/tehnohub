@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getMesAuthState } from '../integration/auth';
-import { SupabaseMesReplanRpc, MesReplanChange } from '../integration/mesReplanRpc';
+import { SupabaseMesPlanningRpc, MesReplanChange, MesResourceRecommendation } from '../integration/mesPlanningRpc';
+import { SupabaseMesReplanRpc } from '../integration/mesReplanRpc';
 import { subscribeMesRealtime } from '../integration/mesRealtime';
 
 type TaskRow = { id:string; order_id:string; operation_sequence:number; status:string; planned_quantity:number; actual_quantity:number; planned_start:string; planned_end:string; version:number; };
@@ -26,36 +27,78 @@ export async function mountDispatchGanttPage(root: HTMLElement, client: Supabase
   root.appendChild(host);
   const body = host.querySelector<HTMLElement>('[data-gantt-body]')!;
   const replanRpc = new SupabaseMesReplanRpc(client);
+  const planningRpc = new SupabaseMesPlanningRpc(client);
   let rendering = false;
   let dragTask: { id:string; start:number; end:number; version:number } | null = null;
-  let dragStartX = 0;
+  let recommendationTaskId = '';
+  let recommendationBusy = false;
+
+  const showRecommendations = async (taskId:string): Promise<void> => {
+    if (recommendationBusy) return;
+    recommendationBusy = true;
+    recommendationTaskId = taskId;
+    const panel = host.querySelector<HTMLElement>('[data-recommendations]');
+    if (!panel) return;
+    panel.innerHTML = '<div class="subtle">Подбираем допустимые ресурсы…</div>';
+    panel.hidden = false;
+    try {
+      const rows = await planningRpc.recommendResources(taskId);
+      const employees = rows.filter(r => r.resourceType === 'EMPLOYEE').slice(0, 5);
+      const equipment = rows.filter(r => r.resourceType === 'EQUIPMENT').slice(0, 5);
+      const renderGroup = (title:string, type:'EMPLOYEE'|'EQUIPMENT', items:MesResourceRecommendation[]) => `<div class="recommend-group"><strong>${title}</strong>${items.length ? items.map(item => `<div class="recommend-item"><div><b>${esc(item.resourceName)}</b><small>score ${item.score.toFixed(1)} · ${esc(item.reasons.slice(0,2).join(' · '))}</small></div><button class="tiny primary" data-assign-recommend data-resource-type="${type}" data-resource-id="${esc(item.resourceId)}">Назначить</button></div>`).join('') : '<div class="subtle">Подходящих ресурсов не найдено</div>'}</div>`;
+      panel.innerHTML = `<div class="recommend-head"><strong>Рекомендации для ${esc(taskId)}</strong><button class="tiny" data-close-recommendations>Закрыть</button></div><div class="recommend-grid">${renderGroup('Сотрудники','EMPLOYEE',employees)}${renderGroup('Оборудование','EQUIPMENT',equipment)}</div>`;
+      attachRecommendationHandlers();
+    } catch (error) {
+      panel.innerHTML = `<div class="detail-error">${esc(error instanceof Error ? error.message : 'Не удалось получить рекомендации')}</div>`;
+    } finally {
+      recommendationBusy = false;
+    }
+  };
+
+  const attachRecommendationHandlers = () => {
+    host.querySelector<HTMLButtonElement>('[data-close-recommendations]')?.addEventListener('click', () => {
+      const panel = host.querySelector<HTMLElement>('[data-recommendations]');
+      if (panel) panel.hidden = true;
+    });
+    host.querySelectorAll<HTMLButtonElement>('[data-assign-recommend]').forEach(button => {
+      button.addEventListener('click', async () => {
+        if (!recommendationTaskId) return;
+        const taskId = recommendationTaskId;
+        const type = button.dataset.resourceType;
+        const resourceId = button.dataset.resourceId;
+        if (!resourceId || (type !== 'EMPLOYEE' && type !== 'EQUIPMENT')) return;
+        button.disabled = true;
+        try {
+          const task = await planningRpc.assignTask(taskId, type === 'EMPLOYEE' ? { employeeIds:[resourceId] } : { equipmentIds:[resourceId] });
+          recommendationTaskId = '';
+          const panel = host.querySelector<HTMLElement>('[data-recommendations]');
+          if (panel) { panel.hidden = true; panel.innerHTML = ''; }
+          await render();
+          void task;
+        } catch (error) {
+          button.disabled = false;
+          const panel = host.querySelector<HTMLElement>('[data-recommendations]');
+          if (panel) panel.insertAdjacentHTML('afterbegin', `<div class="detail-error">${esc(error instanceof Error ? error.message : 'Назначение не выполнено')}</div>`);
+        }
+      });
+    });
+  };
 
   const applyMove = async (task: { id:string; start:number; end:number; version:number }, targetStart:number, planId:string, planVersion:number): Promise<void> => {
     const delta = snapMinutes((targetStart - task.start) / MINUTE_MS);
     if (!delta) return;
-    const change: MesReplanChange = {
-      taskId: task.id,
-      proposedStart: toIso(task.start + delta * MINUTE_MS),
-      proposedEnd: toIso(task.end + delta * MINUTE_MS),
-      expectedVersion: task.version
-    };
+    const change: MesReplanChange = { taskId:task.id, proposedStart:toIso(task.start + delta * MINUTE_MS), proposedEnd:toIso(task.end + delta * MINUTE_MS), expectedVersion:task.version };
     const refresh = host.querySelector<HTMLButtonElement>('[data-gantt-refresh]');
     if (refresh) refresh.disabled = true;
-    try {
-      await replanRpc.apply(planId, planVersion, [change]);
-      await render();
-    } catch (error) {
-      body.insertAdjacentHTML('afterbegin', `<div class="detail-error gantt-error">${esc(error instanceof Error ? error.message : 'Не удалось перенести задание')}</div>`);
-    } finally {
-      if (refresh) refresh.disabled = false;
-    }
+    try { await replanRpc.apply(planId, planVersion, [change]); await render(); }
+    catch (error) { body.insertAdjacentHTML('afterbegin', `<div class="detail-error gantt-error">${esc(error instanceof Error ? error.message : 'Не удалось перенести задание')}</div>`); }
+    finally { if (refresh) refresh.disabled = false; }
   };
 
   const attachDragHandlers = (planId:string, planVersion:number, first:number, span:number) => {
     host.querySelectorAll<HTMLElement>('.gantt-draggable').forEach(bar => {
       bar.addEventListener('dragstart', event => {
-        dragTask = { id: bar.dataset.taskId ?? '', start:Number(bar.dataset.start), end:Number(bar.dataset.end), version:Number(bar.dataset.version) };
-        dragStartX = event.clientX;
+        dragTask = { id:bar.dataset.taskId ?? '', start:Number(bar.dataset.start), end:Number(bar.dataset.end), version:Number(bar.dataset.version) };
         bar.classList.add('gantt-dragging');
         event.dataTransfer?.setData('text/plain', dragTask.id);
         if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
@@ -70,8 +113,7 @@ export async function mountDispatchGanttPage(root: HTMLElement, client: Supabase
         const rect = track.getBoundingClientRect();
         if (!rect.width) return;
         const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
-        const targetStart = first + ratio * span;
-        void applyMove(dragTask, targetStart, planId, planVersion);
+        void applyMove(dragTask, first + ratio * span, planId, planVersion);
       });
     });
   };
@@ -104,9 +146,6 @@ export async function mountDispatchGanttPage(root: HTMLElement, client: Supabase
       const horizonEnd = tasks.length ? Math.max(now + 24*60*MINUTE_MS, ...tasks.map(t=>new Date(t.planned_end).getTime())) : now + 24*60*MINUTE_MS;
       const span = Math.max(60*MINUTE_MS, horizonEnd - first);
       const mid = first + span / 2;
-      host.dataset.first = String(first);
-      host.dataset.span = String(span);
-
       const rows = equipment.map(eq => {
         const eqTasks = tasks.filter(t => assignmentByTask.get(t.id)?.equipment_id === eq.id);
         const bars = eqTasks.map(t => {
@@ -120,13 +159,17 @@ export async function mountDispatchGanttPage(root: HTMLElement, client: Supabase
         }).join('');
         return `<div class="gantt-row"><div class="gantt-resource"><strong>${esc(eq.name)}</strong><span>${esc(eq.code)} · ${esc(eq.work_center)}</span></div><div class="gantt-track"><div class="gantt-grid-lines"></div><div class="gantt-now-line" style="left:${Math.max(0,Math.min(100,((now-first)/span)*100))}%"></div>${bars||'<span class="subtle gantt-empty">Нет заданий</span>'}</div></div>`;
       }).join('');
-      const unassigned = tasks.filter(t=>!assignmentByTask.get(t.id)?.equipment_id).slice(0,30).map(t=>`<span class="status-pill ${statusClass(t.status)}">${esc(t.id)} · v${t.version}</span>`).join('');
-      body.innerHTML = `<div class="gantt-scale"><span>${new Date(first).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span><span>${new Date(mid).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span><span>${new Date(horizonEnd).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span></div><div class="gantt-help"><span>↔ Перетаскивание: 15 мин</span><span>● Текущее время</span><span>Версия плана: ${plan?.version ?? '—'}</span></div><div class="gantt-list">${rows||'<div class="subtle">Активного оборудования нет</div>'}</div><div class="gantt-unassigned"><strong>Без оборудования (${tasks.filter(t=>!assignmentByTask.get(t.id)?.equipment_id).length})</strong><div>${unassigned||'<span class="subtle">Нет</span>'}</div></div>`;
+      const unassignedTasks = tasks.filter(t=>!assignmentByTask.get(t.id)?.equipment_id).slice(0,30);
+      const unassigned = unassignedTasks.map(t=>`<div class="gantt-unassigned-item"><span class="status-pill ${statusClass(t.status)}">${esc(t.id)} · v${t.version}</span><button class="tiny" data-recommend-task="${esc(t.id)}">Подобрать ресурсы</button></div>`).join('');
+      const panel = host.querySelector<HTMLElement>('[data-recommendations]');
+      const panelState = panel?.hidden === false ? 'visible' : 'hidden';
+      body.innerHTML = `<div class="gantt-scale"><span>${new Date(first).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span><span>${new Date(mid).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span><span>${new Date(horizonEnd).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span></div><div class="gantt-help"><span>↔ Перетаскивание: 15 мин</span><span>● Текущее время</span><span>Версия плана: ${plan?.version ?? '—'}</span></div><div class="gantt-list">${rows||'<div class="subtle">Активного оборудования нет</div>'}</div><div class="gantt-unassigned"><strong>Без оборудования (${unassignedTasks.length})</strong><div class="gantt-unassigned-list">${unassigned||'<span class="subtle">Нет</span>'}</div></div><div data-recommendations ${panelState === 'hidden' ? 'hidden' : ''}></div>`;
+      host.dataset.first = String(first);
+      host.dataset.span = String(span);
       if (plan) attachDragHandlers(plan.id, Number(plan.version), first, span);
-      void dragStartX;
-    } finally {
-      rendering = false;
-    }
+      attachRecommendationHandlers();
+      host.querySelectorAll<HTMLButtonElement>('[data-recommend-task]').forEach(button => button.addEventListener('click', () => { const id = button.dataset.recommendTask; if (id) void showRecommendations(id); }));
+    } finally { rendering = false; }
   };
 
   host.querySelector<HTMLButtonElement>('[data-gantt-refresh]')?.addEventListener('click',()=>void render());
