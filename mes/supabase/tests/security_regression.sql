@@ -9,26 +9,11 @@ from pg_class c
 join pg_namespace n on n.oid = c.relnamespace
 where n.nspname = 'public'
   and c.relname = any (array[
-    'operational_plans',
-    'products',
-    'employees',
-    'equipment',
-    'shift_definitions',
-    'calendar_days',
-    'employee_schedules',
-    'route_operations',
-    'production_orders',
-    'production_tasks',
-    'task_assignments',
-    'equipment_blocks',
-    'downtime_events',
-    'maintenance_orders',
-    'production_results',
-    'quality_inspections',
-    'production_events',
-    'integration_messages',
-    'integration_outbox',
-    'audit_log'
+    'operational_plans', 'products', 'employees', 'equipment', 'shift_definitions',
+    'calendar_days', 'employee_schedules', 'route_operations', 'production_orders',
+    'production_tasks', 'task_assignments', 'equipment_blocks', 'downtime_events',
+    'maintenance_orders', 'production_results', 'quality_inspections',
+    'production_events', 'integration_messages', 'integration_outbox', 'audit_log'
   ]);
 
 -- Browser sessions must not mutate MES state through the generic table API.
@@ -36,26 +21,11 @@ select ok(
   not exists (
     select 1
     from unnest(array[
-      'operational_plans',
-      'products',
-      'employees',
-      'equipment',
-      'shift_definitions',
-      'calendar_days',
-      'employee_schedules',
-      'route_operations',
-      'production_orders',
-      'production_tasks',
-      'task_assignments',
-      'equipment_blocks',
-      'downtime_events',
-      'maintenance_orders',
-      'production_results',
-      'quality_inspections',
-      'production_events',
-      'integration_messages',
-      'integration_outbox',
-      'audit_log'
+      'operational_plans', 'products', 'employees', 'equipment', 'shift_definitions',
+      'calendar_days', 'employee_schedules', 'route_operations', 'production_orders',
+      'production_tasks', 'task_assignments', 'equipment_blocks', 'downtime_events',
+      'maintenance_orders', 'production_results', 'quality_inspections',
+      'production_events', 'integration_messages', 'integration_outbox', 'audit_log'
     ]) as t(table_name)
     where has_table_privilege('authenticated', 'public.' || table_name, 'insert')
        or has_table_privilege('authenticated', 'public.' || table_name, 'update')
@@ -85,33 +55,35 @@ select ok(not exists (
     and not ('search_path=public' = any(coalesce(p.proconfig, array[]::text[])))
 ), 'all SECURITY DEFINER MES functions pin search_path to public');
 
+-- Internal consistency helpers are trigger implementation details, not browser APIs.
+select ok(
+  not has_function_privilege('authenticated', 'public.mes_sync_order_from_task(text)', 'execute'),
+  'authenticated cannot execute internal order consistency helper'
+);
+select ok(
+  not has_function_privilege('authenticated', 'public.mes_sync_order_after_task_change()', 'execute'),
+  'authenticated cannot execute internal task trigger helper'
+);
+
 -- Core browser-facing RPCs must remain callable by authenticated clients.
 select ok(exists (
-  select 1
-  from pg_proc p
-  where p.proname = 'mes_change_order_status'
-    and p.prosecdef
+  select 1 from pg_proc p
+  where p.proname = 'mes_change_order_status' and p.prosecdef
     and has_function_privilege('authenticated', p.oid, 'execute')
 ), 'authenticated can execute mes_change_order_status');
 select ok(exists (
-  select 1
-  from pg_proc p
-  where p.proname = 'mes_save_calendar'
-    and p.prosecdef
+  select 1 from pg_proc p
+  where p.proname = 'mes_save_calendar' and p.prosecdef
     and has_function_privilege('authenticated', p.oid, 'execute')
 ), 'authenticated can execute mes_save_calendar');
 select ok(exists (
-  select 1
-  from pg_proc p
-  where p.proname = 'mes_submit_quality_inspection'
-    and p.prosecdef
+  select 1 from pg_proc p
+  where p.proname = 'mes_submit_quality_inspection' and p.prosecdef
     and has_function_privilege('authenticated', p.oid, 'execute')
 ), 'authenticated can execute mes_submit_quality_inspection');
 select ok(exists (
-  select 1
-  from pg_proc p
-  where p.proname = 'mes_execute_task_action'
-    and p.prosecdef
+  select 1 from pg_proc p
+  where p.proname = 'mes_execute_task_action' and p.prosecdef
     and has_function_privilege('authenticated', p.oid, 'execute')
 ), 'authenticated can execute mes_execute_task_action');
 
