@@ -44,16 +44,25 @@ jobs:
           npm test
           npm run build
 
-      # 3. Формирование единого сайта для публикации
+      # 3. Сборка самостоятельного MES
+      - name: Build MES
+        working-directory: ./mes
+        run: |
+          npm install
+          npm test
+          npm run build
+
+      # 4. Формирование единого сайта для публикации
       - name: Prepare site directory
         run: |
           mkdir -p _site
           find . -maxdepth 1 -not -name '.' -not -name '_site' -not -name '.git' -exec cp -r {} _site/ \;
-          rm -rf _site/workforce _site/scheduler
+          rm -rf _site/workforce _site/scheduler _site/mes
           cp -r workforce/dist _site/workforce
           cp -r scheduler/dist _site/scheduler
+          cp -r mes/dist _site/mes
 
-      # 4. Публикация
+      # 5. Публикация
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
