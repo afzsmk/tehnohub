@@ -26,6 +26,7 @@ async function cacheRemoteState(client: SupabaseClient, userId: string): Promise
   const current = readLocalState();
   if (!current) return false;
   if (!localStorage.getItem(DEMO_BACKUP_KEY)) localStorage.setItem(DEMO_BACKUP_KEY, JSON.stringify(current));
+
   const snapshot = await loadMesStateFromSupabase(client, current);
   const merged: MesState = {
     ...current,
@@ -33,6 +34,10 @@ async function cacheRemoteState(client: SupabaseClient, userId: string): Promise
     products: snapshot.products,
     employees: snapshot.employees,
     equipment: snapshot.equipment,
+    shifts: snapshot.shifts,
+    calendar: snapshot.calendar,
+    employeeSchedules: snapshot.employeeSchedules,
+    equipmentBlocks: snapshot.equipmentBlocks,
     orders: snapshot.orders,
     tasks: snapshot.tasks,
     downtimes: snapshot.downtimes,
@@ -40,6 +45,7 @@ async function cacheRemoteState(client: SupabaseClient, userId: string): Promise
     results: snapshot.results,
     events: snapshot.events
   };
+
   localStorage.setItem(MES_STATE_KEY, JSON.stringify(merged));
   localStorage.setItem(REMOTE_USER_KEY, userId);
   return true;
