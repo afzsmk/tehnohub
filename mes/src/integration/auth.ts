@@ -1,6 +1,6 @@
 import type { SupabaseClient, User } from '@supabase/supabase-js';
 import { resolveMesIdentity, MesAuthenticatedIdentity } from './identitySession';
-import { loadMesStateFromSupabase } from './remoteState';
+import { SupabaseMesRuntimeSnapshotRpc } from './mesRuntimeSnapshotRpc';
 import type { MesState } from '../types';
 
 const MES_STATE_KEY = 'zsmk_mes_state_v1';
@@ -27,24 +27,26 @@ async function cacheRemoteState(client: SupabaseClient, userId: string): Promise
   if (!current) return false;
   if (!localStorage.getItem(DEMO_BACKUP_KEY)) localStorage.setItem(DEMO_BACKUP_KEY, JSON.stringify(current));
 
-  const snapshot = await loadMesStateFromSupabase(client, current);
+  // Use the same authoritative RPC used by the live runtime hydration path.
+  // This avoids a torn snapshot assembled from many independent table reads.
+  const snapshot = await new SupabaseMesRuntimeSnapshotRpc(client).load(current.plan.id);
   const merged: MesState = {
     ...current,
-    plan: snapshot.plan,
-    products: snapshot.products,
-    employees: snapshot.employees,
-    equipment: snapshot.equipment,
-    shifts: snapshot.shifts,
-    calendar: snapshot.calendar,
-    employeeSchedules: snapshot.employeeSchedules,
-    equipmentBlocks: snapshot.equipmentBlocks,
-    orders: snapshot.orders,
-    tasks: snapshot.tasks,
-    downtimes: snapshot.downtimes,
-    maintenance: snapshot.maintenance,
-    results: snapshot.results,
-    qualityInspections: snapshot.qualityInspections,
-    events: snapshot.events
+    ...(snapshot.plan ? { plan: snapshot.plan } : {}),
+    products: snapshot.products ?? [],
+    employees: snapshot.employees ?? [],
+    equipment: snapshot.equipment ?? [],
+    shifts: snapshot.shifts ?? [],
+    calendar: snapshot.calendar ?? [],
+    employeeSchedules: snapshot.employeeSchedules ?? [],
+    equipmentBlocks: snapshot.equipmentBlocks ?? [],
+    orders: snapshot.orders ?? [],
+    tasks: snapshot.tasks ?? [],
+    downtimes: snapshot.downtimes ?? [],
+    maintenance: snapshot.maintenance ?? [],
+    results: snapshot.results ?? [],
+    qualityInspections: snapshot.qualityInspections ?? [],
+    events: snapshot.events ?? []
   };
 
   localStorage.setItem(MES_STATE_KEY, JSON.stringify(merged));
