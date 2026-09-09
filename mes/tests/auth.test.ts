@@ -118,4 +118,15 @@ describe('MES auth remote hydration', () => {
     expect(reloadCalls).toHaveLength(1);
     expect(JSON.parse(storage.getItem('zsmk_mes_state_v1') ?? '{}').qualityInspections).toHaveLength(1);
   });
+
+  it('does not require browser storage in the node test environment', async () => {
+    delete (globalThis as { window?: Window }).window;
+
+    const result = await getMesAuthState(fakeIdentityClient(
+      { id: 'USER-2', app_metadata: { mes_role: 'MASTER' } },
+      null
+    ));
+
+    expect(result.identity).toEqual({ userId: 'USER-2', employeeId: null, role: 'MASTER' });
+  });
 });
