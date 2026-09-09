@@ -20,7 +20,7 @@ import { SupabaseMesReplanRpc } from './integration/mesReplanRpc';
 import { SupabaseMesEquipmentBlockRpc } from './integration/mesEquipmentBlockRpc';
 import { SupabaseMesMaintenanceRpc } from './integration/mesMaintenanceRpc';
 import { getMesSupabaseClient } from './services/supabase';
-import { MaintenanceOrder, MesState, ProductionTask } from './types';
+import { CalendarDay, EmployeeSchedule, MaintenanceOrder, MesState, ProductionTask } from './types';
 import { loadState, saveState } from './services/storage';
 
 const DAY_MS = 86_400_000;
@@ -81,7 +81,7 @@ const remoteEquipmentBlocks = supabase ? new SupabaseMesEquipmentBlockRpc(supaba
 const remoteMaintenance = supabase ? new SupabaseMesMaintenanceRpc(supabase) : null;
 let authState: MesAuthState = { user: null, identity: null };
 let authUnsubscribe: (() => void) | null = null;
-let calendarSaveChain: Promise<void> = Promise.resolve();
+let calendarMutationChain: Promise<void> = Promise.resolve();
 const app = document.querySelector<HTMLDivElement>('#app');
 if (!app) throw new Error('Не найден контейнер приложения');
 const root = app;
@@ -91,12 +91,22 @@ function remoteReady(): boolean { return Boolean(remoteExecution && authState.id
 function remoteEquipmentBlocksReady(): boolean { return Boolean(remoteEquipmentBlocks && authState.identity); }
 function remoteMaintenanceReady(): boolean { return Boolean(remoteMaintenance && authState.identity); }
 
-function queueCalendarSave(): void {
-  if (!remoteCalendar || !authState.identity) return;
-  calendarSaveChain = calendarSaveChain
+function enqueueCalendarMutation(mutator: (calendar: CalendarDay[], schedules: EmployeeSchedule[]) => void): Promise<void> {
+  calendarMutationChain = calendarMutationChain
     .catch(() => undefined)
-    .then(() => remoteCalendar.saveCalendar(state.calendar, state.employeeSchedules))
-    .catch(showError);
+    .then(async () => {
+      const nextCalendar = state.calendar.map(day => ({ ...day, shiftIds: [...day.shiftIds] }));
+      const nextSchedules = state.employeeSchedules.map(schedule => ({ ...schedule, shiftIds: [...schedule.shiftIds] }));
+      mutator(nextCalendar, nextSchedules);
+      if (remoteCalendar && authState.identity) {
+        await remoteCalendar.saveCalendar(nextCalendar, nextSchedules);
+      }
+      state.calendar = nextCalendar;
+      state.employeeSchedules = nextSchedules;
+      calculate();
+      render();
+    });
+  return calendarMutationChain;
 }
 
 function ensureHorizon(): void {
@@ -148,21 +158,32 @@ async function moveTask(taskId: string, deltaMinutes: number): Promise<void> {
   updateTask(taskId, { plannedStart, plannedEnd });
 }
 
-function updateCalendarDay(date: string, isWorking: boolean, shiftIds: string[]): void {
-  const day = state.calendar.find(d => d.date === date); if (!day) return;
-  day.isWorking = isWorking; day.shiftIds = isWorking ? shiftIds : [];
-  if (!isWorking) state.employeeSchedules.filter(s => s.date === date).forEach(s => { s.status = 'OFF'; s.shiftIds = []; });
-  calculate();
-  render();
-  queueCalendarSave();
+function updateCalendarDay(date: string, isWorking: boolean, shiftIds: string[]): Promise<void> {
+  return enqueueCalendarMutation((nextCalendar, nextSchedules) => {
+    const day = nextCalendar.find(item => item.date === date);
+    if (!day) return;
+    day.isWorking = isWorking;
+    day.shiftIds = isWorking ? [...shiftIds] : [];
+    if (!isWorking) {
+      nextSchedules.filter(item => item.date === date).forEach(item => {
+        item.status = 'OFF';
+        item.shiftIds = [];
+      });
+    }
+  });
 }
 
-function updateEmployeeSchedule(employeeId: string, date: string, status: 'WORK' | 'OFF' | 'VACATION' | 'SICK' | 'ABSENCE', shiftIds: string[]): void {
-  const item = state.employeeSchedules.find(s => s.employeeId === employeeId && s.date === date);
-  if (item) { item.status = status; item.shiftIds = shiftIds; } else state.employeeSchedules.push({ employeeId, date, status, shiftIds });
-  calculate();
-  render();
-  queueCalendarSave();
+function updateEmployeeSchedule(employeeId: string, date: string, status: EmployeeSchedule['status'], shiftIds: string[]): Promise<void> {
+  return enqueueCalendarMutation((nextCalendar, nextSchedules) => {
+    void nextCalendar;
+    const item = nextSchedules.find(schedule => schedule.employeeId === employeeId && schedule.date === date);
+    if (item) {
+      item.status = status;
+      item.shiftIds = [...shiftIds];
+    } else {
+      nextSchedules.push({ employeeId, date, status, shiftIds: [...shiftIds] });
+    }
+  });
 }
 
 async function addEquipmentBlock(block: Omit<import('./types').EquipmentBlock, 'id'>): Promise<void> {
@@ -376,9 +397,9 @@ function render(): void {
   const conflicts = state.tasks.filter(task => state.tasks.some(other => other.id !== task.id && new Date(task.plannedStart).getTime() < new Date(other.plannedEnd).getTime() && new Date(other.plannedStart).getTime() < new Date(task.plannedEnd).getTime()));
   const dispatchOptions = { tasks: state.tasks, employees: state.employees, equipment: state.equipment, shifts: state.shifts, calendar: state.calendar, equipmentBlocks: state.equipmentBlocks, operations, onMove: moveTask, onAssignEmployee: assignEmployee, onAssignEquipment: assignEquipment };
 
-  root.innerHTML = `${authHtml()}<header><h1>MES — оперативное управление производством</h1><div class="subtitle">1–30 дней · План/Факт · исполнение · простой · ТО · перепланирование</div></header><section class="kpis"><div class="kpi"><span>Операции</span><strong>${operations.length}</strong></div><div class="kpi"><span>Задания</span><strong>${state.tasks.length}</strong></div><div class="kpi"><span>Выпущено</span><strong>${totalGood}</strong></div><div class="kpi"><span>Открытые простои</span><strong>${openDowntime}</strong></div><div class="kpi"><span>Конфликты</span><strong>${conflicts.length}</strong></div></section>${renderDispatchBoard(dispatchOptions)}${renderCalendarEditor({ calendar: state.calendar, shifts: state.shifts, employees: state.employees, employeeSchedules: state.employeeSchedules, equipment: state.equipment, equipmentBlocks: state.equipmentBlocks, onCalendarChange: updateCalendarDay, onEmployeeScheduleChange: updateEmployeeSchedule, onAddBlock: addEquipmentBlock, onRemoveBlock: removeEquipmentBlock })}${renderExecutionPanel({ tasks: state.tasks, employees: state.employees, equipment: state.equipment, results: state.results, downtimes: state.downtimes, onAction: handleAction, onResult: handleResult, onDowntimeStart: handleDowntimeStart, onDowntimeEnd: handleDowntimeEnd })}${renderMaintenancePanel({ state, onCreate: createMaintenance, onAction: changeMaintenanceStatus, onError: showError })}${renderPlanFactPanel({ orders: state.orders, tasks: state.tasks, results: state.results, downtimes: state.downtimes, now: new Date() })}${renderReplanPanel({ tasks: state.tasks, downtimes: state.downtimes, plan: state.plan, onApply: applyControlledReplan })}${renderIntegrationPanel({ store: integrationStore, onRefresh: () => render() })}`;
+  root.innerHTML = `${authHtml()}<header><h1>MES — оперативное управление производством</h1><div class="subtitle">1–30 дней · План/Факт · исполнение · простой · ТО · перепланирование</div></header><section class="kpis"><div class="kpi"><span>Операции</span><strong>${operations.length}</strong></div><div class="kpi"><span>Задания</span><strong>${state.tasks.length}</strong></div><div class="kpi"><span>Выпущено</span><strong>${totalGood}</strong></div><div class="kpi"><span>Открытые простои</span><strong>${openDowntime}</strong></div><div class="kpi"><span>Конфликты</span><strong>${conflicts.length}</strong></div></section>${renderDispatchBoard(dispatchOptions)}${renderCalendarEditor({ calendar: state.calendar, shifts: state.shifts, employees: state.employees, employeeSchedules: state.employeeSchedules, equipment: state.equipment, equipmentBlocks: state.equipmentBlocks, onCalendarChange: updateCalendarDay, onEmployeeScheduleChange: updateEmployeeSchedule, onAddBlock: addEquipmentBlock, onRemoveBlock: removeEquipmentBlock, onError: showError })}${renderExecutionPanel({ tasks: state.tasks, employees: state.employees, equipment: state.equipment, results: state.results, downtimes: state.downtimes, onAction: handleAction, onResult: handleResult, onDowntimeStart: handleDowntimeStart, onDowntimeEnd: handleDowntimeEnd })}${renderMaintenancePanel({ state, onCreate: createMaintenance, onAction: changeMaintenanceStatus, onError: showError })}${renderPlanFactPanel({ orders: state.orders, tasks: state.tasks, results: state.results, downtimes: state.downtimes, now: new Date() })}${renderReplanPanel({ tasks: state.tasks, downtimes: state.downtimes, plan: state.plan, onApply: applyControlledReplan })}${renderIntegrationPanel({ store: integrationStore, onRefresh: () => render() })}`;
 
-  bindCalendarEditor(root, { calendar: state.calendar, shifts: state.shifts, employees: state.employees, employeeSchedules: state.employeeSchedules, equipment: state.equipment, equipmentBlocks: state.equipmentBlocks, onCalendarChange: updateCalendarDay, onEmployeeScheduleChange: updateEmployeeSchedule, onAddBlock: addEquipmentBlock, onRemoveBlock: removeEquipmentBlock });
+  bindCalendarEditor(root, { calendar: state.calendar, shifts: state.shifts, employees: state.employees, employeeSchedules: state.employeeSchedules, equipment: state.equipment, equipmentBlocks: state.equipmentBlocks, onCalendarChange: updateCalendarDay, onEmployeeScheduleChange: updateEmployeeSchedule, onAddBlock: addEquipmentBlock, onRemoveBlock: removeEquipmentBlock, onError: showError });
   bindExecutionPanel(root, { tasks: state.tasks, employees: state.employees, equipment: state.equipment, results: state.results, downtimes: state.downtimes, onAction: handleAction, onResult: handleResult, onDowntimeStart: handleDowntimeStart, onDowntimeEnd: handleDowntimeEnd });
   bindMaintenancePanel(root, { state, onCreate: createMaintenance, onAction: changeMaintenanceStatus, onError: showError });
   bindReplanPanel(root, { tasks: state.tasks, downtimes: state.downtimes, plan: state.plan, onApply: applyControlledReplan });
