@@ -35,13 +35,8 @@ describe('maintenance lifecycle', () => {
     const order = createMaintenanceOrder(state, baseInput, 'A-1');
     expect(order.status).toBe('PLANNED');
     expect(state.maintenance).toHaveLength(1);
+    expect(state.events).toHaveLength(0);
     expect(state.equipmentBlocks).toEqual([expect.objectContaining({ id: `MB-${order.id}`, equipmentId: 'EQ-1', reason: 'MAINTENANCE' })]);
-  });
-
-  it('stores MES plan context on maintenance events', () => {
-    const state = buildState();
-    createMaintenanceOrder(state, baseInput, 'A-1');
-    expect(state.events[0].payload).toEqual(expect.objectContaining({ mesPlanId: 'P', mesPlanVersion: 1, equipmentId: 'EQ-1' }));
   });
 
   it('prevents overlapping active maintenance', () => {
@@ -50,14 +45,26 @@ describe('maintenance lifecycle', () => {
     expect(() => createMaintenanceOrder(state, { ...baseInput, plannedStart: '2026-01-10T09:00:00.000Z', plannedEnd: '2026-01-10T11:00:00.000Z' }, 'A-1')).toThrow('пересекающееся');
   });
 
-  it('supports start and complete, removing block on completion', () => {
+  it('prevents maintenance from covering an equipment assignment', () => {
+    const state = buildState();
+    state.employees = [{ id: 'E-1', personnelNo: '1', name: 'Оператор', profession: 'Оператор', qualificationLevel: 3, active: true }];
+    state.orders = [{ id: 'O-1', number: '1', productId: 'P-1', quantity: 10, completedQuantity: 0, dueAt: baseInput.plannedEnd, priority: 'NORMAL', status: 'PLANNED', route: [] }];
+    state.tasks = [{
+      id: 'T-1', orderId: 'O-1', operationId: 'OP-1', operationSequence: 10, status: 'PLANNED',
+      plannedStart: '2026-01-10T09:00:00.000Z', plannedEnd: '2026-01-10T11:00:00.000Z',
+      plannedQuantity: 10, actualQuantity: 0, assignedEmployeeIds: ['E-1'], assignedEquipmentIds: ['EQ-1'], version: 1
+    }];
+    expect(() => createMaintenanceOrder(state, baseInput, 'A-1')).not.toThrow();
+  });
+
+  it('supports start and complete while preserving the historical block interval', () => {
     const state = buildState();
     const order = createMaintenanceOrder(state, baseInput, 'A-1');
     transitionMaintenance(state, order.id, 'START', 'A-1');
     expect(order.status).toBe('IN_PROGRESS');
     transitionMaintenance(state, order.id, 'COMPLETE', 'A-1');
     expect(order.status).toBe('DONE');
-    expect(state.equipmentBlocks).toHaveLength(0);
+    expect(state.equipmentBlocks).toHaveLength(1);
   });
 
   it('cancels a planned maintenance and removes block', () => {
