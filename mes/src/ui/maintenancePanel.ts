@@ -1,10 +1,11 @@
-import { createMaintenanceOrder, transitionMaintenance } from '../core/maintenance';
 import { MaintenanceOrder, MesState } from '../types';
+
+export type MaintenanceAction = 'START' | 'COMPLETE' | 'CANCEL';
 
 export interface MaintenancePanelOptions {
   state: MesState;
-  actorId: string;
-  onChanged: () => void;
+  onCreate: (input: Omit<MaintenanceOrder, 'id' | 'status'>) => void | Promise<void>;
+  onAction: (orderId: string, action: MaintenanceAction) => void | Promise<void>;
   onError: (error: unknown) => void;
 }
 
@@ -59,22 +60,21 @@ export function bindMaintenancePanel(root: ParentNode, options: MaintenancePanel
     const start = String(data.get('start') ?? '');
     const end = String(data.get('end') ?? '');
     if (!equipmentId || !start || !end || new Date(start).getTime() >= new Date(end).getTime()) return;
-    try {
-      createMaintenanceOrder(options.state, { equipmentId, type, plannedStart: new Date(start).toISOString(), plannedEnd: new Date(end).toISOString(), comment: String(data.get('comment') ?? '') || undefined }, options.actorId);
-      options.onChanged();
-    } catch (error) {
-      options.onError(error);
-    }
+    void Promise.resolve(options.onCreate({
+      equipmentId,
+      type,
+      plannedStart: new Date(start).toISOString(),
+      plannedEnd: new Date(end).toISOString(),
+      comment: String(data.get('comment') ?? '') || undefined
+    })).catch(options.onError);
   });
 
   root.querySelectorAll<HTMLButtonElement>('[data-maint-action]').forEach(button => {
     button.addEventListener('click', () => {
-      try {
-        transitionMaintenance(options.state, button.dataset.maintId ?? '', button.dataset.maintAction as 'START' | 'COMPLETE' | 'CANCEL', options.actorId);
-        options.onChanged();
-      } catch (error) {
-        options.onError(error);
-      }
+      void Promise.resolve(options.onAction(
+        button.dataset.maintId ?? '',
+        button.dataset.maintAction as MaintenanceAction
+      )).catch(options.onError);
     });
   });
 }
