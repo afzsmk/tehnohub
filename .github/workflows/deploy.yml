@@ -28,6 +28,34 @@ jobs:
         with:
           node-version: 24
 
+      # 0. Жесткий schema/release gate: deployment не может пройти,
+      # пока текущий набор MES-мigration не проходит reset, pgTAP и lint.
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: 2.105.0
+
+      - name: Start local Supabase
+        working-directory: ./mes
+        run: supabase start
+
+      - name: Reset local database from migrations
+        working-directory: ./mes
+        run: supabase db reset --local --no-seed
+
+      - name: Run database security regression tests
+        working-directory: ./mes
+        run: supabase test db --local
+
+      - name: Lint database schema
+        working-directory: ./mes
+        run: supabase db lint --local --level error
+
+      - name: Stop local Supabase
+        if: always()
+        working-directory: ./mes
+        run: supabase stop
+
       # 1. Сборка месячного плана Workforce
       - name: Build Workforce
         working-directory: ./workforce
