@@ -8,6 +8,7 @@ export * from './mesCalendarRpc';
 export * from './mesEquipmentBlockRpc';
 export * from './mesMaintenanceRpc';
 export * from './mesRuntimeSnapshotRpc';
+export * from './mesRealtime';
 export * from './mesRouteRpc';
 export * from './mesOrderRpc';
 export * from './workforce';
