@@ -19,6 +19,7 @@ import { SupabaseMesPlanningRpc } from './integration/mesPlanningRpc';
 import { SupabaseMesReplanRpc } from './integration/mesReplanRpc';
 import { SupabaseMesEquipmentBlockRpc } from './integration/mesEquipmentBlockRpc';
 import { SupabaseMesMaintenanceRpc } from './integration/mesMaintenanceRpc';
+import { SupabaseMesRuntimeSnapshotRpc, MesRuntimeSnapshot } from './integration/mesRuntimeSnapshotRpc';
 import { getMesSupabaseClient } from './services/supabase';
 import { CalendarDay, EmployeeSchedule, MaintenanceOrder, MesState, ProductionTask } from './types';
 import { loadState, saveState } from './services/storage';
@@ -79,9 +80,11 @@ const remotePlanning = supabase ? new SupabaseMesPlanningRpc(supabase) : null;
 const remoteReplan = supabase ? new SupabaseMesReplanRpc(supabase) : null;
 const remoteEquipmentBlocks = supabase ? new SupabaseMesEquipmentBlockRpc(supabase) : null;
 const remoteMaintenance = supabase ? new SupabaseMesMaintenanceRpc(supabase) : null;
+const remoteSnapshot = supabase ? new SupabaseMesRuntimeSnapshotRpc(supabase) : null;
 let authState: MesAuthState = { user: null, identity: null };
 let authUnsubscribe: (() => void) | null = null;
 let calendarMutationChain: Promise<void> = Promise.resolve();
+let remoteHydrationPromise: Promise<void> | null = null;
 const app = document.querySelector<HTMLDivElement>('#app');
 if (!app) throw new Error('Не найден контейнер приложения');
 const root = app;
@@ -91,6 +94,31 @@ function remoteReady(): boolean { return Boolean(remoteExecution && authState.id
 function remoteEquipmentBlocksReady(): boolean { return Boolean(remoteEquipmentBlocks && authState.identity); }
 function remoteMaintenanceReady(): boolean { return Boolean(remoteMaintenance && authState.identity); }
 
+async function hydrateRemoteState(): Promise<void> {
+  if (!remoteSnapshot || !authState.identity) return;
+  if (remoteHydrationPromise) return remoteHydrationPromise;
+  remoteHydrationPromise = remoteSnapshot.load(state.plan.id).then((snapshot: MesRuntimeSnapshot) => {
+    if (snapshot.plan) state.plan = snapshot.plan;
+    state.products = snapshot.products ?? [];
+    state.employees = snapshot.employees ?? [];
+    state.equipment = snapshot.equipment ?? [];
+    state.shifts = snapshot.shifts ?? [];
+    state.calendar = snapshot.calendar ?? [];
+    state.employeeSchedules = snapshot.employeeSchedules ?? [];
+    state.equipmentBlocks = snapshot.equipmentBlocks ?? [];
+    state.orders = snapshot.orders ?? [];
+    state.tasks = snapshot.tasks ?? [];
+    state.downtimes = snapshot.downtimes ?? [];
+    state.maintenance = snapshot.maintenance ?? [];
+    state.results = snapshot.results ?? [];
+    state.qualityInspections = snapshot.qualityInspections ?? [];
+    state.events = snapshot.events ?? [];
+    saveState(state);
+    render();
+  }).finally(() => { remoteHydrationPromise = null; });
+  return remoteHydrationPromise;
+}
+
 function enqueueCalendarMutation(mutator: (calendar: CalendarDay[], schedules: EmployeeSchedule[]) => void): Promise<void> {
   calendarMutationChain = calendarMutationChain
     .catch(() => undefined)
@@ -98,9 +126,7 @@ function enqueueCalendarMutation(mutator: (calendar: CalendarDay[], schedules: E
       const nextCalendar = state.calendar.map(day => ({ ...day, shiftIds: [...day.shiftIds] }));
       const nextSchedules = state.employeeSchedules.map(schedule => ({ ...schedule, shiftIds: [...schedule.shiftIds] }));
       mutator(nextCalendar, nextSchedules);
-      if (remoteCalendar && authState.identity) {
-        await remoteCalendar.saveCalendar(nextCalendar, nextSchedules);
-      }
+      if (remoteCalendar && authState.identity) await remoteCalendar.saveCalendar(nextCalendar, nextSchedules);
       state.calendar = nextCalendar;
       state.employeeSchedules = nextSchedules;
       calculate();
@@ -121,6 +147,7 @@ function ensureHorizon(): void {
 }
 
 function calculate(): void {
+  if (remoteReady()) return;
   const result = buildDeterministicSchedule({ orders: state.orders, employees: state.employees, equipment: state.equipment, horizonStart: state.plan.horizonStart, horizonEnd: state.plan.horizonEnd, shifts: state.shifts, calendar: state.calendar, employeeSchedules: state.employeeSchedules, equipmentBlocks: state.equipmentBlocks });
   state.tasks = result.tasks;
   saveState(state);
@@ -141,7 +168,6 @@ async function moveTask(taskId: string, deltaMinutes: number): Promise<void> {
   const delta = deltaMinutes * 60_000;
   const plannedStart = new Date(new Date(task.plannedStart).getTime() + delta).toISOString();
   const plannedEnd = new Date(new Date(task.plannedEnd).getTime() + delta).toISOString();
-
   if (remoteReady() && remoteReplan) {
     try {
       const plan = await remoteReplan.apply(state.plan.id, state.plan.version, [{ taskId: task.id, proposedStart: plannedStart, proposedEnd: plannedEnd, expectedVersion: task.version }]);
@@ -154,7 +180,6 @@ async function moveTask(taskId: string, deltaMinutes: number): Promise<void> {
     } catch (error) { showError(error); }
     return;
   }
-
   updateTask(taskId, { plannedStart, plannedEnd });
 }
 
@@ -164,12 +189,7 @@ function updateCalendarDay(date: string, isWorking: boolean, shiftIds: string[])
     if (!day) return;
     day.isWorking = isWorking;
     day.shiftIds = isWorking ? [...shiftIds] : [];
-    if (!isWorking) {
-      nextSchedules.filter(item => item.date === date).forEach(item => {
-        item.status = 'OFF';
-        item.shiftIds = [];
-      });
-    }
+    if (!isWorking) nextSchedules.filter(item => item.date === date).forEach(item => { item.status = 'OFF'; item.shiftIds = []; });
   });
 }
 
@@ -180,19 +200,15 @@ function updateEmployeeSchedule(employeeId: string, date: string, status: Employ
     if (item) {
       item.status = status;
       item.shiftIds = [...shiftIds];
-    } else {
-      nextSchedules.push({ employeeId, date, status, shiftIds: [...shiftIds] });
-    }
+    } else nextSchedules.push({ employeeId, date, status, shiftIds: [...shiftIds] });
   });
 }
 
 async function addEquipmentBlock(block: Omit<import('./types').EquipmentBlock, 'id'>): Promise<void> {
   if (remoteEquipmentBlocksReady()) {
     try {
-      const remoteBlock = await remoteEquipmentBlocks!.createBlock(block);
-      state.equipmentBlocks.push(remoteBlock);
-      calculate();
-      render();
+      await remoteEquipmentBlocks!.createBlock(block);
+      await hydrateRemoteState();
     } catch (error) { showError(error); }
     return;
   }
@@ -204,10 +220,8 @@ async function addEquipmentBlock(block: Omit<import('./types').EquipmentBlock, '
 async function removeEquipmentBlock(blockId: string): Promise<void> {
   if (remoteEquipmentBlocksReady()) {
     try {
-      const remoteBlock = await remoteEquipmentBlocks!.deleteBlock(blockId);
-      state.equipmentBlocks = state.equipmentBlocks.filter(block => block.id !== remoteBlock.id);
-      calculate();
-      render();
+      await remoteEquipmentBlocks!.deleteBlock(blockId);
+      await hydrateRemoteState();
     } catch (error) { showError(error); }
     return;
   }
@@ -219,11 +233,8 @@ async function removeEquipmentBlock(blockId: string): Promise<void> {
 async function createMaintenance(input: Omit<MaintenanceOrder, 'id' | 'status'>): Promise<void> {
   if (remoteMaintenanceReady()) {
     try {
-      const order = await remoteMaintenance!.createOrder(input.equipmentId, input.type, input.plannedStart, input.plannedEnd, input.comment);
-      state.maintenance.push(order);
-      syncMaintenanceBlock(state, order);
-      calculate();
-      render();
+      await remoteMaintenance!.createOrder(input.equipmentId, input.type, input.plannedStart, input.plannedEnd, input.comment);
+      await hydrateRemoteState();
     } catch (error) { showError(error); }
     return;
   }
@@ -236,12 +247,8 @@ async function createMaintenance(input: Omit<MaintenanceOrder, 'id' | 'status'>)
 async function changeMaintenanceStatus(orderId: string, action: 'START' | 'COMPLETE' | 'CANCEL'): Promise<void> {
   if (remoteMaintenanceReady()) {
     try {
-      const order = await remoteMaintenance!.changeStatus(orderId, action);
-      const local = state.maintenance.find(item => item.id === order.id);
-      if (local) Object.assign(local, order); else state.maintenance.push(order);
-      if (order.status === 'CANCELLED') removeMaintenanceBlock(state, order.id); else syncMaintenanceBlock(state, order);
-      calculate();
-      render();
+      await remoteMaintenance!.changeStatus(orderId, action);
+      await hydrateRemoteState();
     } catch (error) { showError(error); }
     return;
   }
@@ -261,10 +268,8 @@ async function applyControlledReplan(preview: import('./core/planFact').ReplanPr
     if (changes.length === 0) return;
     try {
       const plan = await remoteReplan.apply(state.plan.id, state.plan.version, changes);
-      applyApprovedReplan(state.tasks, preview);
       state.plan = plan;
-      saveState(state);
-      render();
+      await hydrateRemoteState();
     } catch (error) { showError(error); }
     return;
   }
@@ -382,7 +387,7 @@ async function handleDowntimeEnd(downtimeId: string): Promise<void> {
 }
 
 ensureHorizon();
-if (state.tasks.length === 0) calculate();
+if (state.tasks.length === 0 && !remoteReady()) calculate();
 
 function authHtml(): string {
   if (!supabase) return '<div class="plan-badge">Demo / localStorage</div>';
@@ -417,9 +422,17 @@ function render(): void {
 
 if (supabase) {
   authUnsubscribe = subscribeMesAuth(supabase, async () => {
-    try { authState = await getMesAuthState(supabase); render(); } catch (error) { showError(error); }
+    try {
+      authState = await getMesAuthState(supabase);
+      if (authState.identity) await hydrateRemoteState();
+      else render();
+    } catch (error) { showError(error); }
   });
-  void getMesAuthState(supabase).then(result => { authState = result; render(); }).catch(showError);
+  void getMesAuthState(supabase).then(async result => {
+    authState = result;
+    if (authState.identity) await hydrateRemoteState();
+    else render();
+  }).catch(showError);
 } else {
   render();
 }
