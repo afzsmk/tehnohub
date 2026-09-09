@@ -12,9 +12,19 @@ export interface MesAuthState {
   identity: MesAuthenticatedIdentity | null;
 }
 
-function readLocalState(): MesState | null {
+function browserStorage(): Storage | null {
   try {
-    const raw = localStorage.getItem(MES_STATE_KEY);
+    return typeof localStorage === 'undefined' ? null : localStorage;
+  } catch {
+    return null;
+  }
+}
+
+function readLocalState(): MesState | null {
+  const storage = browserStorage();
+  if (!storage) return null;
+  try {
+    const raw = storage.getItem(MES_STATE_KEY);
     return raw ? JSON.parse(raw) as MesState : null;
   } catch {
     return null;
@@ -22,10 +32,12 @@ function readLocalState(): MesState | null {
 }
 
 async function cacheRemoteState(client: SupabaseClient, userId: string): Promise<boolean> {
-  if (typeof window === 'undefined' || localStorage.getItem(REMOTE_USER_KEY) === userId) return false;
+  const storage = browserStorage();
+  if (!storage) return false;
+  if (storage.getItem(REMOTE_USER_KEY) === userId) return false;
   const current = readLocalState();
   if (!current) return false;
-  if (!localStorage.getItem(DEMO_BACKUP_KEY)) localStorage.setItem(DEMO_BACKUP_KEY, JSON.stringify(current));
+  if (!storage.getItem(DEMO_BACKUP_KEY)) storage.setItem(DEMO_BACKUP_KEY, JSON.stringify(current));
 
   // Use the same authoritative RPC used by the live runtime hydration path.
   // This avoids a torn snapshot assembled from many independent table reads.
@@ -49,17 +61,18 @@ async function cacheRemoteState(client: SupabaseClient, userId: string): Promise
     events: snapshot.events ?? []
   };
 
-  localStorage.setItem(MES_STATE_KEY, JSON.stringify(merged));
-  localStorage.setItem(REMOTE_USER_KEY, userId);
+  storage.setItem(MES_STATE_KEY, JSON.stringify(merged));
+  storage.setItem(REMOTE_USER_KEY, userId);
   return true;
 }
 
 function restoreDemoState(): void {
-  if (typeof window === 'undefined') return;
-  const backup = localStorage.getItem(DEMO_BACKUP_KEY);
-  if (backup) localStorage.setItem(MES_STATE_KEY, backup);
-  localStorage.removeItem(DEMO_BACKUP_KEY);
-  localStorage.removeItem(REMOTE_USER_KEY);
+  const storage = browserStorage();
+  if (!storage) return;
+  const backup = storage.getItem(DEMO_BACKUP_KEY);
+  if (backup) storage.setItem(MES_STATE_KEY, backup);
+  storage.removeItem(DEMO_BACKUP_KEY);
+  storage.removeItem(REMOTE_USER_KEY);
 }
 
 async function ensureRemoteStateLoaded(client: SupabaseClient, userId: string): Promise<void> {
