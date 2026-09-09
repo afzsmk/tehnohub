@@ -119,6 +119,56 @@ describe('MES auth remote hydration', () => {
     expect(JSON.parse(storage.getItem('zsmk_mes_state_v1') ?? '{}').qualityInspections).toHaveLength(1);
   });
 
+  it('refreshes the authoritative snapshot even when the same user marker already exists', async () => {
+    const storage = memoryStorage();
+    const reloadCalls: number[] = [];
+    (globalThis as { window?: Window }).window = {
+      localStorage: storage,
+      location: { reload: () => reloadCalls.push(1) } as Location
+    } as Window;
+
+    const stale: MesState = {
+      plan: { id: 'PLAN-1', version: 1, horizonStart: '2026-01-01', horizonEnd: '2026-01-30', status: 'DRAFT' },
+      products: [], employees: [], equipment: [], shifts: [], calendar: [], employeeSchedules: [],
+      equipmentBlocks: [], orders: [], tasks: [], downtimes: [], maintenance: [], results: [], qualityInspections: [], events: []
+    };
+    storage.setItem('zsmk_mes_state_v1', JSON.stringify(stale));
+    storage.setItem('zsmk_mes_remote_user_v1', 'USER-1');
+
+    let rpcCalls = 0;
+    const client = {
+      auth: {
+        getSession: async () => ({
+          data: { session: { user: { id: 'USER-1', email: 'operator@example.test', app_metadata: { mes_role: 'OPERATOR' } } } },
+          error: null
+        })
+      },
+      from: () => ({
+        select: () => ({
+          eq: () => ({ maybeSingle: async () => ({ data: { employee_id: 'E-1', active: true }, error: null }) })
+        })
+      }),
+      rpc: async () => {
+        rpcCalls += 1;
+        return {
+          data: {
+            plan: stale.plan,
+            products: [], employees: [], equipment: [], shifts: [], calendar: [], employeeSchedules: [],
+            equipmentBlocks: [], orders: [{ id: 'ORDER-NEW', planId: 'PLAN-1', productId: 'P-1', operationSequence: 1, quantity: 10, completedQuantity: 4, status: 'PARTIALLY_COMPLETED', priority: 'NORMAL', version: 2 }],
+            tasks: [], downtimes: [], maintenance: [], results: [], qualityInspections: [], events: [], calendarRevision: 5
+          },
+          error: null
+        };
+      }
+    } as never;
+
+    await getMesAuthState(client);
+
+    expect(rpcCalls).toBe(1);
+    expect(reloadCalls).toHaveLength(1);
+    expect(JSON.parse(storage.getItem('zsmk_mes_state_v1') ?? '{}').orders).toHaveLength(1);
+  });
+
   it('does not require browser storage in the node test environment', async () => {
     delete (globalThis as { window?: Window }).window;
 
