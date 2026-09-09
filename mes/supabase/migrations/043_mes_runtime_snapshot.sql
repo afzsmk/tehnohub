@@ -11,9 +11,12 @@ as $$
 declare
   v_plan operational_plans%rowtype;
   v_role text := mes_current_role();
+  v_calendar_revision bigint;
 begin
   if auth.uid() is null then raise exception 'MES authentication required'; end if;
   if v_role = '' then raise exception 'MES role is not configured'; end if;
+
+  select revision into v_calendar_revision from mes_calendar_revision where id = true;
 
   select * into v_plan from operational_plans where id = p_plan_id limit 1;
   if v_plan.id is null then
@@ -21,11 +24,12 @@ begin
   end if;
 
   if v_plan.id is null then
-    return jsonb_build_object('plan',null,'products','[]'::jsonb,'employees','[]'::jsonb,'equipment','[]'::jsonb,'shifts','[]'::jsonb,'calendar','[]'::jsonb,'employeeSchedules','[]'::jsonb,'equipmentBlocks','[]'::jsonb,'orders','[]'::jsonb,'tasks','[]'::jsonb,'downtimes','[]'::jsonb,'maintenance','[]'::jsonb,'results','[]'::jsonb,'qualityInspections','[]'::jsonb,'events','[]'::jsonb);
+    return jsonb_build_object('plan',null,'calendarRevision',coalesce(v_calendar_revision,1),'products','[]'::jsonb,'employees','[]'::jsonb,'equipment','[]'::jsonb,'shifts','[]'::jsonb,'calendar','[]'::jsonb,'employeeSchedules','[]'::jsonb,'equipmentBlocks','[]'::jsonb,'orders','[]'::jsonb,'tasks','[]'::jsonb,'downtimes','[]'::jsonb,'maintenance','[]'::jsonb,'results','[]'::jsonb,'qualityInspections','[]'::jsonb,'events','[]'::jsonb);
   end if;
 
   return jsonb_build_object(
     'plan', jsonb_build_object('id',v_plan.id,'version',v_plan.version,'horizonStart',v_plan.horizon_start,'horizonEnd',v_plan.horizon_end,'status',v_plan.status,'sourcePlanId',v_plan.source_plan_id,'sourcePlanVersion',v_plan.source_plan_version),
+    'calendarRevision', coalesce(v_calendar_revision,1),
     'products', coalesce((select jsonb_agg(jsonb_build_object('id',p.id,'code',p.code,'name',p.name,'unit',p.unit) order by p.id) from products p),'[]'::jsonb),
     'employees', coalesce((select jsonb_agg(jsonb_build_object('id',e.id,'personnelNo',e.personnel_no,'name',e.name,'profession',e.profession,'qualificationLevel',e.qualification_level,'active',e.active) order by e.id) from employees e),'[]'::jsonb),
     'equipment', coalesce((select jsonb_agg(jsonb_build_object('id',e.id,'code',e.code,'name',e.name,'workCenter',e.work_center,'capabilities',e.capabilities,'active',e.active) order by e.id) from equipment e),'[]'::jsonb),
@@ -48,4 +52,4 @@ revoke all on function mes_get_runtime_snapshot(text) from public;
 grant execute on function mes_get_runtime_snapshot(text) to authenticated;
 
 comment on function mes_get_runtime_snapshot(text) is
-'Authoritative authenticated MES runtime snapshot. The requested plan is used when present; otherwise the latest operational plan is selected. Route master data includes inactive operations so historical tasks remain resolvable.';
+'Authoritative authenticated MES runtime snapshot. The requested plan is used when present; otherwise the latest operational plan is selected. Route master data includes inactive operations so historical tasks remain resolvable. Calendar revision is included as the optimistic-lock precondition for calendar persistence.';
