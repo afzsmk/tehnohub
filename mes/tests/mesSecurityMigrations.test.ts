@@ -67,6 +67,15 @@ describe('MES SQL security baseline', () => {
     expect(sql).toContain('from public');
   });
 
+  it('explicitly blocks anon execution of SECURITY DEFINER MES functions', () => {
+    const sql = migration('056_mes_anon_execute_lockdown.sql');
+    expect(sql).toContain("p.proname like 'mes_%'");
+    expect(sql).toContain('p.prosecdef');
+    expect(sql).toContain('pg_get_function_identity_arguments');
+    expect(sql).toContain('from anon');
+    expect(sql).toContain('from public');
+  });
+
   it('protects calendar persistence with an explicit revision precondition', () => {
     const sql = migration('048_mes_calendar_optimistic_lock.sql');
     expect(sql).toContain('p_expected_revision bigint');
