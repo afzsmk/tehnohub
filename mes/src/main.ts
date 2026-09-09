@@ -271,8 +271,9 @@ async function createMaintenance(input: Omit<MaintenanceOrder, 'id' | 'status'>)
 
 async function changeMaintenanceStatus(orderId: string, action: 'START' | 'COMPLETE' | 'CANCEL'): Promise<void> {
   if (remoteMaintenanceReady()) {
+    const current = state.maintenance.find(item => item.id === orderId);
     try {
-      await remoteMaintenance!.changeStatus(orderId, action);
+      await remoteMaintenance!.changeStatus(orderId, action, current?.status);
       await hydrateRemoteState();
     } catch (error) { showError(error); }
     return;
