@@ -11,7 +11,7 @@ export interface CalendarEditorOptions {
   onEmployeeScheduleChange: (employeeId: string, date: string, status: EmployeeSchedule['status'], shiftIds: string[]) => void | Promise<void>;
   onAddBlock: (block: Omit<EquipmentBlock, 'id'>) => void | Promise<void>;
   onRemoveBlock: (blockId: string) => void | Promise<void>;
-  onError: (error: unknown) => void;
+  onError?: (error: unknown) => void;
 }
 
 function dateLabel(date: string): string {
@@ -58,11 +58,12 @@ export function renderCalendarEditor(options: CalendarEditorOptions): string {
 }
 
 export function bindCalendarEditor(root: ParentNode, options: CalendarEditorOptions): void {
+  const reportError = (error: unknown): void => { options.onError?.(error); };
   root.querySelectorAll<HTMLInputElement>('[data-working]').forEach(input => {
     input.addEventListener('change', () => {
       const date = input.dataset.working ?? '';
       const shifts = Array.from(root.querySelectorAll<HTMLInputElement>(`[data-day="${date}"][data-shift]`)).filter(i => i.checked).map(i => i.dataset.shift ?? '').filter(Boolean);
-      void Promise.resolve(options.onCalendarChange(date, input.checked, input.checked ? shifts : [])).catch(options.onError);
+      void Promise.resolve(options.onCalendarChange(date, input.checked, input.checked ? shifts : [])).catch(reportError);
     });
   });
   root.querySelectorAll<HTMLInputElement>('[data-day][data-shift]').forEach(input => {
@@ -70,13 +71,13 @@ export function bindCalendarEditor(root: ParentNode, options: CalendarEditorOpti
       const date = input.dataset.day ?? '';
       const working = root.querySelector<HTMLInputElement>(`[data-working="${date}"]`)?.checked ?? false;
       const shifts = Array.from(root.querySelectorAll<HTMLInputElement>(`[data-day="${date}"][data-shift]`)).filter(i => i.checked).map(i => i.dataset.shift ?? '').filter(Boolean);
-      void Promise.resolve(options.onCalendarChange(date, working, working ? shifts : [])).catch(options.onError);
+      void Promise.resolve(options.onCalendarChange(date, working, working ? shifts : [])).catch(reportError);
     });
   });
   root.querySelectorAll<HTMLSelectElement>('[data-employee-day]').forEach(select => {
     select.addEventListener('change', () => {
       const [employeeId, date] = (select.dataset.employeeDay ?? '|').split('|');
-      void Promise.resolve(options.onEmployeeScheduleChange(employeeId, date, select.value ? 'WORK' : 'OFF', select.value ? [select.value] : [])).catch(options.onError);
+      void Promise.resolve(options.onEmployeeScheduleChange(employeeId, date, select.value ? 'WORK' : 'OFF', select.value ? [select.value] : [])).catch(reportError);
     });
   });
   const form = root.querySelector<HTMLFormElement>('#block-form');
@@ -94,10 +95,10 @@ export function bindCalendarEditor(root: ParentNode, options: CalendarEditorOpti
         end: new Date(end).toISOString(),
         reason: String(data.get('reason') ?? 'OTHER') as EquipmentBlockReason,
         comment: String(data.get('comment') ?? '') || undefined
-      })).catch(options.onError);
+      })).catch(reportError);
     });
   }
   root.querySelectorAll<HTMLButtonElement>('[data-remove-block]').forEach(button => {
-    button.addEventListener('click', () => { void Promise.resolve(options.onRemoveBlock(button.dataset.removeBlock ?? '')).catch(options.onError); });
+    button.addEventListener('click', () => { void Promise.resolve(options.onRemoveBlock(button.dataset.removeBlock ?? '')).catch(reportError); });
   });
 }
