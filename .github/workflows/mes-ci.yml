@@ -7,10 +7,12 @@ on:
     paths:
       - 'mes/**'
       - '.github/workflows/mes-ci.yml'
+      - '.github/workflows/deploy.yml'
   pull_request:
     paths:
       - 'mes/**'
       - '.github/workflows/mes-ci.yml'
+      - '.github/workflows/deploy.yml'
 
 permissions:
   contents: read
