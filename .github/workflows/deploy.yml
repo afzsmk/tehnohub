@@ -29,7 +29,7 @@ jobs:
           node-version: 24
 
       # 0. Жесткий schema/release gate: deployment не может пройти,
-      # пока текущий набор MES-мigration не проходит reset, pgTAP и lint.
+      # пока текущий набор MES-migration не проходит reset, pgTAP и lint.
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v2
         with:
@@ -72,9 +72,12 @@ jobs:
           npm test
           npm run build
 
-      # 3. Сборка самостоятельного MES
+      # 3. Сборка самостоятельного MES против production Supabase
       - name: Build MES
         working-directory: ./mes
+        env:
+          VITE_SUPABASE_URL: https://caeqoipshdtxezcurnkn.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_-WF6AF_CkK4BWX8mUERwLg_2GsfX703
         run: |
           npm install
           npm test
