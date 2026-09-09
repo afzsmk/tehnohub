@@ -1,9 +1,6 @@
--- MES Quality Gate hardening v2.
--- Production result registration must not bypass the server-side Quality Gate.
--- A task can reach COMPLETED from a production result only when quality is
--- not required or the required inspection has been APPROVED. Otherwise the
--- task remains PARTIALLY_COMPLETED and must later be completed through the
--- guarded task-action RPC after Quality approval.
+-- Quality Gate hardening: reaching planned quantity through a production-result
+-- write must never complete a quality-controlled task. Completion remains an
+-- explicit lifecycle action after an APPROVED inspection.
 
 create or replace function mes_record_production_result(
   p_task_id text,
@@ -25,23 +22,36 @@ declare
   v_new_actual numeric;
   v_next_status text;
 begin
-  if auth.uid() is null then raise exception 'MES authentication required'; end if;
+  if auth.uid() is null then
+    raise exception 'MES authentication required';
+  end if;
+
   if p_good_quantity < 0 or p_scrap_quantity < 0 or p_good_quantity + p_scrap_quantity <= 0 then
     raise exception 'Некорректное количество выпуска/брака';
   end if;
 
-  select * into v_task from production_tasks where id = p_task_id for update;
-  if not found then raise exception 'Задание не найдено: %', p_task_id; end if;
+  select * into v_task
+    from production_tasks
+   where id = p_task_id
+   for update;
+  if not found then
+    raise exception 'Задание не найдено: %', p_task_id;
+  end if;
+
   if v_task.status not in ('RUNNING','PAUSED','PARTIALLY_COMPLETED') then
-    raise exception 'Факт выпуска допустим только для выполняемого задания';
+    raise exception 'Факт выпуска можно зарегистрировать только для выполняемого задания';
   end if;
 
   v_employee_id := mes_current_employee_id();
   if mes_current_role() = 'OPERATOR' and v_employee_id is null then
     raise exception 'Пользователь MES не привязан к сотруднику';
   end if;
+
   if mes_current_role() = 'OPERATOR' and not exists (
-    select 1 from task_assignments a where a.task_id = p_task_id and a.employee_id = v_employee_id
+    select 1
+      from task_assignments a
+     where a.task_id = p_task_id
+       and a.employee_id = v_employee_id
   ) then
     raise exception 'Оператор не назначен на это задание';
   end if;
@@ -51,17 +61,27 @@ begin
   end if;
 
   v_new_actual := v_task.actual_quantity + p_good_quantity;
+
+  -- A quality-controlled task may reach 100% fact, but it is still only
+  -- PARTIALLY_COMPLETED until the separate Quality Gate approves it.
   v_next_status := case
     when v_new_actual >= v_task.planned_quantity
-      and (not v_task.quality_required or v_task.quality_status = 'APPROVED')
+         and (not v_task.quality_required or v_task.quality_status = 'APPROVED')
       then 'COMPLETED'
-    when can_transition_status(v_task.status, 'PARTIALLY_COMPLETED') then 'PARTIALLY_COMPLETED'
+    when v_new_actual > 0
+      then 'PARTIALLY_COMPLETED'
     else v_task.status
   end;
 
   insert into production_results(
-    id, task_id, recorded_at, good_quantity, scrap_quantity,
-    employee_ids, equipment_ids, comment
+    id,
+    task_id,
+    recorded_at,
+    good_quantity,
+    scrap_quantity,
+    employee_ids,
+    equipment_ids,
+    comment
   ) values (
     concat('RES-', extract(epoch from clock_timestamp())::bigint, '-', md5(random()::text)),
     p_task_id,
@@ -76,7 +96,10 @@ begin
   update production_tasks
      set actual_quantity = v_new_actual,
          status = v_next_status,
-         actual_end = case when v_next_status = 'COMPLETED' then coalesce(actual_end, p_recorded_at) else actual_end end,
+         actual_end = case
+           when v_next_status = 'COMPLETED' then coalesce(actual_end, p_recorded_at)
+           else actual_end
+         end,
          version = version + 1
    where id = p_task_id;
 
@@ -93,9 +116,9 @@ begin
       'scrapQuantity', p_scrap_quantity,
       'employeeId', v_employee_id,
       'role', mes_current_role(),
-      'status', v_next_status,
       'qualityRequired', v_task.quality_required,
-      'qualityStatus', v_task.quality_status
+      'qualityStatus', v_task.quality_status,
+      'nextStatus', v_next_status
     )
   );
 
@@ -104,3 +127,6 @@ end;
 $$;
 
 grant execute on function mes_record_production_result(text,numeric,numeric,jsonb,text,timestamptz) to authenticated;
+
+comment on function mes_record_production_result(text,numeric,numeric,jsonb,text,timestamptz)
+is 'Records production facts without bypassing mandatory Quality Gate completion.';
