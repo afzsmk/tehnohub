@@ -40,8 +40,13 @@ function overlap(aStart: string, aEnd: string, bStart: string, bEnd: string): bo
 export function createMaintenanceOrder(state: MesState, input: Omit<MaintenanceOrder, 'id' | 'status'>, actorId: string): MaintenanceOrder {
   assertEquipment(state, input.equipmentId);
   assertInterval(input.plannedStart, input.plannedEnd);
-  const collision = state.maintenance.some(item => activeStatuses.includes(item.status) && item.equipmentId === input.equipmentId && overlap(item.plannedStart, item.plannedEnd, input.plannedStart, input.plannedEnd));
-  if (collision) throw new Error('На оборудовании уже есть пересекающееся ППР/ремонт');
+
+  const maintenanceCollision = state.maintenance.some(item => activeStatuses.includes(item.status) && item.equipmentId === input.equipmentId && overlap(item.plannedStart, item.plannedEnd, input.plannedStart, input.plannedEnd));
+  if (maintenanceCollision) throw new Error('На оборудовании уже есть пересекающееся ППР/ремонт');
+
+  const taskCollision = state.tasks.some(task => !['COMPLETED', 'CANCELLED'].includes(task.status) && task.assignedEquipmentIds.includes(input.equipmentId) && overlap(task.plannedStart, task.plannedEnd, input.plannedStart, input.plannedEnd));
+  if (taskCollision) throw new Error('Нельзя запланировать ППР поверх активного производственного задания; сначала выполните перепланирование');
+
   const order: MaintenanceOrder = { ...input, id: `MO-${Date.now()}`, status: 'PLANNED' };
   state.maintenance.push(order);
   syncMaintenanceBlock(state, order);
