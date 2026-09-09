@@ -14,6 +14,7 @@ import { browserWorkforceIntegrationStore } from './integration/workforce';
 import { getMesAuthState, signInMes, signOutMes, subscribeMesAuth, MesAuthState } from './integration/auth';
 import { SupabaseMesExecutionRpc, MesExecutionAction } from './integration/mesExecutionRpc';
 import { SupabaseMesCalendarRpc } from './integration/mesCalendarRpc';
+import { SupabaseMesReplanRpc } from './integration/mesReplanRpc';
 import { getMesSupabaseClient } from './services/supabase';
 import { MesState, ProductionTask } from './types';
 import { loadState, saveState } from './services/storage';
@@ -70,6 +71,7 @@ const integrationStore = browserWorkforceIntegrationStore();
 const supabase = getMesSupabaseClient();
 const remoteExecution = supabase ? new SupabaseMesExecutionRpc(supabase) : null;
 const remoteCalendar = supabase ? new SupabaseMesCalendarRpc(supabase) : null;
+const remoteReplan = supabase ? new SupabaseMesReplanRpc(supabase) : null;
 let authState: MesAuthState = { user: null, identity: null };
 let authUnsubscribe: (() => void) | null = null;
 let calendarSaveChain: Promise<void> = Promise.resolve();
@@ -114,11 +116,30 @@ function updateTask(taskId: string, patch: Partial<ProductionTask>): void {
   render();
 }
 
-function moveTask(taskId: string, deltaMinutes: number): void {
+async function moveTask(taskId: string, deltaMinutes: number): Promise<void> {
   const task = state.tasks.find(t => t.id === taskId);
   if (!task || ['COMPLETED', 'CANCELLED'].includes(task.status)) return;
   const delta = deltaMinutes * 60_000;
-  updateTask(taskId, { plannedStart: new Date(new Date(task.plannedStart).getTime() + delta).toISOString(), plannedEnd: new Date(new Date(task.plannedEnd).getTime() + delta).toISOString() });
+  const plannedStart = new Date(new Date(task.plannedStart).getTime() + delta).toISOString();
+  const plannedEnd = new Date(new Date(task.plannedEnd).getTime() + delta).toISOString();
+
+  if (remoteReady() && remoteReplan) {
+    const plan = await remoteReplan.apply(state.plan.id, state.plan.version, [{
+      taskId: task.id,
+      proposedStart: plannedStart,
+      proposedEnd: plannedEnd,
+      expectedVersion: task.version
+    }]);
+    task.plannedStart = plannedStart;
+    task.plannedEnd = plannedEnd;
+    task.version += 1;
+    state.plan = plan;
+    saveState(state);
+    render();
+    return;
+  }
+
+  updateTask(taskId, { plannedStart, plannedEnd });
 }
 
 function updateCalendarDay(date: string, isWorking: boolean, shiftIds: string[]): void {
@@ -140,8 +161,21 @@ function updateEmployeeSchedule(employeeId: string, date: string, status: 'WORK'
 
 function addEquipmentBlock(block: Omit<import('./types').EquipmentBlock, 'id'>): void { state.equipmentBlocks.push({ ...block, id: `EB-${Date.now()}` }); calculate(); render(); }
 function removeEquipmentBlock(blockId: string): void { state.equipmentBlocks = state.equipmentBlocks.filter(b => b.id !== blockId); calculate(); render(); }
-function applyControlledReplan(preview: import('./core/planFact').ReplanPreview): void {
-  if (remoteReady()) return;
+async function applyControlledReplan(preview: import('./core/planFact').ReplanPreview): Promise<void> {
+  if (remoteReady() && remoteReplan) {
+    if (preview.conflicts.length > 0) return;
+    const changes = preview.affected.map(item => {
+      const task = state.tasks.find(candidate => candidate.id === item.taskId);
+      return task ? { taskId: task.id, proposedStart: item.newStart, proposedEnd: item.newEnd, expectedVersion: task.version } : null;
+    }).filter((change): change is { taskId: string; proposedStart: string; proposedEnd: string; expectedVersion: number } => Boolean(change));
+    if (changes.length === 0) return;
+    const plan = await remoteReplan.apply(state.plan.id, state.plan.version, changes);
+    applyApprovedReplan(state.tasks, preview);
+    state.plan = plan;
+    saveState(state);
+    render();
+    return;
+  }
   applyApprovedReplan(state.tasks, preview); state.plan.version += 1; state.plan.status = 'DRAFT'; saveState(state); render();
 }
 function showError(error: unknown): void { window.alert(error instanceof Error ? error.message : 'Операция не выполнена'); }
