@@ -31,12 +31,14 @@ export async function mountDispatchGanttPage(root: HTMLElement, client: Supabase
   let rendering = false;
   let dragTask: { id:string; start:number; end:number; version:number } | null = null;
   let recommendationTaskId = '';
+  let recommendationTaskVersion = 0;
   let recommendationBusy = false;
 
-  const showRecommendations = async (taskId:string): Promise<void> => {
+  const showRecommendations = async (taskId:string, taskVersion:number): Promise<void> => {
     if (recommendationBusy) return;
     recommendationBusy = true;
     recommendationTaskId = taskId;
+    recommendationTaskVersion = taskVersion;
     const panel = host.querySelector<HTMLElement>('[data-recommendations]');
     if (!panel) return;
     panel.innerHTML = '<div class="subtle">Подбираем допустимые ресурсы…</div>';
@@ -50,9 +52,7 @@ export async function mountDispatchGanttPage(root: HTMLElement, client: Supabase
       attachRecommendationHandlers();
     } catch (error) {
       panel.innerHTML = `<div class="detail-error">${esc(error instanceof Error ? error.message : 'Не удалось получить рекомендации')}</div>`;
-    } finally {
-      recommendationBusy = false;
-    }
+    } finally { recommendationBusy = false; }
   };
 
   const attachRecommendationHandlers = () => {
@@ -62,19 +62,20 @@ export async function mountDispatchGanttPage(root: HTMLElement, client: Supabase
     });
     host.querySelectorAll<HTMLButtonElement>('[data-assign-recommend]').forEach(button => {
       button.addEventListener('click', async () => {
-        if (!recommendationTaskId) return;
+        if (!recommendationTaskId || recommendationTaskVersion <= 0) return;
         const taskId = recommendationTaskId;
+        const expectedVersion = recommendationTaskVersion;
         const type = button.dataset.resourceType;
         const resourceId = button.dataset.resourceId;
         if (!resourceId || (type !== 'EMPLOYEE' && type !== 'EQUIPMENT')) return;
         button.disabled = true;
         try {
-          const task = await planningRpc.assignTask(taskId, type === 'EMPLOYEE' ? { employeeIds:[resourceId] } : { equipmentIds:[resourceId] });
+          await planningRpc.assignTask(taskId, type === 'EMPLOYEE' ? { employeeIds:[resourceId] } : { equipmentIds:[resourceId] }, expectedVersion);
           recommendationTaskId = '';
+          recommendationTaskVersion = 0;
           const panel = host.querySelector<HTMLElement>('[data-recommendations]');
           if (panel) { panel.hidden = true; panel.innerHTML = ''; }
           await render();
-          void task;
         } catch (error) {
           button.disabled = false;
           const panel = host.querySelector<HTMLElement>('[data-recommendations]');
@@ -160,7 +161,7 @@ export async function mountDispatchGanttPage(root: HTMLElement, client: Supabase
         return `<div class="gantt-row"><div class="gantt-resource"><strong>${esc(eq.name)}</strong><span>${esc(eq.code)} · ${esc(eq.work_center)}</span></div><div class="gantt-track"><div class="gantt-grid-lines"></div><div class="gantt-now-line" style="left:${Math.max(0,Math.min(100,((now-first)/span)*100))}%"></div>${bars||'<span class="subtle gantt-empty">Нет заданий</span>'}</div></div>`;
       }).join('');
       const unassignedTasks = tasks.filter(t=>!assignmentByTask.get(t.id)?.equipment_id).slice(0,30);
-      const unassigned = unassignedTasks.map(t=>`<div class="gantt-unassigned-item"><span class="status-pill ${statusClass(t.status)}">${esc(t.id)} · v${t.version}</span><button class="tiny" data-recommend-task="${esc(t.id)}">Подобрать ресурсы</button></div>`).join('');
+      const unassigned = unassignedTasks.map(t=>`<div class="gantt-unassigned-item"><span class="status-pill ${statusClass(t.status)}">${esc(t.id)} · v${t.version}</span><button class="tiny" data-recommend-task="${esc(t.id)}" data-recommend-version="${t.version}">Подобрать ресурсы</button></div>`).join('');
       const panel = host.querySelector<HTMLElement>('[data-recommendations]');
       const panelState = panel?.hidden === false ? 'visible' : 'hidden';
       body.innerHTML = `<div class="gantt-scale"><span>${new Date(first).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span><span>${new Date(mid).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span><span>${new Date(horizonEnd).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</span></div><div class="gantt-help"><span>↔ Перетаскивание: 15 мин</span><span>● Текущее время</span><span>Версия плана: ${plan?.version ?? '—'}</span></div><div class="gantt-list">${rows||'<div class="subtle">Активного оборудования нет</div>'}</div><div class="gantt-unassigned"><strong>Без оборудования (${unassignedTasks.length})</strong><div class="gantt-unassigned-list">${unassigned||'<span class="subtle">Нет</span>'}</div></div><div data-recommendations ${panelState === 'hidden' ? 'hidden' : ''}></div>`;
@@ -168,7 +169,11 @@ export async function mountDispatchGanttPage(root: HTMLElement, client: Supabase
       host.dataset.span = String(span);
       if (plan) attachDragHandlers(plan.id, Number(plan.version), first, span);
       attachRecommendationHandlers();
-      host.querySelectorAll<HTMLButtonElement>('[data-recommend-task]').forEach(button => button.addEventListener('click', () => { const id = button.dataset.recommendTask; if (id) void showRecommendations(id); }));
+      host.querySelectorAll<HTMLButtonElement>('[data-recommend-task]').forEach(button => button.addEventListener('click', () => {
+        const id = button.dataset.recommendTask;
+        const version = Number(button.dataset.recommendVersion);
+        if (id && Number.isInteger(version) && version > 0) void showRecommendations(id, version);
+      }));
     } finally { rendering = false; }
   };
 
