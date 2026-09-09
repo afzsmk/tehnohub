@@ -211,8 +211,8 @@ select is(
 );
 select is(
   (select status from production_orders where id = 'E2E-ORDER'),
-  'COMPLETED',
-  'order status is derived only after full production fact is reached'
+  'PARTIALLY_COMPLETED',
+  'order remains partial while the final task awaits quality approval'
 );
 
 select (mes_submit_quality_inspection(
@@ -237,7 +237,7 @@ select is(
 select is(
   (select status from production_orders where id = 'E2E-ORDER'),
   'COMPLETED',
-  'order remains completed after final quality approval'
+  'order completes after final task quality approval'
 );
 
 select throws_ok(
