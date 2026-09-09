@@ -43,6 +43,7 @@ async function cacheRemoteState(client: SupabaseClient, userId: string): Promise
     downtimes: snapshot.downtimes,
     maintenance: snapshot.maintenance,
     results: snapshot.results,
+    qualityInspections: snapshot.qualityInspections,
     events: snapshot.events
   };
 
