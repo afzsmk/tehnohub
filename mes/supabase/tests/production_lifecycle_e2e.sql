@@ -196,23 +196,48 @@ select is(
 );
 select is(
   (select status from production_tasks where id = 'E2E-TASK'),
-  'COMPLETED',
-  'approved quality-controlled task completes at full fact'
+  'PARTIALLY_COMPLETED',
+  'new production beyond the approved snapshot does not bypass the quality gate'
 );
 select is(
   (select quality_status from production_tasks where id = 'E2E-TASK'),
-  'APPROVED',
-  'completion retains approved quality state'
+  'PENDING',
+  'new production beyond approved quantity reopens the quality gate'
 );
 select is(
   (select completed_quantity from production_orders where id = 'E2E-ORDER'),
   10::numeric,
-  'order fact reaches planned quantity'
+  'order fact tracks full last-operation production before final quality approval'
 );
 select is(
   (select status from production_orders where id = 'E2E-ORDER'),
   'COMPLETED',
-  'order completes from authoritative last-operation fact'
+  'order status is derived only after full production fact is reached'
+);
+
+select (mes_submit_quality_inspection(
+  'E2E-TASK', 'APPROVED', 10, 0, null, 'final batch approved', '2026-01-02T10:10:00Z'
+)).id;
+
+select is(
+  (select status from production_tasks where id = 'E2E-TASK'),
+  'COMPLETED',
+  'full approved quality inspection atomically completes the task'
+);
+select is(
+  (select quality_status from production_tasks where id = 'E2E-TASK'),
+  'APPROVED',
+  'final completion retains approved quality state'
+);
+select is(
+  (select completed_quantity from production_orders where id = 'E2E-ORDER'),
+  10::numeric,
+  'order fact remains at planned quantity after final approval'
+);
+select is(
+  (select status from production_orders where id = 'E2E-ORDER'),
+  'COMPLETED',
+  'order remains completed after final quality approval'
 );
 
 select throws_ok(
@@ -226,12 +251,12 @@ select ok(
   'two append-only production facts were recorded'
 );
 select ok(
-  (select count(*) from quality_inspections where task_id = 'E2E-TASK' and status = 'APPROVED') = 1,
-  'one approved quality inspection was recorded'
+  (select count(*) from quality_inspections where task_id = 'E2E-TASK' and status = 'APPROVED') = 2,
+  'both production batches received explicit quality approval'
 );
 select ok(
-  (select count(*) from production_events where task_id = 'E2E-TASK') >= 4,
-  'execution and result events were emitted'
+  (select count(*) from production_events where task_id = 'E2E-TASK') >= 6,
+  'execution, result and completion events were emitted'
 );
 select ok(
   (select count(*) from audit_log where entity_id in ('E2E-ORDER','E2E-TASK')) >= 3,
