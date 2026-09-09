@@ -14,6 +14,7 @@ import { browserWorkforceIntegrationStore } from './integration/workforce';
 import { getMesAuthState, signInMes, signOutMes, subscribeMesAuth, MesAuthState } from './integration/auth';
 import { SupabaseMesExecutionRpc, MesExecutionAction } from './integration/mesExecutionRpc';
 import { SupabaseMesCalendarRpc } from './integration/mesCalendarRpc';
+import { SupabaseMesPlanningRpc } from './integration/mesPlanningRpc';
 import { SupabaseMesReplanRpc } from './integration/mesReplanRpc';
 import { getMesSupabaseClient } from './services/supabase';
 import { MesState, ProductionTask } from './types';
@@ -71,6 +72,7 @@ const integrationStore = browserWorkforceIntegrationStore();
 const supabase = getMesSupabaseClient();
 const remoteExecution = supabase ? new SupabaseMesExecutionRpc(supabase) : null;
 const remoteCalendar = supabase ? new SupabaseMesCalendarRpc(supabase) : null;
+const remotePlanning = supabase ? new SupabaseMesPlanningRpc(supabase) : null;
 const remoteReplan = supabase ? new SupabaseMesReplanRpc(supabase) : null;
 let authState: MesAuthState = { user: null, identity: null };
 let authUnsubscribe: (() => void) | null = null;
@@ -188,6 +190,42 @@ function mergeRemoteTask(remote: ProductionTask): void {
   Object.assign(local, remote);
 }
 
+async function assignEmployee(taskId: string, employeeId: string): Promise<void> {
+  const task = state.tasks.find(item => item.id === taskId);
+  if (!task) return;
+  if (remoteReady() && remotePlanning) {
+    try {
+      const remoteTask = await remotePlanning.assignTask(taskId, { employeeIds: employeeId ? [employeeId] : [] }, task.version);
+      mergeRemoteTask(remoteTask);
+      saveState(state);
+      render();
+    } catch (error) { showError(error); }
+    return;
+  }
+  task.assignedEmployeeIds = employeeId ? [employeeId] : [];
+  task.version += 1;
+  saveState(state);
+  render();
+}
+
+async function assignEquipment(taskId: string, equipmentId: string): Promise<void> {
+  const task = state.tasks.find(item => item.id === taskId);
+  if (!task) return;
+  if (remoteReady() && remotePlanning) {
+    try {
+      const remoteTask = await remotePlanning.assignTask(taskId, { equipmentIds: equipmentId ? [equipmentId] : [] }, task.version);
+      mergeRemoteTask(remoteTask);
+      saveState(state);
+      render();
+    } catch (error) { showError(error); }
+    return;
+  }
+  task.assignedEquipmentIds = equipmentId ? [equipmentId] : [];
+  task.version += 1;
+  saveState(state);
+  render();
+}
+
 async function handleAction(taskId: string, action: 'PREPARE' | MesExecutionAction): Promise<void> {
   if (remoteReady() && action !== 'PREPARE') {
     const task = await remoteExecution!.executeTaskAction(taskId, action, new Date().toISOString());
@@ -269,22 +307,8 @@ function render(): void {
     equipmentBlocks: state.equipmentBlocks,
     operations,
     onMove: moveTask,
-    onAssignEmployee: (taskId: string, employeeId: string) => {
-      const task = state.tasks.find(item => item.id === taskId);
-      if (!task) return;
-      task.assignedEmployeeIds = employeeId ? [employeeId] : [];
-      task.version += 1;
-      saveState(state);
-      render();
-    },
-    onAssignEquipment: (taskId: string, equipmentId: string) => {
-      const task = state.tasks.find(item => item.id === taskId);
-      if (!task) return;
-      task.assignedEquipmentIds = equipmentId ? [equipmentId] : [];
-      task.version += 1;
-      saveState(state);
-      render();
-    }
+    onAssignEmployee: assignEmployee,
+    onAssignEquipment: assignEquipment
   };
 
   root.innerHTML = `${authHtml()}<header><h1>MES — оперативное управление производством</h1><div class="subtitle">1–30 дней · План/Факт · исполнение · простой · ТО · перепланирование</div></header><section class="kpis"><div class="kpi"><span>Операции</span><strong>${operations.length}</strong></div><div class="kpi"><span>Задания</span><strong>${state.tasks.length}</strong></div><div class="kpi"><span>Выпущено</span><strong>${totalGood}</strong></div><div class="kpi"><span>Открытые простои</span><strong>${openDowntime}</strong></div><div class="kpi"><span>Конфликты</span><strong>${conflicts.length}</strong></div></section>${renderDispatchBoard(dispatchOptions)}${renderCalendarEditor({ calendar: state.calendar, shifts: state.shifts, employees: state.employees, employeeSchedules: state.employeeSchedules, equipment: state.equipment, equipmentBlocks: state.equipmentBlocks, onCalendarChange: updateCalendarDay, onEmployeeScheduleChange: updateEmployeeSchedule, onAddBlock: addEquipmentBlock, onRemoveBlock: removeEquipmentBlock })}${renderExecutionPanel({ tasks: state.tasks, employees: state.employees, equipment: state.equipment, results: state.results, downtimes: state.downtimes, onAction: handleAction, onResult: handleResult, onDowntimeStart: handleDowntimeStart, onDowntimeEnd: handleDowntimeEnd })}${renderMaintenancePanel({ state, actorId: currentActorId(), onChanged: onMaintenanceChanged, onError: showError })}${renderPlanFactPanel({ orders: state.orders, tasks: state.tasks, results: state.results, downtimes: state.downtimes, now: new Date() })}${renderReplanPanel({ tasks: state.tasks, downtimes: state.downtimes, plan: state.plan, onApply: applyControlledReplan })}${renderIntegrationPanel({ store: integrationStore, onRefresh: () => render() })}`;
