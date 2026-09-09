@@ -75,6 +75,23 @@ describe('Supabase MES planning RPC', () => {
     expect(task.version).toBe(5);
   });
 
+  it('maps server-side resource recommendations', async () => {
+    let called: { name: string; args: Record<string, unknown> } | undefined;
+    const recommendations = [
+      { resource_type: 'EMPLOYEE', resource_id: 'E-1', resource_name: 'Иванов И.И.', score: 10, reasons: ['Квалификация: 5', 'Нет пересечения'] },
+      { resource_type: 'EQUIPMENT', resource_id: 'M-1', resource_name: 'Станок 1', score: 0, reasons: ['Участок: Участок-1', 'Оборудование активно'] }
+    ];
+    const rpc = new SupabaseMesPlanningRpc(fakeClient(recommendations, null, (name, args) => { called = { name, args }; }));
+
+    const rows = await rpc.recommendResources('TASK-1');
+
+    expect(called).toEqual({ name: 'mes_recommend_task_resources', args: { p_task_id: 'TASK-1' } });
+    expect(rows).toEqual([
+      { resourceType: 'EMPLOYEE', resourceId: 'E-1', resourceName: 'Иванов И.И.', score: 10, reasons: ['Квалификация: 5', 'Нет пересечения'] },
+      { resourceType: 'EQUIPMENT', resourceId: 'M-1', resourceName: 'Станок 1', score: 0, reasons: ['Участок: Участок-1', 'Оборудование активно'] }
+    ]);
+  });
+
   it('propagates RPC errors', async () => {
     const rpc = new SupabaseMesPlanningRpc(fakeClient(null, new Error('permission denied')));
     await expect(rpc.prepareTask('TASK-1')).rejects.toThrow('permission denied');
