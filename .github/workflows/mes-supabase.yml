@@ -1,0 +1,47 @@
+name: MES Supabase Schema
+
+on:
+  push:
+    branches: ['main']
+    paths:
+      - 'mes/supabase/**'
+      - '.github/workflows/mes-supabase.yml'
+  pull_request:
+    paths:
+      - 'mes/supabase/**'
+      - '.github/workflows/mes-supabase.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  migration-reset:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./mes
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: 2.105.0
+
+      - name: Start local Supabase
+        run: supabase start
+
+      - name: Reset local database from migrations
+        run: supabase db reset --local --no-seed
+
+      - name: Lint database schema
+        run: supabase db lint --local
+
+      - name: Stop local Supabase
+        if: always()
+        run: supabase stop
