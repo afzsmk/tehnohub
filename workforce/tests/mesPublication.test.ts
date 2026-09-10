@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildPublishedPlanDto, nextPublicationVersion } from '../src/integration/mes/publication';
+import { ensureMesPlanId } from '../src/integration/mes/publisher';
 import { PRELOADED_STATE } from '../src/services/storage/defaultState';
 
 describe('Workforce → MES publication contract', () => {
@@ -55,6 +56,29 @@ describe('Workforce → MES publication contract', () => {
     expect(nextPublicationVersion(history, 'A')).toBe(4);
     expect(nextPublicationVersion(history, 'B')).toBe(9);
     expect(nextPublicationVersion(history, 'C')).toBe(1);
+  });
+
+  it('generates distinct stable identifiers for Cyrillic scenario names', () => {
+    const first = PRELOADED_STATE.scenarios['План сент-окт 2026'];
+    const second = PRELOADED_STATE.scenarios['Производство 2026'];
+
+    const firstPlanId = ensureMesPlanId(first, 'План сент-окт 2026');
+    const secondPlanId = ensureMesPlanId(second, 'Производство 2026');
+
+    expect(firstPlanId).toBe('WF-ПЛАН-СЕНТ-ОКТ-2026');
+    expect(secondPlanId).toBe('WF-ПРОИЗВОДСТВО-2026');
+    expect(firstPlanId).not.toBe(secondPlanId);
+  });
+
+  it('keeps an explicitly persisted plan id stable', () => {
+    const scenario = structuredClone(PRELOADED_STATE.scenarios['План сент-окт 2026']);
+    scenario.mesPublication = {
+      planId: 'WF-CANONICAL-2026',
+      version: 2,
+      status: 'PUBLISHED'
+    };
+
+    expect(ensureMesPlanId(scenario, 'Новое имя')).toBe('WF-CANONICAL-2026');
   });
 
   it('rejects publication metadata that cannot identify the published version', () => {
