@@ -23,8 +23,9 @@ export interface MesPublicationOptions {
 function createPlanId(scenarioName: string): string {
   const normalized = scenarioName
     .trim()
+    .normalize('NFKC')
     .toUpperCase()
-    .replace(/[^A-Z0-9]+/g, '-')
+    .replace(/[^\p{L}\p{N}_-]+/gu, '-')
     .replace(/^-+|-+$/g, '');
   return `WF-${normalized || 'SCENARIO'}`;
 }
