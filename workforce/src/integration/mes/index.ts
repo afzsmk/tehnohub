@@ -5,6 +5,7 @@ export {
 } from './publication';
 
 export { publishPlanForMes, publishPlanForMesInState, ensureMesPlanId } from './publisher';
+export { WORKFORCE_MES_PUBLISH_FUNCTION, SupabaseEdgeFunctionMesPlanPublisher, mesPlanPublisher } from './edgeFunctionPublisher';
 
 export type {
   PublishedPlanStatus,
