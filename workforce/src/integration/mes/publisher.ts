@@ -68,8 +68,8 @@ export async function publishPlanForMes(
   return { dto, receipt, nextScenario };
 }
 
-export function ensureMesPlanId(scenario: ScenarioData, scenarioName: string): string {
-  return scenario.mesPublication?.planId?.trim() || createPlanId(scenarioName);
+export function ensureMesPlanId(scenario: ScenarioData | undefined, scenarioName: string): string {
+  return scenario?.mesPublication?.planId?.trim() || createPlanId(scenarioName);
 }
 
 export async function publishPlanForMesInState(
