@@ -9,3 +9,6 @@ enabled = false
 [auth]
 enabled = true
 site_url = "http://localhost:3000"
+
+[functions.workforce-import]
+verify_jwt = false
