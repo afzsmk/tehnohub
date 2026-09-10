@@ -38,7 +38,7 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v2
         with:
-          version: 2.105.0
+          version: 2.117.0
 
       - name: Start local Supabase
         working-directory: ./mes
@@ -46,7 +46,47 @@ jobs:
 
       - name: Reset local database from migrations
         working-directory: ./mes
-        run: supabase db reset --local --no-seed
+        shell: bash
+        run: |
+          set +e
+          supabase db reset --local --no-seed
+          reset_status=$?
+          set -e
+
+          if [[ "${reset_status}" -eq 0 ]]; then
+            exit 0
+          fi
+
+          echo "supabase db reset failed with exit ${reset_status}."
+          echo "Attempting Kong recovery for the known post-reset 502 condition."
+
+          kong_container=$(docker ps --filter 'name=supabase_kong_' --format '{{.ID}}' | head -n 1)
+          if [[ -n "${kong_container}" ]]; then
+            docker restart "${kong_container}"
+            sleep 3
+          else
+            echo "No local Supabase Kong container found."
+            exit "${reset_status}"
+          fi
+
+          echo "Local Supabase status after Kong recovery:"
+          supabase status || true
+
+          health_code=000
+          for attempt in 1 2 3 4 5; do
+            health_code=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+              http://127.0.0.1:54321/auth/v1/health || true)
+            if [[ "${health_code}" == "200" ]]; then
+              echo "Local Supabase Auth gateway recovered after Kong restart."
+              exit 0
+            fi
+            echo "Auth gateway probe attempt ${attempt}: HTTP ${health_code}"
+            sleep 2
+          done
+
+          echo "Kong recovery did not restore the local Supabase Auth gateway."
+          docker logs --tail 80 "${kong_container}" || true
+          exit "${reset_status}"
 
       - name: Run database security regression tests
         working-directory: ./mes
@@ -111,7 +151,7 @@ jobs:
           npm test
           npm run build
 
-      # 2. Сборка сменно-суточного диспетчера Scheduler
+      # 2. Сборка Scheduler
       - name: Build Scheduler
         working-directory: ./scheduler
         run: |
