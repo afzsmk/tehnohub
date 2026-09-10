@@ -1,0 +1,4 @@
+project_id = "zsmk-tehnohub"
+
+[functions.mes-publish]
+verify_jwt = true
