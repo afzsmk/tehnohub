@@ -48,9 +48,14 @@ jobs:
         working-directory: ./mes
         shell: bash
         run: |
+          set -euo pipefail
+
+          reset_log=$(mktemp)
+          trap 'rm -f "${reset_log}"' EXIT
+
           set +e
-          supabase db reset --local --no-seed
-          reset_status=$?
+          supabase db reset --local --no-seed 2>&1 | tee "${reset_log}"
+          reset_status=${PIPESTATUS[0]}
           set -e
 
           if [[ "${reset_status}" -eq 0 ]]; then
@@ -58,35 +63,42 @@ jobs:
           fi
 
           echo "supabase db reset failed with exit ${reset_status}."
-          echo "Attempting Kong recovery for the known post-reset 502 condition."
 
+          # Recovery is allowed only for the known post-reset gateway failure.
+          if ! grep -Eq 'Error status 502|502|invalid response.*upstream|upstream server' "${reset_log}"; then
+            echo "Reset failure does not match the known Kong 502 condition; refusing recovery."
+            exit "${reset_status}"
+          fi
+
+          echo "Detected the known post-reset 502/upstream condition. Attempting Kong recovery."
           kong_container=$(docker ps --filter 'name=supabase_kong_' --format '{{.ID}}' | head -n 1)
-          if [[ -n "${kong_container}" ]]; then
-            docker restart "${kong_container}"
-            sleep 3
-          else
+          if [[ -z "${kong_container}" ]]; then
             echo "No local Supabase Kong container found."
             exit "${reset_status}"
           fi
 
-          echo "Local Supabase status after Kong recovery:"
-          supabase status || true
+          docker restart "${kong_container}"
 
           health_code=000
-          for attempt in 1 2 3 4 5; do
+          for attempt in 1 2 3 4 5 6 7 8; do
             health_code=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
               http://127.0.0.1:54321/auth/v1/health || true)
             if [[ "${health_code}" == "200" ]]; then
               echo "Local Supabase Auth gateway recovered after Kong restart."
-              exit 0
+              break
             fi
             echo "Auth gateway probe attempt ${attempt}: HTTP ${health_code}"
             sleep 2
           done
 
-          echo "Kong recovery did not restore the local Supabase Auth gateway."
-          docker logs --tail 80 "${kong_container}" || true
-          exit "${reset_status}"
+          if [[ "${health_code}" != "200" ]]; then
+            echo "Kong recovery did not restore the local Supabase Auth gateway."
+            docker logs --tail 80 "${kong_container}" || true
+            exit "${reset_status}"
+          fi
+
+          echo "Re-running the full database reset after Kong recovery."
+          supabase db reset --local --no-seed
 
       - name: Run database security regression tests
         working-directory: ./mes
