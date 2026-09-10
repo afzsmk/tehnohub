@@ -38,6 +38,17 @@ export interface WorkforcePublishedPlanDto {
   idempotencyKey: string;
 }
 
+export interface MesImportReceipt {
+  contractVersion: string;
+  idempotencyKey: string;
+  sourcePlanId: string;
+  sourcePlanVersion: number;
+  importedAt: string;
+  importedBy: string;
+  accepted: boolean;
+  message?: string;
+}
+
 export interface MesPublicationContext {
   planId: string;
   version: number;
