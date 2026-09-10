@@ -68,26 +68,40 @@ jobs:
         run: |
           set -euo pipefail
 
-          health_code=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
-            -H "apikey: ${MES_SUPABASE_PUBLISHABLE_KEY}" \
-            "${MES_SUPABASE_URL}/rest/v1/")
+          api_key="${MES_SUPABASE_PUBLISHABLE_KEY}"
+          base_url="${MES_SUPABASE_URL}"
 
-          test "${health_code}" = "200"
+          # Use the Auth service for the positive connectivity probe so the check
+          # does not depend on anonymous SELECT policy for a MES table or on the
+          # generated REST OpenAPI root response shape.
+          auth_code=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+            -H "apikey: ${api_key}" \
+            "${base_url}/auth/v1/settings")
 
-          rpc_code=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+          if [[ "${auth_code}" != "200" ]]; then
+            echo "Production Supabase Auth API probe failed: HTTP ${auth_code}"
+            exit 1
+          fi
+
+          rpc_body=$(mktemp)
+          trap 'rm -f "${rpc_body}"' EXIT
+
+          rpc_code=$(curl --silent --show-error --output "${rpc_body}" --write-out '%{http_code}' \
             -X POST \
-            -H "apikey: ${MES_SUPABASE_PUBLISHABLE_KEY}" \
+            -H "apikey: ${api_key}" \
             -H "Content-Type: application/json" \
             --data '{}' \
-            "${MES_SUPABASE_URL}/rest/v1/rpc/mes_get_runtime_snapshot")
+            "${base_url}/rest/v1/rpc/mes_get_runtime_snapshot")
 
-          case "${rpc_code}" in
-            401|403|404) ;;
-            *)
-              echo "Expected unauthenticated MES RPC call to be denied, got HTTP ${rpc_code}"
-              exit 1
-              ;;
-          esac
+          # Any 4xx means the unauthenticated caller was denied. Exact status
+          # codes vary by gateway/PostgREST version, so reject only success or
+          # server-error responses and print the body for actionable diagnostics.
+          if [[ "${rpc_code}" -lt 400 || "${rpc_code}" -ge 500 ]]; then
+            echo "Expected unauthenticated MES RPC call to be denied, got HTTP ${rpc_code}"
+            echo "Response body:"
+            cat "${rpc_body}"
+            exit 1
+          fi
 
       # 1. Сборка месячного плана Workforce
       - name: Build Workforce
