@@ -3,6 +3,7 @@
 export type PoolType = 'universal' | 'dedicated';
 export type StatusZone = 'green' | 'yellow' | 'red' | 'none';
 export type NormMethod = 'stat' | 'chrono';
+export type MesPublicationStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
 
 export interface Profession {
   id: string;
@@ -72,6 +73,16 @@ export interface NormConfigEntry {
   updatedAt: string;
 }
 
+export interface MesPublicationState {
+  planId?: string;
+  version: number;
+  status: MesPublicationStatus;
+  publishedAt?: string;
+  publishedBy?: string;
+  companyExternalId?: string;
+  siteExternalId?: string;
+}
+
 export interface ScenarioData {
   professions: Profession[];
   products: Product[];
@@ -79,6 +90,7 @@ export interface ScenarioData {
   plan: Record<string, number[]>; // prodId -> array of quantities per month
   settings: Settings;
   normConfigs?: Record<string, NormConfigEntry>; // key: `${prodId}___${profId}`
+  mesPublication?: MesPublicationState;
   _planSnapshot?: Record<string, number[]>;
 }
 
