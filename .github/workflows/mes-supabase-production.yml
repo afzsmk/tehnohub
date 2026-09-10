@@ -65,3 +65,98 @@ jobs:
         run: |
           set -euo pipefail
           supabase migration list --linked
+
+      - name: Verify production schema and security boundary
+        working-directory: ./mes
+        env:
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          command -v psql >/dev/null
+          export PGPASSWORD="${SUPABASE_DB_PASSWORD}"
+          db_url="postgresql://postgres@db.${SUPABASE_PROJECT_REF}.supabase.co:5432/postgres?sslmode=require"
+
+          latest_local=$(find supabase/migrations -maxdepth 1 -type f -name '*.sql' -printf '%f\n' | sort | tail -n 1)
+          test -n "${latest_local}"
+          latest_local_version="${latest_local%%_*}"
+
+          remote_version=$(psql "${db_url}" -Atqc \
+            "select version from supabase_migrations.schema_migrations order by version desc limit 1;")
+          test "${remote_version}" = "${latest_local_version}"
+
+          required_tables=$(psql "${db_url}" -Atqc "\
+            select count(*)\
+            from pg_class c\
+            join pg_namespace n on n.oid = c.relnamespace\
+            where n.nspname = 'public'\
+              and c.relkind = 'r'\
+              and c.relname in (\
+                'production_orders',\
+                'production_tasks',\
+                'task_assignments',\
+                'production_results',\
+                'quality_inspections',\
+                'downtime_events',\
+                'maintenance_orders',\
+                'equipment_blocks',\
+                'production_events',\
+                'audit_log'\
+              );")
+          test "${required_tables}" = "10"
+
+          rls_enabled=$(psql "${db_url}" -Atqc "\
+            select count(*)\
+            from pg_class c\
+            join pg_namespace n on n.oid = c.relnamespace\
+            where n.nspname = 'public'\
+              and c.relname in (\
+                'production_orders',\
+                'production_tasks',\
+                'task_assignments',\
+                'production_results',\
+                'quality_inspections',
+                'downtime_events',\
+                'maintenance_orders',\
+                'equipment_blocks',\
+                'production_events',\
+                'audit_log'\
+              )\
+              and c.relrowsecurity;")
+          test "${rls_enabled}" = "10"
+
+          direct_authenticated_writes=$(psql "${db_url}" -Atqc "\
+            select count(*)\
+            from (\
+              select 'production_orders' as table_name\
+              union all select 'production_tasks'\
+              union all select 'task_assignments'\
+              union all select 'production_results'\
+              union all select 'quality_inspections'\
+              union all select 'downtime_events'\
+              union all select 'maintenance_orders'\
+              union all select 'equipment_blocks'\
+              union all select 'production_events'\
+              union all select 'audit_log'\
+            ) required\
+            where has_table_privilege(\
+              'authenticated',\
+              format('public.%I', table_name),\
+              'INSERT,UPDATE,DELETE'\
+            );")
+          test "${direct_authenticated_writes}" = "0"
+
+          snapshot_security=$(psql "${db_url}" -Atqc "\
+            select count(*)\
+            from pg_proc p\
+            join pg_namespace n on n.oid = p.pronamespace\
+            where n.nspname = 'public'\
+              and p.proname = 'mes_get_runtime_snapshot'\
+              and has_function_privilege('anon', p.oid, 'EXECUTE') = false\
+              and has_function_privilege('authenticated', p.oid, 'EXECUTE')\
+              and p.prosecdef\
+              and 'search_path=public' = any(coalesce(p.proconfig, array[]::text[]));")
+          test "${snapshot_security}" = "1"
+
+          echo "Production MES verification passed: migration=${remote_version}, tables=${required_tables}, rls=${rls_enabled}, authenticated_direct_writes=${direct_authenticated_writes}"
