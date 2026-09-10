@@ -11,4 +11,5 @@ export * from './mesRuntimeSnapshotRpc';
 export * from './mesRealtime';
 export * from './mesRouteRpc';
 export * from './mesOrderRpc';
+export * from './mesMasterDataRpc';
 export * from './workforce';
