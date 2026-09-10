@@ -13,6 +13,11 @@ concurrency:
   group: 'pages'
   cancel-in-progress: true
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  MES_SUPABASE_URL: https://caeqoipshdtxezcurnkn.supabase.co
+  MES_SUPABASE_PUBLISHABLE_KEY: sb_publishable_-WF6AF_CkK4BWX8mUERwLg_2GsfX703
+
 jobs:
   deploy:
     environment:
@@ -56,6 +61,34 @@ jobs:
         working-directory: ./mes
         run: supabase stop
 
+      # 0.5. Production API smoke-check: verify the production Supabase endpoint
+      # is reachable and that an unauthenticated caller cannot execute MES RPC.
+      - name: Smoke-check production Supabase API
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          health_code=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+            -H "apikey: ${MES_SUPABASE_PUBLISHABLE_KEY}" \
+            "${MES_SUPABASE_URL}/rest/v1/")
+
+          test "${health_code}" = "200"
+
+          rpc_code=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+            -X POST \
+            -H "apikey: ${MES_SUPABASE_PUBLISHABLE_KEY}" \
+            -H "Content-Type: application/json" \
+            --data '{}' \
+            "${MES_SUPABASE_URL}/rest/v1/rpc/mes_get_runtime_snapshot")
+
+          case "${rpc_code}" in
+            401|403|404) ;;
+            *)
+              echo "Expected unauthenticated MES RPC call to be denied, got HTTP ${rpc_code}"
+              exit 1
+              ;;
+          esac
+
       # 1. Сборка месячного плана Workforce
       - name: Build Workforce
         working-directory: ./workforce
@@ -76,8 +109,8 @@ jobs:
       - name: Build MES
         working-directory: ./mes
         env:
-          VITE_SUPABASE_URL: https://caeqoipshdtxezcurnkn.supabase.co
-          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_-WF6AF_CkK4BWX8mUERwLg_2GsfX703
+          VITE_SUPABASE_URL: ${{ env.MES_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ env.MES_SUPABASE_PUBLISHABLE_KEY }}
         run: |
           npm install
           npm test
