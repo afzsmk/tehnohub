@@ -35,6 +35,12 @@ async function authenticateUser(request: Request) {
   return data.user;
 }
 
+function getMesIngestSecret(): string {
+  return Deno.env.get('WORKFORCE_INGEST_SECRET')?.trim()
+    || Deno.env.get('MES_INGEST_SECRET')?.trim()
+    || '';
+}
+
 Deno.serve(async (request: Request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (request.method !== 'POST') return jsonResponse({ message: 'Метод не поддерживается' }, 405);
@@ -42,7 +48,7 @@ Deno.serve(async (request: Request) => {
   try {
     const user = await authenticateUser(request);
     const mesUrl = Deno.env.get('MES_SUPABASE_URL')?.trim();
-    const integrationSecret = Deno.env.get('MES_INGEST_SECRET')?.trim();
+    const integrationSecret = getMesIngestSecret();
     if (!mesUrl || !integrationSecret) throw new Error('MES transport secrets Workforce не настроены');
 
     const body = await request.json() as { plan?: Record<string, unknown> };
