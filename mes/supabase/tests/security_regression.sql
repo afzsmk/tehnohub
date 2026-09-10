@@ -65,6 +65,16 @@ select ok(
   'authenticated cannot execute internal task trigger helper'
 );
 
+-- Workforce -> MES plan ingestion is server-to-server only. The browser must
+-- reach the Workforce publisher Edge Function instead of calling this RPC.
+select ok(
+  not has_function_privilege('public', 'public.mes_import_workforce_plan(jsonb,text)', 'execute')
+  and not has_function_privilege('anon', 'public.mes_import_workforce_plan(jsonb,text)', 'execute')
+  and not has_function_privilege('authenticated', 'public.mes_import_workforce_plan(jsonb,text)', 'execute')
+  and has_function_privilege('service_role', 'public.mes_import_workforce_plan(jsonb,text)', 'execute'),
+  'Workforce plan import RPC is executable only by service_role'
+);
+
 -- Core browser-facing RPCs must remain callable by authenticated clients.
 select ok(exists (
   select 1 from pg_proc p
