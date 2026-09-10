@@ -95,8 +95,16 @@ describe('Workforce → MES publication service', () => {
     expect(scenario.mesPublication).toBeUndefined();
   });
 
-  it('creates a deterministic plan id for a scenario without an assigned id', () => {
-    expect(ensureMesPlanId(source, 'План сент-окт 2026')).toBe('WF-2026');
+  it('creates a deterministic plan id for a Cyrillic scenario name', () => {
+    expect(ensureMesPlanId(source, 'План сент-окт 2026')).toBe('WF-ПЛАН-СЕНТ-ОКТ-2026');
+  });
+
+  it('creates distinct stable identifiers for Cyrillic scenario names', () => {
+    expect(ensureMesPlanId(undefined, 'План сент-окт 2026')).toBe('WF-ПЛАН-СЕНТ-ОКТ-2026');
+    expect(ensureMesPlanId(undefined, 'План ноябрь 2026')).toBe('WF-ПЛАН-НОЯБРЬ-2026');
+    expect(ensureMesPlanId(undefined, 'План сент-окт 2026')).not.toBe(
+      ensureMesPlanId(undefined, 'План ноябрь 2026')
+    );
   });
 
   it('updates only the selected scenario in application state', async () => {
