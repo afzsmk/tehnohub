@@ -8,7 +8,12 @@ export type QualityStatus = 'NOT_REQUIRED'|'PENDING'|'APPROVED'|'REJECTED';
 export interface Product { id:string; code:string; name:string; unit:string; }
 export interface Employee { id:string; personnelNo:string; name:string; profession:string; qualificationLevel:number; active:boolean; }
 export interface Equipment { id:string; code:string; name:string; workCenter:string; capabilities:string[]; active:boolean; }
-export interface RouteOperation { id:string; sequence:number; code:string; name:string; workCenter:string; requiredQualification?:number; requiredEquipmentIds?:string[]; setupMinutes:number; runMinutesPerUnit:number; }
+export interface RouteOperation {
+  id:string; sequence:number; code:string; name:string; workCenter:string;
+  requiredQualification?:number; requiredEquipmentIds?:string[];
+  laborNormHoursPerUnit?:number; setupNormHours?:number; workersRequired?:number;
+  setupMinutes:number; runMinutesPerUnit:number;
+}
 export interface ShiftDefinition { id:string; name:string; startMinute:number; durationMinutes:number; }
 export interface CalendarDay { date:string; isWorking:boolean; shiftIds:string[]; }
 export interface EmployeeSchedule { employeeId:string; date:string; shiftIds:string[]; status:ScheduleStatus; }
