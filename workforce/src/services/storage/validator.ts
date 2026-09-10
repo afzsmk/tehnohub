@@ -23,7 +23,7 @@ export function normalizeScenario(sc: ScenarioData): ScenarioData {
   s.auxFixedPosts = s.auxFixedPosts ?? 0;
   s.workDaysPerMonth = s.workDaysPerMonth ?? 21;
   s.shiftHoursStandard = s.shiftHoursStandard ?? 8;
-  s.companyName = s.companyName ?? 'ООО \"ЗСМК\"';
+  s.companyName = s.companyName ?? 'ООО "ЗСМК"';
 
   if (s.reserveOffPercent === undefined) {
     s.reserveOffPercent = s.fNom > 0 ? Math.round((1 - (s.fEff / s.fNom)) * 1000) / 10 : 14.3;
