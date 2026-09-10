@@ -23,6 +23,17 @@ Do not commit either secret to the repository.
 
 Supabase records applied migrations in `supabase_migrations.schema_migrations`. `db push` applies only migrations that are not already recorded there; do not use `db reset --linked` against production.
 
+## Workforce → MES security boundary
+
+The Workforce publication path is split into two Edge Functions:
+
+- Workforce `mes-publish` requires a valid Workforce JWT and forwards the published plan using the MES integration secret.
+- MES `workforce-import` uses custom service-to-service authentication and calls `mes_import_workforce_plan` with the MES `service_role`.
+
+The database import RPC is a `SECURITY DEFINER` implementation detail. Migration `064_mes_workforce_import_execute_lockdown.sql` explicitly revokes `EXECUTE` from `public`, `anon`, and `authenticated`, and grants it only to `service_role`. The database security regression suite asserts this boundary.
+
+This means a signed-in browser session cannot bypass the Edge Function and invoke the Workforce import RPC directly.
+
 ## Migration history reconciliation
 
 If a migration was already executed outside the normal CLI flow and the SQL is known to be present in production, reconcile the history with `supabase migration repair --status applied <timestamp>` instead of executing the migration a second time. Verify the production schema first.
