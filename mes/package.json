@@ -10,7 +10,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.48.0"
+    "@supabase/supabase-js": "^2.48.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "typescript": "^5.7.0",
