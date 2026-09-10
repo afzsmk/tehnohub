@@ -1,0 +1,43 @@
+name: Workforce Supabase Functions
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'workforce/supabase/functions/mes-publish/**'
+      - 'workforce/supabase/config.toml'
+      - '.github/workflows/workforce-supabase-functions.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: workforce-production
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_REF: cihzyokqrjpmzoiezmwc
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: latest
+
+      - name: Deploy mes-publish
+        working-directory: ./workforce
+        run: |
+          set -euo pipefail
+          supabase functions deploy mes-publish --project-ref "${SUPABASE_PROJECT_REF}"
+
+      - name: Verify deployed function
+        run: |
+          set -euo pipefail
+          echo "Workforce mes-publish deployment completed for ${SUPABASE_PROJECT_REF}."
