@@ -1,4 +1,5 @@
-import { MesImportReceipt, MesPlanPublisher, WorkforcePublishedPlanDto } from './index';
+import type { MesImportReceipt, WorkforcePublishedPlanDto } from './publication';
+import type { MesPlanPublisher } from './publisher';
 import { supabase, isSupabaseConfigured } from '../../services/storage/supabaseClient';
 
 export const WORKFORCE_MES_PUBLISH_FUNCTION = 'mes-publish';
