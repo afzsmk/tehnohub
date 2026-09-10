@@ -1,11 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { PRELOADED_STATE } from '../src/services/storage/defaultState';
-import { publishPlanForMes, publishPlanForMesInState, ensureMesPlanId, MesPlanPublisher } from '../src/integration/mes';
+import {
+  publishPlanForMes,
+  publishPlanForMesInState,
+  ensureMesPlanId,
+  MesImportReceipt,
+  MesPlanPublisher
+} from '../src/integration/mes';
 
 describe('Workforce → MES publication service', () => {
   const source = PRELOADED_STATE.scenarios['План сент-окт 2026'];
 
-  function publisher(receiptOverrides: Partial<Parameters<MesPlanPublisher['publish']>[0] & any> = {}): MesPlanPublisher {
+  function publisher(receiptOverrides: Partial<MesImportReceipt> = {}): MesPlanPublisher {
     return {
       async publish(plan) {
         return {
