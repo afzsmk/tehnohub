@@ -33,8 +33,6 @@ jobs:
         with:
           node-version: 24
 
-      # 0. Жесткий schema/release gate: deployment не может пройти,
-      # пока текущий набор MES-migration не проходит reset, pgTAP и lint.
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v2
         with:
@@ -113,8 +111,6 @@ jobs:
         working-directory: ./mes
         run: supabase stop
 
-      # 0.5. Production API smoke-check: verify the production Supabase endpoint
-      # is reachable and that an unauthenticated caller cannot execute MES RPC.
       - name: Smoke-check production Supabase API
         shell: bash
         run: |
@@ -123,9 +119,6 @@ jobs:
           api_key="${MES_SUPABASE_PUBLISHABLE_KEY}"
           base_url="${MES_SUPABASE_URL}"
 
-          # Use the Auth service for the positive connectivity probe so the check
-          # does not depend on anonymous SELECT policy for a MES table or on the
-          # generated REST OpenAPI root response shape.
           auth_code=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
             -H "apikey: ${api_key}" \
             "${base_url}/auth/v1/settings")
@@ -145,9 +138,6 @@ jobs:
             --data '{}' \
             "${base_url}/rest/v1/rpc/mes_get_runtime_snapshot")
 
-          # Any 4xx means the unauthenticated caller was denied. Exact status
-          # codes vary by gateway/PostgREST version, so reject only success or
-          # server-error responses and print the body for actionable diagnostics.
           if [[ "${rpc_code}" -lt 400 || "${rpc_code}" -ge 500 ]]; then
             echo "Expected unauthenticated MES RPC call to be denied, got HTTP ${rpc_code}"
             echo "Response body:"
@@ -155,7 +145,6 @@ jobs:
             exit 1
           fi
 
-      # 1. Сборка месячного плана Workforce
       - name: Build Workforce
         working-directory: ./workforce
         run: |
@@ -163,7 +152,6 @@ jobs:
           npm test
           npm run build
 
-      # 2. Сборка Scheduler
       - name: Build Scheduler
         working-directory: ./scheduler
         run: |
@@ -171,7 +159,6 @@ jobs:
           npm test
           npm run build
 
-      # 3. Сборка самостоятельного MES против production Supabase
       - name: Build MES
         working-directory: ./mes
         env:
@@ -182,7 +169,6 @@ jobs:
           npm test
           npm run build
 
-      # 4. Формирование единого сайта для публикации
       - name: Prepare site directory
         run: |
           mkdir -p _site
@@ -192,7 +178,6 @@ jobs:
           cp -r scheduler/dist _site/scheduler
           cp -r mes/dist _site/mes
 
-      # 5. Публикация
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
