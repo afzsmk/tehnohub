@@ -1,10 +1,14 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 export interface MasterProduct { id:string; code:string; name:string; unit:string; external_id?:string|null; }
-export interface MasterEmployee { id:string; personnel_no:string; name:string; profession:string; qualification_level:number; active:boolean; }
+export interface MasterProfession { id:string; external_id?:string|null; code:string; name:string; description?:string|null; active:boolean; }
+export interface MasterQualification { id:string; external_id?:string|null; code:string; name:string; level:number; description?:string|null; active:boolean; }
+export interface MasterBrigade { id:string; external_id?:string|null; code:string; name:string; description?:string|null; active:boolean; }
+export interface MasterEmployee { id:string; personnel_no:string; name:string; profession:string; profession_id?:string|null; brigade_id?:string|null; qualification_id?:string|null; qualification_level:number; active:boolean; }
+export interface MasterEmployeeQualification { employee_id:string; qualification_id:string; valid_from?:string|null; valid_to?:string|null; is_primary:boolean; notes?:string|null; }
 export interface MasterEquipment { id:string; code:string; name:string; work_center:string; capabilities:string[]; active:boolean; }
 export interface MasterShift { id:string; name:string; start_minute:number; duration_minutes:number; active:boolean; }
-export interface BootstrapPayload { products?:MasterProduct[]; employees?:MasterEmployee[]; equipment?:MasterEquipment[]; shifts?:MasterShift[]; route_operations?:Record<string,unknown>[]; calendar_days?:Record<string,unknown>[]; employee_schedules?:Record<string,unknown>[]; }
+export interface BootstrapPayload { products?:MasterProduct[]; professions?:MasterProfession[]; qualification_levels?:MasterQualification[]; brigades?:MasterBrigade[]; employees?:MasterEmployee[]; employee_qualifications?:MasterEmployeeQualification[]; equipment?:MasterEquipment[]; shifts?:MasterShift[]; route_operations?:Record<string,unknown>[]; calendar_days?:Record<string,unknown>[]; employee_schedules?:Record<string,unknown>[]; downtime_reasons?:Record<string,unknown>[]; scrap_reasons?:Record<string,unknown>[]; }
 export interface BootstrapValidation { valid:boolean; errors:string[]; warnings:string[]; }
 
 export class SupabaseMesMasterDataRpc {
