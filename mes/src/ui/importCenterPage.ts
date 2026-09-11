@@ -7,35 +7,58 @@ const esc=(v:unknown)=>String(v??'').replace(/[&<>\"']/g,ch=>({'&':'&amp;','<':'
 const text=(v:unknown)=>String(v??'').trim();
 const num=(v:unknown)=>Number(String(v??'').replace(',','.'));
 const bool=(v:unknown, fallback=true)=>{const s=text(v).toLowerCase();if(!s)return fallback;return ['true','1','да','yes','work','рабочий','active'].includes(s);};
-function sheetRows(book:XLSX.WorkBook,name:string):Record<string,unknown>[] {const sheet=book.Sheets[name];return sheet?XLSX.utils.sheet_to_json<Record<string,unknown>>(sheet,{defval:''}):[];}
-function timeToMinute(v:unknown):number {const s=text(v);const m=s.match(/^(\d{1,2}):(\d{2})$/);return m?Number(m[1])*60+Number(m[2]):num(v)||0;}
+function sheetRows(book:XLSX.WorkBook,name:string):Record<string,unknown>[] {const sheet=book.Sheets[name];return sheet?XLSX.utils.sheet_to_json<Record<string,unknown>>(sheet,{defval:'',raw:true}):[];}
+function timeToMinute(v:unknown):number {if(v instanceof Date)return v.getHours()*60+v.getMinutes();const s=text(v);const m=s.match(/^(\d{1,2}):(\d{2})$/);return m?Number(m[1])*60+Number(m[2]):num(v)||0;}
+function dateText(v:unknown):string {if(v instanceof Date)return v.toISOString().slice(0,10);const s=text(v);if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;const d=new Date(s);return Number.isNaN(d.getTime())?'':d.toISOString().slice(0,10);}
 function asList(v:unknown):string[]{return text(v).split(/[;,]/).map(s=>s.trim()).filter(Boolean);}
 
 function parseWorkbook(buffer:ArrayBuffer):{payload:BootstrapPayload;summary:Record<string,number>;warnings:string[]} {
   const book=XLSX.read(buffer,{type:'array',cellDates:true});
   const warnings:string[]=[];
   const products=sheetRows(book,'01_Products').filter(r=>text(r.external_id||r.code||r.id));
-  const employees=sheetRows(book,'04_Employees').filter(r=>text(r.external_id||r.personnel_no));
+  const professions=sheetRows(book,'02_Professions').filter(r=>text(r.external_id||r.code||r.id));
+  const qualifications=sheetRows(book,'03_Qualifications').filter(r=>text(r.external_id||r.code||r.id));
+  const employees=sheetRows(book,'04_Employees').filter(r=>text(r.external_id||r.personnel_no||r.id));
+  const employeeQualifications=sheetRows(book,'05_Employee_Qualifications').filter(r=>text(r.employee_external_id)&&text(r.qualification_external_id));
+  const workCenters=sheetRows(book,'06_Work_Centers').filter(r=>text(r.external_id||r.code));
   const equipment=sheetRows(book,'07_Equipment').filter(r=>text(r.external_id||r.code));
+  const capabilities=sheetRows(book,'08_Equipment_Capabilities').filter(r=>text(r.equipment_external_id)&&text(r.route_operation_code));
+  const brigades=sheetRows(book,'09_Brigades').filter(r=>text(r.external_id||r.code));
   const shifts=sheetRows(book,'10_Shifts').filter(r=>text(r.external_id||r.code));
-  const ops=sheetRows(book,'13_Route_Operations').filter(r=>text(r.operation_external_id));
   const calendar=sheetRows(book,'11_Calendars').filter(r=>text(r.date));
-  const schedules=sheetRows(book,'05_Employee_Qualifications').filter(r=>text(r.employee_external_id));
-  const productRef=(ref:string)=>{const direct=products.find(p=>text(p.external_id||p.code)===ref);if(direct)return text(direct.external_id||direct.code);const alt=ref.replace(/^ROUTE-/,'PROD-');const byAlt=products.find(p=>text(p.external_id||p.code)===alt);return byAlt?text(byAlt.external_id||byAlt.code):ref;};
+  const routes=sheetRows(book,'12_Routes').filter(r=>text(r.external_id||r.code));
+  const ops=sheetRows(book,'13_Route_Operations').filter(r=>text(r.operation_external_id));
+  const downtimeReasons=sheetRows(book,'14_Downtime_Reasons').filter(r=>text(r.code));
+  const scrapReasons=sheetRows(book,'15_Scrap_Reasons').filter(r=>text(r.code));
+  const employeeSchedules=sheetRows(book,'16_Employee_Schedules').filter(r=>text(r.employee_external_id)&&text(r.date));
+
+  const productRef=(ref:string)=>{const direct=products.find(p=>text(p.external_id||p.code)===ref);return direct?text(direct.external_id||direct.code):ref;};
   const equipmentRef=(ref:string)=>{const direct=equipment.find(e=>text(e.external_id||e.code)===ref);return direct?text(direct.external_id||direct.code):ref;};
+  const professionRef=(ref:string)=>{const direct=professions.find(p=>text(p.external_id||p.code)===ref);return direct?text(direct.external_id||direct.code):ref;};
+  const qualificationRef=(ref:string)=>{const direct=qualifications.find(p=>text(p.external_id||p.code)===ref);return direct?text(direct.external_id||direct.code):ref;};
+  const brigadeRef=(ref:string)=>{const direct=brigades.find(p=>text(p.external_id||p.code)===ref);return direct?text(direct.external_id||direct.code):ref;};
+  const shiftRef=(ref:string)=>{const direct=shifts.find(p=>text(p.external_id||p.code)===ref);return direct?text(direct.external_id||direct.code):ref;};
+
   const payload:BootstrapPayload={
     products:products.map(r=>({id:text(r.external_id||r.code),code:text(r.code||r.external_id),name:text(r.name),unit:text(r.unit),external_id:text(r.external_id)||null})),
-    employees:employees.map(r=>({id:text(r.external_id||r.personnel_no),personnel_no:text(r.personnel_no||r.external_id),name:[text(r.last_name),text(r.first_name),text(r.middle_name)].filter(Boolean).join(' '),profession:text(r.profession_external_id||r.profession),qualification_level:num(r.qualification_level)||0,active:bool(r.status,true)})),
+    professions:professions.map(r=>({id:text(r.external_id||r.code),code:text(r.code||r.external_id),name:text(r.name),external_id:text(r.external_id)||null,description:text(r.description)||null,active:bool(r.status,true)})),
+    qualification_levels:qualifications.map(r=>({id:text(r.external_id||r.code),code:text(r.code||r.external_id),name:text(r.name),level:num(r.level)||0,external_id:text(r.external_id)||null,description:text(r.description)||null,active:bool(r.status,true)})),
+    brigades:brigades.map(r=>({id:text(r.external_id||r.code),code:text(r.code||r.external_id),name:text(r.name),external_id:text(r.external_id)||null,description:text(r.description)||null,active:bool(r.status,true)})),
+    employees:employees.map(r=>({id:text(r.external_id||r.personnel_no),personnel_no:text(r.personnel_no||r.external_id),name:[text(r.last_name),text(r.first_name),text(r.middle_name)].filter(Boolean).join(' ')||text(r.name),profession:text(r.profession_external_id||r.profession),profession_id:text(r.profession_external_id)?professionRef(text(r.profession_external_id)):null,brigade_id:text(r.brigade_external_id)?brigadeRef(text(r.brigade_external_id)):null,qualification_id:text(r.qualification_external_id)?qualificationRef(text(r.qualification_external_id)):null,qualification_level:num(r.qualification_level)||0,active:bool(r.status,true)})),
+    employee_qualifications:employeeQualifications.map(r=>({employee_id:text(r.employee_external_id),qualification_id:qualificationRef(text(r.qualification_external_id)),valid_from:dateText(r.valid_from)||null,valid_to:dateText(r.valid_to)||null,is_primary:bool(r.is_primary,false),notes:text(r.notes)||null})),
     equipment:equipment.map(r=>({id:text(r.external_id||r.code),code:text(r.code||r.external_id),name:text(r.name),work_center:text(r.work_center_external_id||r.work_center),capabilities:asList(r.capabilities),active:bool(r.status,true)})),
     shifts:shifts.map(r=>({id:text(r.external_id||r.code),name:text(r.name||r.code),start_minute:timeToMinute(r.start_time),duration_minutes:num(r.duration_hours)*60||((timeToMinute(r.end_time)-timeToMinute(r.start_time)+1440)%1440||1440),active:bool(r.status,true)})),
-    route_operations:ops.map(r=>({id:text(r.operation_external_id),product_id:productRef(text(r.route_external_id||r.product_external_id)),sequence:num(r.sequence_no),code:text(r.operation_code||r.operation_external_id),name:text(r.operation_name),work_center:text(r.work_center_external_id||r.work_center),required_qualification:text(r.qualification_external_id)?num(r.qualification_external_id)||0:undefined,required_equipment_ids:asList(r.equipment_external_id||r.required_equipment_ids).map(equipmentRef),setup_norm_hours:num(r.setup_norm_hours||r.setup_hours),labor_norm_hours_per_unit:num(r.labor_norm_hours_per_unit||r.labor_norm),workers_required:num(r.workers_required)||1,active:true})),
-    calendar_days:calendar.map(r=>({date:text(r.date),is_working:bool(r.is_working,false),shift_ids:asList(r.shift_external_id)})),
-    employee_schedules:[]
+    route_operations:ops.map(r=>({id:text(r.operation_external_id),product_id:productRef(text(r.product_external_id||r.product_id||r.route_external_id).replace(/^ROUTE-/,'PROD-')),route_id:text(r.route_external_id)||undefined,sequence:num(r.sequence_no),code:text(r.operation_code||r.operation_external_id),name:text(r.operation_name),work_center:text(r.work_center_external_id||r.work_center),required_qualification:text(r.qualification_external_id)?num(r.qualification_external_id)||0:undefined,required_equipment_ids:asList(r.equipment_external_id||r.required_equipment_ids).map(equipmentRef),setup_norm_hours:num(r.setup_norm_hours||r.setup_hours),labor_norm_hours_per_unit:num(r.labor_norm_hours_per_unit||r.labor_norm),workers_required:num(r.workers_required)||1,active:bool(r.status,true)})),
+    calendar_days:calendar.map(r=>({date:dateText(r.date),is_working:bool(r.is_working,false),shift_ids:asList(r.shift_external_id).map(shiftRef)})).filter(r=>r.date),
+    employee_schedules:employeeSchedules.map(r=>({employee_id:text(r.employee_external_id),date:dateText(r.date),shift_ids:asList(r.shift_external_id).map(shiftRef),status:text(r.status)||'WORK'})).filter(r=>r.employee_id&&r.date),
+    downtime_reasons:downtimeReasons.map(r=>({code:text(r.code),name:text(r.name),category:text(r.category)||'OTHER',is_planned:bool(r.is_planned,false),description:text(r.description)||null,active:bool(r.status,true)})),
+    scrap_reasons:scrapReasons.map(r=>({code:text(r.code),name:text(r.name),category:text(r.category)||'OTHER',description:text(r.description)||null,active:bool(r.status,true)}))
   };
-  if(schedules.length)warnings.push(`Лист 05_Employee_Qualifications: обнаружено ${schedules.length} строк. В текущей MES БД отдельного employee_qualifications нет; базовый qualification_level берётся из Employees.`);
-  if(equipment.some(r=>!text(r.capabilities)))warnings.push('Некоторые записи оборудования не содержат capabilities. Их можно дополнить после импорта в НСИ.');
-  if(ops.some(r=>!text(r.labor_norm_hours_per_unit||r.labor_norm)))warnings.push('В некоторых операциях отсутствует норма н-ч/ед. Такие операции не пройдут серверную проверку.');
-  const summary={products:payload.products?.length??0,employees:payload.employees?.length??0,equipment:payload.equipment?.length??0,shifts:payload.shifts?.length??0,route_operations:payload.route_operations?.length??0,calendar_days:payload.calendar_days?.length??0};
+  if(workCenters.length)warnings.push(`Лист 06_Work_Centers: обнаружено ${workCenters.length} строк. Сейчас рабочие центры импортируются в справочник equipment/work_center; отдельный справочник work_centers будет нормализован следующим этапом.`);
+  if(routes.length)warnings.push(`Лист 12_Routes: обнаружено ${routes.length} маршрутов. Текущая MES runtime-модель хранит route operations по product_id; route/version identity будет вынесена в отдельную сущность следующим этапом.`);
+  if(capabilities.length)warnings.push(`Лист 08_Equipment_Capabilities: обнаружено ${capabilities.length} строк. Сейчас capabilities используются как часть оборудования/route eligibility; отдельная сущность capability будет нормализована следующим этапом.`);
+  if(!employeeSchedules.length)warnings.push('Лист 16_Employee_Schedules не найден или пуст — персональные смены останутся по общему календарю.');
+  const summary={products:payload.products?.length??0,professions:payload.professions?.length??0,qualification_levels:payload.qualification_levels?.length??0,brigades:payload.brigades?.length??0,employees:payload.employees?.length??0,employee_qualifications:payload.employee_qualifications?.length??0,equipment:payload.equipment?.length??0,shifts:payload.shifts?.length??0,route_operations:payload.route_operations?.length??0,calendar_days:payload.calendar_days?.length??0,employee_schedules:payload.employee_schedules?.length??0,downtime_reasons:payload.downtime_reasons?.length??0,scrap_reasons:payload.scrap_reasons?.length??0};
   return{payload,summary,warnings};
 }
 
@@ -57,7 +80,8 @@ export async function mountImportCenterPage(root:HTMLElement,client:SupabaseClie
     const file=host.querySelector<HTMLInputElement>('#mes-import-file')!.files?.[0];if(!file)return;parsed=null;validated=false;actions.innerHTML='';
     try{
       parsed=parseWorkbook(await file.arrayBuffer());
-      preview.innerHTML=`<strong>${esc(file.name)}</strong><br>Продукты: ${parsed.summary.products} · Сотрудники: ${parsed.summary.employees} · Оборудование: ${parsed.summary.equipment} · Смены: ${parsed.summary.shifts} · Операции: ${parsed.summary.route_operations} · Календарь: ${parsed.summary.calendar_days}${parsed.warnings.length?`<br><br><strong>Предупреждения Excel:</strong><br>${parsed.warnings.map(esc).join('<br>')}`:''}<div id="mes-import-validation" style="margin-top:8px">Серверная проверка…</div>`;
+      const s=parsed.summary;
+      preview.innerHTML=`<strong>${esc(file.name)}</strong><br>Продукты: ${s.products} · Профессии: ${s.professions} · Квалификации: ${s.qualification_levels} · Бригады: ${s.brigades} · Сотрудники: ${s.employees} · Квалификации сотрудников: ${s.employee_qualifications} · Оборудование: ${s.equipment} · Смены: ${s.shifts} · Операции: ${s.route_operations} · Календарь: ${s.calendar_days} · Смены сотрудников: ${s.employee_schedules} · Причины простоев: ${s.downtime_reasons} · Причины брака: ${s.scrap_reasons}${parsed.warnings.length?`<br><br><strong>Предупреждения Excel:</strong><br>${parsed.warnings.map(esc).join('<br>')}`:''}<div id="mes-import-validation" style="margin-top:8px">Серверная проверка…</div>`;
       const validation=await rpc.validateBootstrap(parsed.payload);validated=validation.valid;host.querySelector<HTMLDivElement>('#mes-import-validation')!.innerHTML=validationHtml(validation);actions.innerHTML=validation.valid?`<button class="primary" id="mes-import-confirm">Подтвердить и импортировать</button>`:'<span class="status-pill status-danger">Импорт заблокирован</span>';
       if(validation.valid)host.querySelector<HTMLButtonElement>('#mes-import-confirm')!.addEventListener('click',async()=>{if(!parsed||!validated)return;const btn=host.querySelector<HTMLButtonElement>('#mes-import-confirm')!;btn.disabled=true;try{const result=await rpc.importBootstrap(file.name,parsed.payload);preview.innerHTML+=`<div style="margin-top:10px;color:#166534"><strong>Импорт завершён.</strong> Run: ${esc(result.runId)}<br>${esc(JSON.stringify(result.counts))}</div>`;actions.innerHTML='<span class="status-pill status-ok">COMPLETED</span>';await loadHistory();}catch(e){preview.innerHTML+=`<div style="margin-top:10px;color:#991b1b"><strong>Импорт не выполнен:</strong> ${esc(e instanceof Error?e.message:'ошибка')}</div>`;btn.disabled=false;}});
     }catch(e){preview.innerHTML=`<span style="color:#b91c1c">Не удалось прочитать/проверить Excel: ${esc(e instanceof Error?e.message:'ошибка')}</span>`;actions.innerHTML='';}
