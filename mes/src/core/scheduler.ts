@@ -7,12 +7,25 @@ export interface ScheduleOutput { tasks:ProductionTask[]; conflicts:ScheduleConf
 const MINUTE=60_000;
 function mergeOccupied(base:TimeWindow[],extra:TimeWindow[]):TimeWindow[]{return[...base,...extra].sort((a,b)=>a.start-b.start);}
 function intersectMany(windows:TimeWindow[][]):TimeWindow[]{if(windows.length===0)return[];return windows.slice(1).reduce((acc,next)=>intersectWindows(acc,next),windows[0]);}
+function withoutOccupied(windows:TimeWindow[],occupied:TimeWindow[]):TimeWindow[]{
+  let result=[...windows];
+  for(const busy of [...occupied].sort((a,b)=>a.start-b.start)){
+    result=result.flatMap(window=>{
+      if(busy.end<=window.start||busy.start>=window.end)return[window];
+      const parts:TimeWindow[]=[];
+      if(window.start<busy.start)parts.push({start:window.start,end:Math.min(window.end,busy.start),shiftId:window.shiftId});
+      if(busy.end<window.end)parts.push({start:Math.max(window.start,busy.end),end:window.end,shiftId:window.shiftId});
+      return parts.filter(part=>part.start<part.end);
+    });
+  }
+  return result;
+}
 function operationElapsedHours(operation:RouteOperation,quantity:number):number{
   if(operation.laborNormHoursPerUnit!=null){const workers=Math.max(1,operation.workersRequired??1);return((operation.setupNormHours??0)+operation.laborNormHoursPerUnit*Math.max(0,quantity))/workers;}
   return(operation.setupMinutes+operation.runMinutesPerUnit*Math.max(0,quantity))/60;
 }
 function earliestEmployeeStart(candidate:number,durationMs:number,employee:Employee,equipmentWindows:TimeWindow[],baseWindows:TimeWindow[],employeeSchedules:EmployeeSchedule[],busy:TimeWindow[]):number|null{
-  const ew=employeeWindows(employee.id,baseWindows,employeeSchedules);const common=intersectWindows(ew,equipmentWindows);return findFittingWindow(candidate,durationMs,common,busy);
+  const ew=employeeWindows(employee.id,baseWindows,employeeSchedules);const free=withoutOccupied(ew,busy);const common=intersectWindows(free,equipmentWindows);return findFittingWindow(candidate,durationMs,common);
 }
 function chooseWorkerTeam(candidate:number,durationMs:number,employees:Employee[],equipmentWindows:TimeWindow[],baseWindows:TimeWindow[],employeeSchedules:EmployeeSchedule[],employeeBusy:Map<string,TimeWindow[]>,workersRequired:number):{start:number;employees:Employee[]}|null{
   if(workersRequired<=0||employees.length<workersRequired)return null;
@@ -20,7 +33,8 @@ function chooseWorkerTeam(candidate:number,durationMs:number,employees:Employee[
   if(ranked.length<workersRequired)return null;
   const limit=Math.min(ranked.length,Math.max(12,workersRequired*4));const pool=ranked.slice(0,limit);
   function search(index:number,selected:Array<{employee:Employee;start:number}>):{start:number;employees:Employee[]}|null{
-    const remaining=workersRequired-selected.length;if(remaining===0){const teamStart=Math.max(candidate,...selected.map(x=>x.start));const windows=selected.map(x=>subtractBlocks(employeeWindows(x.employee.id,baseWindows,employeeSchedules),employeeBusy.get(x.employee.id)??[]));for(const w of intersectMany([equipmentWindows,...windows])){const start=Math.max(teamStart,w.start);if(start+durationMs<=w.end)return{start,employees:selected.map(x=>x.employee)};}return null;}
+    const remaining=workersRequired-selected.length;
+    if(remaining===0){const teamStart=Math.max(candidate,...selected.map(x=>x.start));const windows=selected.map(x=>withoutOccupied(employeeWindows(x.employee.id,baseWindows,employeeSchedules),employeeBusy.get(x.employee.id)??[]));for(const w of intersectMany([equipmentWindows,...windows])){const start=Math.max(teamStart,w.start);if(start+durationMs<=w.end)return{start,employees:selected.map(x=>x.employee)};}return null;}
     for(let i=index;i<=pool.length-remaining;i++){const result=search(i+1,[...selected,pool[i]]);if(result)return result;}return null;
   }
   return search(0,[]);
