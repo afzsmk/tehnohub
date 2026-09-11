@@ -21,7 +21,10 @@ const dbOperation = {
   required_equipment_ids: ['EQ-001'],
   setup_minutes: 30,
   run_minutes_per_unit: 1.2,
-  active: true
+  active: true,
+  labor_norm_hours_per_unit: 0.02,
+  setup_norm_hours: 0.5,
+  workers_required: 1
 };
 
 describe('Supabase MES route RPC', () => {
@@ -39,16 +42,23 @@ describe('Supabase MES route RPC', () => {
       requiredQualification: 3,
       requiredEquipmentIds: ['EQ-001'],
       setupMinutes: 30,
-      runMinutesPerUnit: 1.2
+      runMinutesPerUnit: 1.2,
+      laborNormHoursPerUnit: 0.02,
+      setupNormHours: 0.5,
+      workersRequired: 1,
+      active: true
     });
 
-    expect(called?.name).toBe('mes_save_route_operation');
+    expect(called?.name).toBe('mes_master_save_route_operation');
     expect(called?.args).toMatchObject({
       p_id: 'OP-CUT-10',
       p_product_id: 'P-001',
       p_sequence: 10,
       p_required_equipment_ids: ['EQ-001'],
-      p_run_minutes_per_unit: 1.2
+      p_setup_norm_hours: 0.5,
+      p_labor_norm_hours_per_unit: 0.02,
+      p_workers_required: 1,
+      p_active: true
     });
     expect(operation).toEqual({
       id: 'OP-CUT-10',
@@ -58,6 +68,9 @@ describe('Supabase MES route RPC', () => {
       workCenter: 'Лазерная резка',
       requiredQualification: 3,
       requiredEquipmentIds: ['EQ-001'],
+      laborNormHoursPerUnit: 0.02,
+      setupNormHours: 0.5,
+      workersRequired: 1,
       setupMinutes: 30,
       runMinutesPerUnit: 1.2
     });
