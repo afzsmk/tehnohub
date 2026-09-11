@@ -3,16 +3,13 @@ import { getMesAuthState } from '../integration/auth';
 import { SupabaseMesMasterDataRpc, MasterProduct, MasterEmployee, MasterEquipment, MasterShift } from '../integration/mesMasterDataRpc';
 
 const esc=(v:unknown)=>String(v??'').replace(/[&<>\"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[ch]??ch));
-const checked=(v:boolean)=>v?'checked':'';
 const minToTime=(m:number)=>`${String(Math.floor(m/60)%24).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
 const timeToMin=(s:string)=>{const [h,m]=s.split(':').map(Number);return (Number.isFinite(h)?h:0)*60+(Number.isFinite(m)?m:0);};
 
 export async function mountMasterDataPage(root:HTMLElement,client:SupabaseClient):Promise<void>{
   const auth=await getMesAuthState(client); if(!auth.identity)return;
   const host=document.createElement('section'); host.className='panel'; root.querySelector('main.page')?.appendChild(host);
-  const rpc=new SupabaseMesMasterDataRpc(client);
-  const state={tab:'products'};
-
+  const rpc=new SupabaseMesMasterDataRpc(client); const state={tab:'products'};
   async function load(){
     const [p,e,eq,sh]=await Promise.all([
       client.from('products').select('id,code,name,unit,external_id').order('code'),
@@ -31,10 +28,14 @@ export async function mountMasterDataPage(root:HTMLElement,client:SupabaseClient
     host.innerHTML=tabs+body;
     host.querySelectorAll<HTMLButtonElement>('[data-md-tab]').forEach(b=>b.addEventListener('click',()=>{state.tab=b.dataset.mdTab??'products';void load();}));
     host.querySelector<HTMLButtonElement>('#md-refresh')?.addEventListener('click',()=>void load());
-    host.querySelector<HTMLFormElement>('#md-product')?.addEventListener('submit',async ev=>{ev.preventDefault();const f=new FormData(ev.currentTarget);await rpc.saveProduct({id:String(f.get('id')||''),code:String(f.get('code')||''),name:String(f.get('name')||''),unit:String(f.get('unit')||''),external_id:String(f.get('external_id')||'')||null});await load();});
-    host.querySelector<HTMLFormElement>('#md-employee')?.addEventListener('submit',async ev=>{ev.preventDefault();const f=new FormData(ev.currentTarget);await rpc.saveEmployee({id:String(f.get('id')||''),personnel_no:String(f.get('personnel_no')||''),name:String(f.get('name')||''),profession:String(f.get('profession')||''),qualification_level:Number(f.get('qualification_level')||0),active:f.get('active')==='on'});await load();});
-    host.querySelector<HTMLFormElement>('#md-equipment')?.addEventListener('submit',async ev=>{ev.preventDefault();const f=new FormData(ev.currentTarget);await rpc.saveEquipment({id:String(f.get('id')||''),code:String(f.get('code')||''),name:String(f.get('name')||''),work_center:String(f.get('work_center')||''),capabilities:String(f.get('capabilities')||'').split(/[;,]/).map(x=>x.trim()).filter(Boolean),active:f.get('active')==='on'});await load();});
-    host.querySelector<HTMLFormElement>('#md-shift')?.addEventListener('submit',async ev=>{ev.preventDefault();const f=new FormData(ev.currentTarget);await rpc.saveShift({id:String(f.get('id')||''),name:String(f.get('name')||''),start_minute:timeToMin(String(f.get('start')||'00:00')),duration_minutes:Math.round(Number(f.get('duration')||12)*60),active:f.get('active')==='on'});await load();});
+    const productForm=host.querySelector<HTMLFormElement>('#md-product');
+    productForm?.addEventListener('submit',async ev=>{ev.preventDefault();const f=new FormData(productForm);await rpc.saveProduct({id:String(f.get('id')||''),code:String(f.get('code')||''),name:String(f.get('name')||''),unit:String(f.get('unit')||''),external_id:String(f.get('external_id')||'')||null});await load();});
+    const employeeForm=host.querySelector<HTMLFormElement>('#md-employee');
+    employeeForm?.addEventListener('submit',async ev=>{ev.preventDefault();const f=new FormData(employeeForm);await rpc.saveEmployee({id:String(f.get('id')||''),personnel_no:String(f.get('personnel_no')||''),name:String(f.get('name')||''),profession:String(f.get('profession')||''),qualification_level:Number(f.get('qualification_level')||0),active:f.get('active')==='on'});await load();});
+    const equipmentForm=host.querySelector<HTMLFormElement>('#md-equipment');
+    equipmentForm?.addEventListener('submit',async ev=>{ev.preventDefault();const f=new FormData(equipmentForm);await rpc.saveEquipment({id:String(f.get('id')||''),code:String(f.get('code')||''),name:String(f.get('name')||''),work_center:String(f.get('work_center')||''),capabilities:String(f.get('capabilities')||'').split(/[;,]/).map(x=>x.trim()).filter(Boolean),active:f.get('active')==='on'});await load();});
+    const shiftForm=host.querySelector<HTMLFormElement>('#md-shift');
+    shiftForm?.addEventListener('submit',async ev=>{ev.preventDefault();const f=new FormData(shiftForm);await rpc.saveShift({id:String(f.get('id')||''),name:String(f.get('name')||''),start_minute:timeToMin(String(f.get('start')||'00:00')),duration_minutes:Math.round(Number(f.get('duration')||12)*60),active:f.get('active')==='on'});await load();});
   }
   try{await load();}catch(e){host.innerHTML=`<div class="panel-head"><div><h2>НСИ MES</h2><div class="subtle" style="color:#b91c1c">${esc(e instanceof Error?e.message:'Не удалось загрузить НСИ')}</div></div></div>`;}
 }
