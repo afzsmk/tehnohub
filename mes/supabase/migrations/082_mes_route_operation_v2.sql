@@ -143,4 +143,5 @@ begin
 end;
 $$;
 
-grantedummy;
+revoke execute on function mes_master_save_route_operation_v2(text,text,integer,text,text,text,text,jsonb,numeric,numeric,integer,boolean) from public, anon;
+grant execute on function mes_master_save_route_operation_v2(text,text,integer,text,text,text,text,jsonb,numeric,numeric,integer,boolean) to authenticated;
