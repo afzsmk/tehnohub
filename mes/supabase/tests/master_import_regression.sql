@@ -35,6 +35,18 @@ select ok(
 );
 
 select ok(
+  exists (
+    select 1
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'mes_master_save_equipment'
+      and pg_get_function_identity_arguments(p.oid) = 'p_id text, p_code text, p_name text, p_work_center text, p_capabilities jsonb, p_active boolean'
+  ),
+  'controlled equipment master-data RPC exists with bootstrap contract'
+);
+
+select ok(
   not has_function_privilege('anon', p.oid, 'execute'),
   'master bootstrap importer is not executable by anon'
 )
