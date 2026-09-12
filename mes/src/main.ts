@@ -2,8 +2,7 @@ import './styles.css';
 import { buildDefaultCalendar } from './core/operationalCalendar';
 import { buildDeterministicSchedule } from './core/scheduler';
 import { executeTaskAction, recordProductionResult, startDowntime, endDowntime } from './core/execution';
-import { buildPlanFactSummary } from './core/planFact';
-import { createMaintenanceOrder, removeMaintenanceBlock, syncMaintenanceBlock, transitionMaintenance } from './core/maintenance';
+import { createMaintenanceOrder, transitionMaintenance } from './core/maintenance';
 import { renderDispatchBoard, bindDispatchBoard } from './ui/dispatchBoard';
 import { bindCalendarEditor, renderCalendarEditor } from './ui/calendarEditor';
 import { bindExecutionPanel, renderExecutionPanel } from './ui/executionPanel';
@@ -66,7 +65,7 @@ const seed: MesState = {
     ] },
     { id: 'O-002', number: 'ЗК-1002', productId: 'P-002', quantity: 80, completedQuantity: 0, dueAt: new Date(Date.now() + 9 * DAY_MS).toISOString(), priority: 'NORMAL', status: 'PLANNED', route: [
       { id: 'OP-003', sequence: 10, code: 'CUT', name: 'Раскрой', workCenter: 'Лазерная резка', requiredQualification: 2, requiredEquipmentIds: ['EQ-001'], setupMinutes: 30, runMinutesPerUnit: 1 },
-      { id: 'OP-004', sequence: 20, code: 'GLUE', name: 'Склейка', workCenter: 'Склейка', requiredQualification: 2, requiredEquipmentIds: ['EQ-002'], setupMinutes: 20, runMinutesPerUnit: 2 }
+      { id: 'OP-004', sequence: 20, code: 'GLUE', name: 'Склейка', workCenter: 'Склейка', requiredQualification: 2, requiredEquipmentIds: ['EQ-002'], setupMinutes: 20, runMinutesPerUnit: 1.7 }
     ] }
   ],
   tasks: [], downtimes: [], maintenance: [], results: [], events: []
@@ -134,39 +133,27 @@ async function hydrateRemoteState(): Promise<void> {
 
 function startRealtime(): void {
   if (!supabase || !authState.identity || realtimeUnsubscribe) return;
-  realtimeUnsubscribe = subscribeMesRealtime(supabase, {
-    debounceMs: 350,
-    onChange: () => { void hydrateRemoteState().catch(showError); }
-  });
+  realtimeUnsubscribe = subscribeMesRealtime(supabase, { debounceMs: 350, onChange: () => { void hydrateRemoteState().catch(showError); } });
 }
-
-function stopRealtime(): void {
-  realtimeUnsubscribe?.();
-  realtimeUnsubscribe = null;
-}
-
+function stopRealtime(): void { realtimeUnsubscribe?.(); realtimeUnsubscribe = null; }
 function enqueueCalendarMutation(mutator: (calendar: CalendarDay[], schedules: EmployeeSchedule[]) => void): Promise<void> {
-  calendarMutationChain = calendarMutationChain
-    .catch(() => undefined)
-    .then(async () => {
-      const nextCalendar = state.calendar.map(day => ({ ...day, shiftIds: [...day.shiftIds] }));
-      const nextSchedules = state.employeeSchedules.map(schedule => ({ ...schedule, shiftIds: [...schedule.shiftIds] }));
-      mutator(nextCalendar, nextSchedules);
-      if (remoteCalendar && authState.identity) {
-        if (remoteCalendarRevision === undefined) await hydrateRemoteState();
-        const revision = await remoteCalendar.saveCalendar(nextCalendar, nextSchedules, remoteCalendarRevision ?? 1);
-        remoteCalendarRevision = revision;
-        await hydrateRemoteState();
-        return;
-      }
-      state.calendar = nextCalendar;
-      state.employeeSchedules = nextSchedules;
-      calculate();
-      render();
-    });
+  calendarMutationChain = calendarMutationChain.catch(() => undefined).then(async () => {
+    const nextCalendar = state.calendar.map(day => ({ ...day, shiftIds: [...day.shiftIds] }));
+    const nextSchedules = state.employeeSchedules.map(schedule => ({ ...schedule, shiftIds: [...schedule.shiftIds] }));
+    mutator(nextCalendar, nextSchedules);
+    if (remoteCalendar && authState.identity) {
+      if (remoteCalendarRevision === undefined) await hydrateRemoteState();
+      remoteCalendarRevision = await remoteCalendar.saveCalendar(nextCalendar, nextSchedules, remoteCalendarRevision ?? 1);
+      await hydrateRemoteState();
+      return;
+    }
+    state.calendar = nextCalendar;
+    state.employeeSchedules = nextSchedules;
+    calculate();
+    render();
+  });
   return calendarMutationChain;
 }
-
 function ensureHorizon(): void {
   const requiredEnd = new Date(state.plan.horizonStart).getTime() + HORIZON_DAYS * DAY_MS;
   if (new Date(state.plan.horizonEnd).getTime() >= requiredEnd && state.calendar.length >= HORIZON_DAYS) return;
@@ -177,284 +164,43 @@ function ensureHorizon(): void {
   for (const employee of state.employees) for (const day of state.calendar) if (!state.employeeSchedules.some(s => s.employeeId === employee.id && s.date === day.date)) state.employeeSchedules.push({ employeeId: employee.id, date: day.date, shiftIds: [], status: 'OFF' });
   saveState(state);
 }
-
 function calculate(): void {
   if (remoteReady()) return;
   const result = buildDeterministicSchedule({ orders: state.orders, employees: state.employees, equipment: state.equipment, horizonStart: state.plan.horizonStart, horizonEnd: state.plan.horizonEnd, shifts: state.shifts, calendar: state.calendar, employeeSchedules: state.employeeSchedules, equipmentBlocks: state.equipmentBlocks });
   state.tasks = result.tasks;
   saveState(state);
 }
-
 function updateTask(taskId: string, patch: Partial<ProductionTask>): void {
   const task = state.tasks.find(t => t.id === taskId);
   if (!task || ['COMPLETED', 'CANCELLED'].includes(task.status)) return;
-  Object.assign(task, patch);
-  task.version += 1;
-  saveState(state);
-  render();
+  Object.assign(task, patch); task.version += 1; saveState(state); render();
 }
-
 async function moveTask(taskId: string, deltaMinutes: number): Promise<void> {
   const task = state.tasks.find(t => t.id === taskId);
   if (!task || ['COMPLETED', 'CANCELLED'].includes(task.status)) return;
   const delta = deltaMinutes * 60_000;
   const plannedStart = new Date(new Date(task.plannedStart).getTime() + delta).toISOString();
   const plannedEnd = new Date(new Date(task.plannedEnd).getTime() + delta).toISOString();
-  if (remoteReady() && remoteReplan) {
-    try {
-      await remoteReplan.apply(state.plan.id, state.plan.version, [{ taskId: task.id, proposedStart: plannedStart, proposedEnd: plannedEnd, expectedVersion: task.version }]);
-      await hydrateRemoteState();
-    } catch (error) { showError(error); }
-    return;
-  }
+  if (remoteReady() && remoteReplan) { try { await remoteReplan.apply(state.plan.id, state.plan.version, [{ taskId: task.id, proposedStart: plannedStart, proposedEnd: plannedEnd, expectedVersion: task.version }]); await hydrateRemoteState(); } catch (error) { showError(error); } return; }
   updateTask(taskId, { plannedStart, plannedEnd });
 }
-
-function updateCalendarDay(date: string, isWorking: boolean, shiftIds: string[]): Promise<void> {
-  return enqueueCalendarMutation((nextCalendar, nextSchedules) => {
-    const day = nextCalendar.find(item => item.date === date);
-    if (!day) return;
-    day.isWorking = isWorking;
-    day.shiftIds = isWorking ? [...shiftIds] : [];
-    if (!isWorking) nextSchedules.filter(item => item.date === date).forEach(item => { item.status = 'OFF'; item.shiftIds = []; });
-  });
-}
-
-function updateEmployeeSchedule(employeeId: string, date: string, status: EmployeeSchedule['status'], shiftIds: string[]): Promise<void> {
-  return enqueueCalendarMutation((nextCalendar, nextSchedules) => {
-    void nextCalendar;
-    const item = nextSchedules.find(schedule => schedule.employeeId === employeeId && schedule.date === date);
-    if (item) {
-      item.status = status;
-      item.shiftIds = [...shiftIds];
-    } else nextSchedules.push({ employeeId, date, status, shiftIds: [...shiftIds] });
-  });
-}
-
-async function addEquipmentBlock(block: Omit<import('./types').EquipmentBlock, 'id'>): Promise<void> {
-  if (remoteEquipmentBlocksReady()) {
-    try {
-      await remoteEquipmentBlocks!.createBlock(block);
-      await hydrateRemoteState();
-    } catch (error) { showError(error); }
-    return;
-  }
-  state.equipmentBlocks.push({ ...block, id: `EB-${Date.now()}` });
-  calculate();
-  render();
-}
-
-async function removeEquipmentBlock(blockId: string): Promise<void> {
-  if (remoteEquipmentBlocksReady()) {
-    try {
-      await remoteEquipmentBlocks!.deleteBlock(blockId);
-      await hydrateRemoteState();
-    } catch (error) { showError(error); }
-    return;
-  }
-  state.equipmentBlocks = state.equipmentBlocks.filter(b => b.id !== blockId);
-  calculate();
-  render();
-}
-
-async function createMaintenance(input: Omit<MaintenanceOrder, 'id' | 'status'>): Promise<void> {
-  if (remoteMaintenanceReady()) {
-    try {
-      await remoteMaintenance!.createOrder(input.equipmentId, input.type, input.plannedStart, input.plannedEnd, input.comment);
-      await hydrateRemoteState();
-    } catch (error) { showError(error); }
-    return;
-  }
-  createMaintenanceOrder(state, input, currentActorId());
-  saveState(state);
-  calculate();
-  render();
-}
-
-async function changeMaintenanceStatus(orderId: string, action: 'START' | 'COMPLETE' | 'CANCEL'): Promise<void> {
-  if (remoteMaintenanceReady()) {
-    const current = state.maintenance.find(item => item.id === orderId);
-    try {
-      await remoteMaintenance!.changeStatus(orderId, action, current?.status);
-      await hydrateRemoteState();
-    } catch (error) { showError(error); }
-    return;
-  }
-  transitionMaintenance(state, orderId, action, currentActorId());
-  saveState(state);
-  calculate();
-  render();
-}
-
-async function applyControlledReplan(preview: import('./core/planFact').ReplanPreview): Promise<void> {
-  if (remoteReady() && remoteReplan) {
-    if (preview.conflicts.length > 0) return;
-    const changes = preview.affected.map(item => {
-      const task = state.tasks.find(candidate => candidate.id === item.taskId);
-      return task ? { taskId: task.id, proposedStart: item.newStart, proposedEnd: item.newEnd, expectedVersion: task.version } : null;
-    }).filter((change): change is { taskId: string; proposedStart: string; proposedEnd: string; expectedVersion: number } => Boolean(change));
-    if (changes.length === 0) return;
-    try {
-      await remoteReplan.apply(state.plan.id, state.plan.version, changes);
-      await hydrateRemoteState();
-    } catch (error) { showError(error); }
-    return;
-  }
-  applyApprovedReplan(state.tasks, preview); state.plan.version += 1; state.plan.status = 'DRAFT'; saveState(state); render();
-}
-
+function updateCalendarDay(date: string, isWorking: boolean, shiftIds: string[]): Promise<void> { return enqueueCalendarMutation((nextCalendar, nextSchedules) => { const day = nextCalendar.find(item => item.date === date); if (!day) return; day.isWorking = isWorking; day.shiftIds = isWorking ? [...shiftIds] : []; if (!isWorking) nextSchedules.filter(item => item.date === date).forEach(item => { item.status = 'OFF'; item.shiftIds = []; }); }); }
+function updateEmployeeSchedule(employeeId: string, date: string, status: EmployeeSchedule['status'], shiftIds: string[]): Promise<void> { return enqueueCalendarMutation((nextCalendar, nextSchedules) => { void nextCalendar; const item = nextSchedules.find(schedule => schedule.employeeId === employeeId && schedule.date === date); if (item) { item.status = status; item.shiftIds = [...shiftIds]; } else nextSchedules.push({ employeeId, date, status, shiftIds: [...shiftIds] }); }); }
+async function addEquipmentBlock(block: Omit<import('./types').EquipmentBlock, 'id'>): Promise<void> { if (remoteEquipmentBlocksReady()) { try { await remoteEquipmentBlocks!.createBlock(block); await hydrateRemoteState(); } catch (error) { showError(error); } return; } state.equipmentBlocks.push({ ...block, id: `EB-${Date.now()}` }); calculate(); render(); }
+async function removeEquipmentBlock(blockId: string): Promise<void> { if (remoteEquipmentBlocksReady()) { try { await remoteEquipmentBlocks!.deleteBlock(blockId); await hydrateRemoteState(); } catch (error) { showError(error); } return; } state.equipmentBlocks = state.equipmentBlocks.filter(b => b.id !== blockId); calculate(); render(); }
+async function createMaintenance(input: Omit<MaintenanceOrder, 'id' | 'status'>): Promise<void> { if (remoteMaintenanceReady()) { try { await remoteMaintenance!.createOrder(input.equipmentId, input.type, input.plannedStart, input.plannedEnd, input.comment); await hydrateRemoteState(); } catch (error) { showError(error); } return; } createMaintenanceOrder(state, input, currentActorId()); saveState(state); calculate(); render(); }
+async function changeMaintenanceStatus(orderId: string, action: 'START' | 'COMPLETE' | 'CANCEL'): Promise<void> { if (remoteMaintenanceReady()) { const current = state.maintenance.find(item => item.id === orderId); try { await remoteMaintenance!.changeStatus(orderId, action, current?.status); await hydrateRemoteState(); } catch (error) { showError(error); } return; } transitionMaintenance(state, orderId, action, currentActorId()); saveState(state); calculate(); render(); }
+async function applyControlledReplan(preview: import('./core/planFact').ReplanPreview): Promise<void> { if (remoteReady() && remoteReplan) { if (preview.conflicts.length > 0) return; const changes = preview.affected.map(item => { const task = state.tasks.find(candidate => candidate.id === item.taskId); return task ? { taskId: task.id, proposedStart: item.newStart, proposedEnd: item.newEnd, expectedVersion: task.version } : null; }).filter((change): change is { taskId: string; proposedStart: string; proposedEnd: string; expectedVersion: number } => Boolean(change)); if (!changes.length) return; try { await remoteReplan.apply(state.plan.id, state.plan.version, changes); await hydrateRemoteState(); } catch (error) { showError(error); } return; } applyApprovedReplan(state.tasks, preview); state.plan.version += 1; state.plan.status = 'DRAFT'; saveState(state); render(); }
 function showError(error: unknown): void { window.alert(error instanceof Error ? error.message : 'Операция не выполнена'); }
-
-async function assignEmployee(taskId: string, employeeId: string): Promise<void> {
-  const task = state.tasks.find(item => item.id === taskId);
-  if (!task) return;
-  if (remoteReady() && remotePlanning) {
-    try {
-      await remotePlanning.assignTask(taskId, { employeeIds: employeeId ? [employeeId] : [] }, task.version);
-      await hydrateRemoteState();
-    } catch (error) { showError(error); }
-    return;
-  }
-  task.assignedEmployeeIds = employeeId ? [employeeId] : [];
-  task.version += 1;
-  saveState(state);
-  render();
-}
-
-async function assignEquipment(taskId: string, equipmentId: string): Promise<void> {
-  const task = state.tasks.find(t => t.id === taskId);
-  if (!task) return;
-  if (remoteReady() && remotePlanning) {
-    try {
-      await remotePlanning.assignTask(taskId, { equipmentIds: equipmentId ? [equipmentId] : [] }, task.version);
-      await hydrateRemoteState();
-    } catch (error) { showError(error); }
-    return;
-  }
-  task.assignedEquipmentIds = equipmentId ? [equipmentId] : [];
-  task.version += 1;
-  saveState(state);
-  render();
-}
-
-async function handleAction(taskId: string, action: 'PREPARE' | MesExecutionAction): Promise<void> {
-  if (remoteReady()) {
-    try {
-      if (action === 'PREPARE') {
-        if (!remotePlanning) return;
-        const task = state.tasks.find(item => item.id === taskId);
-        await remotePlanning.prepareTask(taskId, task?.version);
-      } else {
-        if (!remoteExecution) return;
-        await remoteExecution.executeTaskAction(taskId, action, new Date().toISOString());
-      }
-      await hydrateRemoteState();
-    } catch (error) { showError(error); }
-    return;
-  }
-  try {
-    executeTaskAction(state, taskId, action, currentActorId());
-    saveState(state);
-    render();
-  } catch (error) { showError(error); }
-}
-
-async function handleResult(taskId: string, goodQuantity: number, scrapQuantity: number, comment: string): Promise<void> {
-  try {
-    if (remoteReady()) {
-      await remoteExecution!.recordProductionResult(taskId, goodQuantity, scrapQuantity, state.tasks.find(t => t.id === taskId)?.assignedEquipmentIds ?? [], comment, new Date().toISOString());
-      await hydrateRemoteState();
-      return;
-    }
-    const task = state.tasks.find(t => t.id === taskId);
-    recordProductionResult(state, taskId, { goodQuantity, scrapQuantity, comment, employeeIds: task?.assignedEmployeeIds ?? [], equipmentIds: task?.assignedEquipmentIds ?? [] }, currentActorId());
-    saveState(state);
-    render();
-  } catch (error) { showError(error); }
-}
-
-async function handleDowntimeStart(equipmentId: string, reasonCode: string, comment: string): Promise<void> {
-  try {
-    if (remoteReady()) {
-      await remoteExecution!.startDowntime(equipmentId, reasonCode, comment, new Date().toISOString());
-      await hydrateRemoteState();
-      return;
-    }
-    startDowntime(state, { equipmentId, reasonCode, comment }, currentActorId());
-    saveState(state);
-    render();
-  } catch (error) { showError(error); }
-}
-
-async function handleDowntimeEnd(downtimeId: string): Promise<void> {
-  try {
-    if (remoteReady()) {
-      await remoteExecution!.endDowntime(downtimeId, new Date().toISOString());
-      await hydrateRemoteState();
-      return;
-    }
-    endDowntime(state, downtimeId, currentActorId());
-    saveState(state);
-    render();
-  } catch (error) { showError(error); }
-}
-
+async function assignEmployee(taskId: string, employeeId: string): Promise<void> { const task = state.tasks.find(item => item.id === taskId); if (!task) return; if (remoteReady() && remotePlanning) { try { await remotePlanning.assignTask(taskId, { employeeIds: employeeId ? [employeeId] : [] }, task.version); await hydrateRemoteState(); } catch (error) { showError(error); } return; } task.assignedEmployeeIds = employeeId ? [employeeId] : []; task.version += 1; saveState(state); render(); }
+async function assignEquipment(taskId: string, equipmentId: string): Promise<void> { const task = state.tasks.find(t => t.id === taskId); if (!task) return; if (remoteReady() && remotePlanning) { try { await remotePlanning.assignTask(taskId, { equipmentIds: equipmentId ? [equipmentId] : [] }, task.version); await hydrateRemoteState(); } catch (error) { showError(error); } return; } task.assignedEquipmentIds = equipmentId ? [equipmentId] : []; task.version += 1; saveState(state); render(); }
+async function handleAction(taskId: string, action: 'PREPARE' | MesExecutionAction): Promise<void> { if (remoteReady()) { try { if (action === 'PREPARE') { if (!remotePlanning) return; const task = state.tasks.find(item => item.id === taskId); await remotePlanning.prepareTask(taskId, task?.version); } else { if (!remoteExecution) return; await remoteExecution.executeTaskAction(taskId, action, new Date().toISOString()); } await hydrateRemoteState(); } catch (error) { showError(error); } return; } try { executeTaskAction(state, taskId, action, currentActorId()); saveState(state); render(); } catch (error) { showError(error); } }
+async function handleResult(taskId: string, goodQuantity: number, scrapQuantity: number, comment: string): Promise<void> { try { if (remoteReady()) { await remoteExecution!.recordProductionResult(taskId, goodQuantity, scrapQuantity, state.tasks.find(t => t.id === taskId)?.assignedEquipmentIds ?? [], comment, new Date().toISOString()); await hydrateRemoteState(); return; } const task = state.tasks.find(t => t.id === taskId); recordProductionResult(state, taskId, { goodQuantity, scrapQuantity, comment, employeeIds: task?.assignedEmployeeIds ?? [], equipmentIds: task?.assignedEquipmentIds ?? [] }, currentActorId()); saveState(state); render(); } catch (error) { showError(error); } }
+async function handleDowntimeStart(equipmentId: string, reasonCode: string, comment: string): Promise<void> { try { if (remoteReady()) { await remoteExecution!.startDowntime(equipmentId, reasonCode, comment, new Date().toISOString()); await hydrateRemoteState(); return; } startDowntime(state, { equipmentId, reasonCode, comment }, currentActorId()); saveState(state); render(); } catch (error) { showError(error); } }
+async function handleDowntimeEnd(downtimeId: string): Promise<void> { try { if (remoteReady()) { await remoteExecution!.endDowntime(downtimeId, new Date().toISOString()); await hydrateRemoteState(); return; } endDowntime(state, downtimeId, currentActorId()); saveState(state); render(); } catch (error) { showError(error); } }
 ensureHorizon();
 if (state.tasks.length === 0 && !remoteReady()) calculate();
-
-function authHtml(): string {
-  if (!supabase) return '<div class="plan-badge">Demo / localStorage</div>';
-  if (authState.user) return `<div class="auth-inline"><span>${authState.identity?.role ?? 'MES user'} · ${authState.user.email ?? authState.user.id}</span><button id="signout" class="tiny">Выйти</button></div>`;
-  return `<form id="login-form" class="auth-inline"><input name="email" type="email" placeholder="Email" required><input name="password" type="password" placeholder="Пароль" required><button class="tiny" type="submit">Войти</button></form>`;
-}
-
-function render(): void {
-  const operations = state.orders.flatMap(order => order.route);
-  const totalGood = state.results.reduce((sum, r) => sum + r.goodQuantity, 0);
-  const openDowntime = state.downtimes.filter(d => !d.endedAt).length;
-  const conflicts = state.tasks.filter(task => state.tasks.some(other => other.id !== task.id && new Date(task.plannedStart).getTime() < new Date(other.plannedEnd).getTime() && new Date(other.plannedStart).getTime() < new Date(task.plannedEnd).getTime()));
-  const dispatchOptions = { tasks: state.tasks, employees: state.employees, equipment: state.equipment, shifts: state.shifts, calendar: state.calendar, equipmentBlocks: state.equipmentBlocks, operations, onMove: moveTask, onAssignEmployee: assignEmployee, onAssignEquipment: assignEquipment };
-
-  root.innerHTML = `${authHtml()}<header><h1>MES — оперативное управление производством</h1><div class="subtitle">1–30 дней · План/Факт · исполнение · простой · ТО · перепланирование</div></header><section class="kpis"><div class="kpi"><span>Операции</span><strong>${operations.length}</strong></div><div class="kpi"><span>Задания</span><strong>${state.tasks.length}</strong></div><div class="kpi"><span>Выпущено</span><strong>${totalGood}</strong></div><div class="kpi"><span>Открытые простои</span><strong>${openDowntime}</strong></div><div class="kpi"><span>Конфликты</span><strong>${conflicts.length}</strong></div></section>${renderDispatchBoard(dispatchOptions)}${renderCalendarEditor({ calendar: state.calendar, shifts: state.shifts, employees: state.employees, employeeSchedules: state.employeeSchedules, equipment: state.equipment, equipmentBlocks: state.equipmentBlocks, onCalendarChange: updateCalendarDay, onEmployeeScheduleChange: updateEmployeeSchedule, onAddBlock: addEquipmentBlock, onRemoveBlock: removeEquipmentBlock, onError: showError })}${renderExecutionPanel({ tasks: state.tasks, employees: state.employees, equipment: state.equipment, results: state.results, downtimes: state.downtimes, onAction: handleAction, onResult: handleResult, onDowntimeStart: handleDowntimeStart, onDowntimeEnd: handleDowntimeEnd })}${renderMaintenancePanel({ state, onCreate: createMaintenance, onAction: changeMaintenanceStatus, onError: showError })}${renderPlanFactPanel({ orders: state.orders, tasks: state.tasks, results: state.results, downtimes: state.downtimes, now: new Date() })}${renderReplanPanel({ tasks: state.tasks, downtimes: state.downtimes, plan: state.plan, onApply: applyControlledReplan })}${renderIntegrationPanel({ store: integrationStore, onRefresh: () => render() })}`;
-
-  bindDispatchBoard(root, dispatchOptions);
-  bindCalendarEditor(root, { calendar: state.calendar, shifts: state.shifts, employees: state.employees, employeeSchedules: state.employeeSchedules, equipment: state.equipment, equipmentBlocks: state.equipmentBlocks, onCalendarChange: updateCalendarDay, onEmployeeScheduleChange: updateEmployeeSchedule, onAddBlock: addEquipmentBlock, onRemoveBlock: removeEquipmentBlock, onError: showError });
-  bindExecutionPanel(root, { tasks: state.tasks, employees: state.employees, equipment: state.equipment, results: state.results, downtimes: state.downtimes, onAction: handleAction, onResult: handleResult, onDowntimeStart: handleDowntimeStart, onDowntimeEnd: handleDowntimeEnd });
-  bindMaintenancePanel(root, { state, onCreate: createMaintenance, onAction: changeMaintenanceStatus, onError: showError });
-  bindReplanPanel(root, { tasks: state.tasks, downtimes: state.downtimes, plan: state.plan, onApply: applyControlledReplan });
-  bindIntegrationPanel(root, { store: integrationStore, onRefresh: () => render() });
-
-  const loginForm = root.querySelector<HTMLFormElement>('#login-form');
-  loginForm?.addEventListener('submit', async event => {
-    event.preventDefault();
-    if (!supabase) return;
-    const form = new FormData(loginForm);
-    try { await signInMes(supabase, String(form.get('email') ?? ''), String(form.get('password') ?? '')); } catch (error) { showError(error); }
-  });
-  root.querySelector<HTMLButtonElement>('#signout')?.addEventListener('click', () => { if (supabase) void signOutMes(supabase).catch(showError); });
-}
-
-if (supabase) {
-  authUnsubscribe = subscribeMesAuth(supabase, async () => {
-    try {
-      authState = await getMesAuthState(supabase);
-      if (authState.identity) {
-        startRealtime();
-        await hydrateRemoteState();
-      } else {
-        stopRealtime();
-        remoteCalendarRevision = undefined;
-        render();
-      }
-    } catch (error) { showError(error); }
-  });
-  void getMesAuthState(supabase).then(async result => {
-    authState = result;
-    if (authState.identity) {
-      startRealtime();
-      await hydrateRemoteState();
-    } else render();
-  }).catch(showError);
-} else render();
-
+function authHtml(): string { if (!supabase) return '<div class="plan-badge">Demo / localStorage</div>'; if (authState.user) return `<div class="auth-inline"><span>${authState.identity?.role ?? 'MES user'} · ${authState.user.email ?? authState.user.id}</span><button id="signout" class="tiny">Выйти</button></div>`; return `<form id="login-form" class="auth-inline"><input name="email" type="email" placeholder="Email" required><input name="password" type="password" placeholder="Пароль" required><button class="tiny" type="submit">Войти</button></form>`; }
+function render(): void { const operations = state.orders.flatMap(order => order.route); const totalGood = state.results.reduce((sum, r) => sum + r.goodQuantity, 0); const openDowntime = state.downtimes.filter(d => !d.endedAt).length; const conflicts = state.tasks.filter(task => state.tasks.some(other => other.id !== task.id && new Date(task.plannedStart).getTime() < new Date(other.plannedEnd).getTime() && new Date(other.plannedStart).getTime() < new Date(task.plannedEnd).getTime())); const dispatchOptions = { tasks: state.tasks, employees: state.employees, equipment: state.equipment, shifts: state.shifts, calendar: state.calendar, equipmentBlocks: state.equipmentBlocks, operations, onMove: moveTask, onAssignEmployee: assignEmployee, onAssignEquipment: assignEquipment }; root.innerHTML = `${authHtml()}<header><h1>MES — оперативное управление производством</h1><div class="subtitle">1–30 дней · План/Факт · исполнение · простой · ТО · перепланирование</div></header><section class="kpis"><div class="kpi"><span>Операции</span><strong>${operations.length}</strong></div><div class="kpi"><span>Задания</span><strong>${state.tasks.length}</strong></div><div class="kpi"><span>Выпущено</span><strong>${totalGood}</strong></div><div class="kpi"><span>Открытые простои</span><strong>${openDowntime}</strong></div><div class="kpi"><span>Конфликты</span><strong>${conflicts.length}</strong></div></section>${renderDispatchBoard(dispatchOptions)}${renderCalendarEditor({ calendar: state.calendar, shifts: state.shifts, employees: state.employees, employeeSchedules: state.employeeSchedules, equipment: state.equipment, equipmentBlocks: state.equipmentBlocks, onCalendarChange: updateCalendarDay, onEmployeeScheduleChange: updateEmployeeSchedule, onAddBlock: addEquipmentBlock, onRemoveBlock: removeEquipmentBlock, onError: showError })}${renderExecutionPanel({ tasks: state.tasks, employees: state.employees, equipment: state.equipment, results: state.results, downtimes: state.downtimes, onAction: handleAction, onResult: handleResult, onDowntimeStart: handleDowntimeStart, onDowntimeEnd: handleDowntimeEnd })}${renderMaintenancePanel({ state, onCreate: createMaintenance, onAction: changeMaintenanceStatus, onError: showError })}${renderPlanFactPanel({ orders: state.orders, tasks: state.tasks, results: state.results, downtimes: state.downtimes, now: new Date() })}${renderReplanPanel({ tasks: state.tasks, downtimes: state.downtimes, plan: state.plan, onApply: applyControlledReplan })}${renderIntegrationPanel({ store: integrationStore, onRefresh: () => render() })}`; bindDispatchBoard(root, dispatchOptions); bindCalendarEditor(root, { calendar: state.calendar, shifts: state.shifts, employees: state.employees, employeeSchedules: state.employeeSchedules, equipment: state.equipment, equipmentBlocks: state.equipmentBlocks, onCalendarChange: updateCalendarDay, onEmployeeScheduleChange: updateEmployeeSchedule, onAddBlock: addEquipmentBlock, onRemoveBlock: removeEquipmentBlock, onError: showError }); bindExecutionPanel(root, { tasks: state.tasks, employees: state.employees, equipment: state.equipment, results: state.results, downtimes: state.downtimes, onAction: handleAction, onResult: handleResult, onDowntimeStart: handleDowntimeStart, onDowntimeEnd: handleDowntimeEnd }); bindMaintenancePanel(root, { state, onCreate: createMaintenance, onAction: changeMaintenanceStatus, onError: showError }); bindReplanPanel(root, { tasks: state.tasks, downtimes: state.downtimes, plan: state.plan, onApply: applyControlledReplan }); bindIntegrationPanel(root, { store: integrationStore, onRefresh: () => render() }); const loginForm = root.querySelector<HTMLFormElement>('#login-form'); loginForm?.addEventListener('submit', async event => { event.preventDefault(); if (!supabase) return; const form = new FormData(loginForm); try { await signInMes(supabase, String(form.get('email') ?? ''), String(form.get('password') ?? '')); } catch (error) { showError(error); } }); root.querySelector<HTMLButtonElement>('#signout')?.addEventListener('click', () => { if (supabase) void signOutMes(supabase).catch(showError); }); }
+if (supabase) { authUnsubscribe = subscribeMesAuth(supabase, async () => { try { authState = await getMesAuthState(supabase); if (authState.identity) { startRealtime(); await hydrateRemoteState(); } else { stopRealtime(); remoteCalendarRevision = undefined; render(); } } catch (error) { showError(error); } }); void getMesAuthState(supabase).then(async result => { authState = result; if (authState.identity) { startRealtime(); await hydrateRemoteState(); } else render(); }).catch(showError); } else render();
 window.addEventListener('beforeunload', () => { stopRealtime(); authUnsubscribe?.(); });
