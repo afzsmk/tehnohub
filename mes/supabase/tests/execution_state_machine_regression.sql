@@ -20,6 +20,15 @@ values ('SM-EMP', 'SM-001', 'State Machine Operator', 'Оператор', 3, tru
 insert into equipment(id, code, name, work_center, capabilities, active)
 values ('SM-EQ', 'SM-EQ', 'State Machine Equipment', 'SM-WC', '["SM-OP"]'::jsonb, true);
 
+insert into route_operations(
+  id, product_id, sequence, code, name, work_center,
+  required_qualification, required_equipment_ids,
+  setup_minutes, run_minutes_per_unit, active
+) values (
+  'SM-OP', 'SM-PRODUCT', 10, 'SM-OP', 'State Machine Operation', 'SM-WC',
+  1, '["SM-EQ"]'::jsonb, 0, 1, true
+);
+
 insert into production_orders(
   id, external_id, number, plan_id, product_id,
   quantity, completed_quantity, due_at, priority, status
