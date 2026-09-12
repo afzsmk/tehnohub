@@ -68,7 +68,15 @@ export function executeTaskAction(
     const nextStatus = target[action];
     if (!canTransition(task.status, nextStatus)) throw new Error(`Недопустимое действие ${action} для статуса ${task.status}`);
     if (action === 'START') task.actualStart ??= at;
-    if (action === 'COMPLETE') task.actualEnd = at;
+    if (action === 'COMPLETE') {
+      if (task.actualQuantity < task.plannedQuantity) {
+        throw new Error('Нельзя завершить задание: фактический выпуск меньше планового');
+      }
+      if (task.qualityRequired && task.qualityStatus !== 'APPROVED') {
+        throw new Error('Нельзя завершить задание без одобренного ОТК');
+      }
+      task.actualEnd = at;
+    }
     task.status = nextStatus;
   }
 
@@ -104,7 +112,10 @@ export function recordProductionResult(
   const identity = resolveActor(actor, task, input.employeeIds);
   const effectiveEmployeeIds = identity.role === 'OPERATOR' ? [identity.employeeId] : [...input.employeeIds];
   if (identity.role === 'OPERATOR') assertEmployeeInAssignment(identity.employeeId, task.assignedEmployeeIds);
-  if (task.status === 'CANCELLED' || task.status === 'DRAFT') throw new Error('Нельзя регистрировать факт для неактивного задания');
+  if (['COMPLETED', 'CANCELLED', 'DRAFT'].includes(task.status)) throw new Error('Нельзя регистрировать факт для неактивного задания');
+  if (!['RUNNING', 'PARTIALLY_COMPLETED'].includes(task.status)) {
+    throw new Error('Регистрация факта разрешена только для выполняемого задания');
+  }
   if (!Number.isFinite(input.goodQuantity) || !Number.isFinite(input.scrapQuantity) || input.goodQuantity < 0 || input.scrapQuantity < 0) {
     throw new Error('Количество выпуска и брака должно быть неотрицательным числом');
   }
@@ -123,11 +134,12 @@ export function recordProductionResult(
   };
   state.results.push(result);
   task.actualQuantity += input.goodQuantity;
-  if (task.actualQuantity >= task.plannedQuantity && canTransition(task.status, 'COMPLETED')) {
+  if (task.actualQuantity >= task.plannedQuantity && canTransition(task.status, 'COMPLETED') && (!task.qualityRequired || task.qualityStatus === 'APPROVED')) {
     task.status = 'COMPLETED';
     task.actualEnd ??= at;
   } else if (canTransition(task.status, 'PARTIALLY_COMPLETED')) {
     task.status = 'PARTIALLY_COMPLETED';
+    if (task.qualityRequired) task.qualityStatus = 'PENDING';
   }
   task.version += 1;
   state.events.push({
