@@ -62,6 +62,18 @@ select is(
   'RUNNING',
   'READY transitions to RUNNING only through START'
 );
+select is(
+  (select version from production_tasks where id = 'SM-TASK'),
+  2,
+  'START increments task version'
+);
+select ok(
+  (select count(*) from production_events
+    where task_id = 'SM-TASK'
+      and type = 'TASK_STARTED'
+      and actor_id = '22222222-2222-2222-2222-222222222222') = 1,
+  'START emits an authenticated task event'
+);
 
 select throws_ok(
   $$select mes_execute_task_action('SM-TASK', 'COMPLETE', '2026-02-02T09:00:00Z')$$,
@@ -88,6 +100,21 @@ select is(
   (select status from production_tasks where id = 'SM-TASK'),
   'COMPLETED',
   'result reaching plan completes a non-quality-gated task'
+);
+select is(
+  (select completed_quantity from production_orders where id = 'SM-ORDER'),
+  10::numeric,
+  'completed task synchronizes order completed quantity'
+);
+select is(
+  (select status from production_orders where id = 'SM-ORDER'),
+  'COMPLETED',
+  'completed task synchronizes order status'
+);
+select is(
+  (select version from production_tasks where id = 'SM-TASK'),
+  3,
+  'production result increments task version'
 );
 select ok(
   (select count(*) from production_events where task_id = 'SM-TASK' and type = 'RESULT_RECORDED') = 1,
