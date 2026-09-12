@@ -32,4 +32,29 @@ where n.nspname = 'public'
   and p.proname = 'mes_import_bootstrap'
   and pg_get_function_identity_arguments(p.oid) = 'p_source_name text, p_payload jsonb';
 
+select ok(
+  to_regclass('public.mes_master_import_runs') is not null,
+  'master import run history table exists'
+);
+
+select ok(
+  has_table_privilege('authenticated','public.mes_master_import_runs','select'),
+  'authenticated users may read master import history'
+);
+
+select ok(
+  not has_table_privilege('authenticated','public.mes_master_import_runs','insert'),
+  'authenticated users may not insert master import history directly'
+);
+
+select ok(
+  not has_table_privilege('authenticated','public.mes_master_import_runs','update'),
+  'authenticated users may not update master import history directly'
+);
+
+select ok(
+  not has_table_privilege('authenticated','public.mes_master_import_runs','delete'),
+  'authenticated users may not delete master import history directly'
+);
+
 select * from finish();
