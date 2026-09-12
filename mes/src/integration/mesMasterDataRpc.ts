@@ -7,7 +7,7 @@ export interface MasterBrigade { id:string; external_id?:string|null; code:strin
 export interface MasterEmployee { id:string; personnel_no:string; name:string; profession:string; profession_id?:string|null; brigade_id?:string|null; qualification_id?:string|null; qualification_level:number; active:boolean; }
 export interface MasterEmployeeQualification { employee_id:string; qualification_id:string; valid_from?:string|null; valid_to?:string|null; is_primary:boolean; notes?:string|null; }
 export interface MasterWorkCenter { id:string; external_id?:string|null; code:string; name:string; site_code?:string|null; description?:string|null; active:boolean; }
-export interface MasterEquipment { id:string; code:string; name:string; work_center:string; capabilities:string[]; active:boolean; }
+export interface MasterEquipment { id:string; code:string; name:string; work_center:string; work_center_id?:string|null; capabilities:string[]; active:boolean; }
 export interface MasterRoute { id:string; external_id?:string|null; product_id:string; code:string; name:string; version:number; active:boolean; valid_from?:string|null; valid_to?:string|null; description?:string|null; }
 export interface MasterShift { id:string; name:string; start_minute:number; duration_minutes:number; active:boolean; }
 export interface BootstrapRouteOperation { id:string; product_id:string; route_id?:string; sequence:number; code:string; name:string; work_center:string; required_qualification?:number; required_qualification_id?:string; required_equipment_ids:string[]; setup_norm_hours:number; labor_norm_hours_per_unit:number; workers_required:number; active:boolean; }
@@ -21,6 +21,7 @@ export class SupabaseMesMasterDataRpc {
   saveProduct(v:MasterProduct):Promise<unknown>{return this.call('mes_master_save_product',{p_id:v.id,p_code:v.code,p_name:v.name,p_unit:v.unit,p_external_id:v.external_id??null});}
   saveEmployee(v:MasterEmployee):Promise<unknown>{return this.call('mes_master_save_employee',{p_id:v.id,p_personnel_no:v.personnel_no,p_name:v.name,p_profession:v.profession,p_qualification_level:v.qualification_level,p_active:v.active});}
   saveEquipment(v:MasterEquipment):Promise<unknown>{return this.call('mes_master_save_equipment',{p_id:v.id,p_code:v.code,p_name:v.name,p_work_center:v.work_center,p_capabilities:v.capabilities,p_active:v.active});}
+  saveEquipmentNormalized(v:MasterEquipment):Promise<unknown>{return this.call('mes_master_save_equipment_v2',{p_id:v.id,p_code:v.code,p_name:v.name,p_work_center_id:v.work_center_id??v.work_center,p_capabilities:v.capabilities,p_active:v.active});}
   saveShift(v:MasterShift):Promise<unknown>{return this.call('mes_master_save_shift',{p_id:v.id,p_name:v.name,p_start_minute:v.start_minute,p_duration_minutes:v.duration_minutes,p_active:v.active});}
   saveProfession(v:MasterProfession):Promise<unknown>{return this.call('mes_master_save_profession',{p_id:v.id,p_external_id:v.external_id??null,p_code:v.code,p_name:v.name,p_description:v.description??null,p_active:v.active});}
   saveQualification(v:MasterQualification):Promise<unknown>{return this.call('mes_master_save_qualification',{p_id:v.id,p_external_id:v.external_id??null,p_code:v.code,p_name:v.name,p_level:v.level,p_description:v.description??null,p_active:v.active});}
