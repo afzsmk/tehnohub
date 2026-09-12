@@ -19,10 +19,10 @@ begin
     if coalesce((r->>'level')::integer,-1)<0 then v_errors:=v_errors||jsonb_build_array(format('Qualification %s: некорректный level',coalesce(v_id,'?'))); end if;
   end loop;
   for r in select value from jsonb_array_elements(coalesce(p_payload->'brigades','[]'::jsonb)) loop
-    v_id:=nullif(trim(r->>'id')); if v_id is null or nullif(trim(r->>'code'),'') is null or nullif(trim(r->>'name'),'') is null then v_errors:=v_errors||jsonb_build_array(format('Brigade %s: требуются id, code, name',coalesce(v_id,'?'))); end if;
+    v_id:=nullif(trim(r->>'id'),''); if v_id is null or nullif(trim(r->>'code'),'') is null or nullif(trim(r->>'name'),'') is null then v_errors:=v_errors||jsonb_build_array(format('Brigade %s: требуются id, code, name',coalesce(v_id,'?'))); end if;
   end loop;
   for r in select value from jsonb_array_elements(coalesce(p_payload->'employees','[]'::jsonb)) loop
-    v_id:=nullif(trim(r->>'id'));
+    v_id:=nullif(trim(r->>'id'),'');
     if v_id is null or nullif(trim(r->>'personnel_no'),'') is null or nullif(trim(r->>'name'),'') is null then v_errors:=v_errors||jsonb_build_array(format('Employee %s: требуются id, personnel_no, name',coalesce(v_id,'?'))); end if;
     if nullif(trim(r->>'profession_id'),'') is not null and not exists(select 1 from jsonb_array_elements(coalesce(p_payload->'professions','[]'::jsonb)) x where trim(x->>'id')=trim(r->>'profession_id')) and not exists(select 1 from professions where id=trim(r->>'profession_id')) then v_errors:=v_errors||jsonb_build_array(format('Employee %s: profession %s отсутствует',v_id,r->>'profession_id')); end if;
     if nullif(trim(r->>'brigade_id'),'') is not null and not exists(select 1 from jsonb_array_elements(coalesce(p_payload->'brigades','[]'::jsonb)) x where trim(x->>'id')=trim(r->>'brigade_id')) and not exists(select 1 from brigades where id=trim(r->>'brigade_id')) then v_errors:=v_errors||jsonb_build_array(format('Employee %s: brigade %s отсутствует',v_id,r->>'brigade_id')); end if;
