@@ -9,10 +9,10 @@ from pg_class c
 join pg_namespace n on n.oid = c.relnamespace
 where n.nspname = 'public'
   and c.relname = any (array[
-    'operational_plans', 'products', 'employees', 'equipment', 'shift_definitions',
-    'calendar_days', 'employee_schedules', 'route_operations', 'production_orders',
-    'production_tasks', 'task_assignments', 'equipment_blocks', 'downtime_events',
-    'maintenance_orders', 'production_results', 'quality_inspections',
+    'operational_plans', 'products', 'employees', 'professions', 'qualification_levels', 'employee_qualifications', 'brigades',
+    'equipment', 'shift_definitions', 'calendar_days', 'employee_schedules', 'route_operations',
+    'production_orders', 'production_tasks', 'task_assignments', 'equipment_blocks', 'downtime_events',
+    'maintenance_orders', 'production_results', 'quality_inspections', 'downtime_reasons', 'scrap_reasons',
     'production_events', 'integration_messages', 'integration_outbox', 'audit_log'
   ]);
 
@@ -21,10 +21,10 @@ select ok(
   not exists (
     select 1
     from unnest(array[
-      'operational_plans', 'products', 'employees', 'equipment', 'shift_definitions',
-      'calendar_days', 'employee_schedules', 'route_operations', 'production_orders',
-      'production_tasks', 'task_assignments', 'equipment_blocks', 'downtime_events',
-      'maintenance_orders', 'production_results', 'quality_inspections',
+      'operational_plans', 'products', 'employees', 'professions', 'qualification_levels', 'employee_qualifications', 'brigades',
+      'equipment', 'shift_definitions', 'calendar_days', 'employee_schedules', 'route_operations',
+      'production_orders', 'production_tasks', 'task_assignments', 'equipment_blocks', 'downtime_events',
+      'maintenance_orders', 'production_results', 'quality_inspections', 'downtime_reasons', 'scrap_reasons',
       'production_events', 'integration_messages', 'integration_outbox', 'audit_log'
     ]) as t(table_name)
     where has_table_privilege('authenticated', 'public.' || table_name, 'insert')
