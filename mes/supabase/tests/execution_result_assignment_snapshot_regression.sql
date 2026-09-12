@@ -17,6 +17,14 @@ insert into employees(id, personnel_no, name, profession, qualification_level, a
 values ('RS-EMP', 'RS-001', 'Result Snapshot Employee', 'Оператор', 3, true);
 insert into equipment(id, code, name, work_center, capabilities, active)
 values ('RS-EQ', 'RS-EQ', 'Result Snapshot Equipment', 'RS-WC', '[]'::jsonb, true);
+insert into route_operations(
+  id, product_id, sequence, code, name, work_center,
+  required_qualification, required_equipment_ids,
+  setup_minutes, run_minutes_per_unit, active
+) values (
+  'RS-OP', 'RS-PROD', 10, 'RS-OP', 'Result Snapshot Operation', 'RS-WC',
+  1, '["RS-EQ"]'::jsonb, 0, 1, true
+);
 insert into production_orders(id, external_id, number, plan_id, product_id, quantity, completed_quantity, due_at, priority, status)
 values ('RS-ORDER', 'RS-EXT', 'RS-001', 'RS-PLAN', 'RS-PROD', 10, 0, '2026-03-10T00:00:00Z', 'NORMAL', 'IN_EXECUTION');
 insert into production_tasks(id, order_id, operation_id, operation_sequence, status, planned_start, planned_end,
