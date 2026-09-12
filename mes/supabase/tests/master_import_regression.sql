@@ -47,6 +47,18 @@ select ok(
 );
 
 select ok(
+  exists (
+    select 1
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'mes_master_save_route_operation'
+      and pg_get_function_identity_arguments(p.oid) = 'p_id text, p_product_id text, p_sequence integer, p_code text, p_name text, p_work_center text, p_required_qualification integer, p_required_equipment_ids jsonb, p_setup_norm_hours numeric, p_labor_norm_hours_per_unit numeric, p_workers_required integer, p_active boolean'
+  ),
+  'controlled route-operation master-data RPC exists with bootstrap contract'
+);
+
+select ok(
   not has_function_privilege('anon', p.oid, 'execute'),
   'master bootstrap importer is not executable by anon'
 )
