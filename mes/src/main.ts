@@ -4,7 +4,7 @@ import { buildDeterministicSchedule } from './core/scheduler';
 import { executeTaskAction, recordProductionResult, startDowntime, endDowntime } from './core/execution';
 import { buildPlanFactSummary } from './core/planFact';
 import { createMaintenanceOrder, removeMaintenanceBlock, syncMaintenanceBlock, transitionMaintenance } from './core/maintenance';
-import { renderDispatchBoard } from './ui/dispatchBoard';
+import { renderDispatchBoard, bindDispatchBoard } from './ui/dispatchBoard';
 import { bindCalendarEditor, renderCalendarEditor } from './ui/calendarEditor';
 import { bindExecutionPanel, renderExecutionPanel } from './ui/executionPanel';
 import { bindReplanPanel, renderReplanPanel, applyApprovedReplan } from './ui/replanPanel';
@@ -66,7 +66,7 @@ const seed: MesState = {
     ] },
     { id: 'O-002', number: 'ЗК-1002', productId: 'P-002', quantity: 80, completedQuantity: 0, dueAt: new Date(Date.now() + 9 * DAY_MS).toISOString(), priority: 'NORMAL', status: 'PLANNED', route: [
       { id: 'OP-003', sequence: 10, code: 'CUT', name: 'Раскрой', workCenter: 'Лазерная резка', requiredQualification: 2, requiredEquipmentIds: ['EQ-001'], setupMinutes: 30, runMinutesPerUnit: 1 },
-      { id: 'OP-004', sequence: 20, code: 'GLUE', name: 'Склейка', workCenter: 'Склейка', requiredQualification: 2, requiredEquipmentIds: ['EQ-002'], setupMinutes: 20, runMinutesPerUnit: 1.7 }
+      { id: 'OP-004', sequence: 20, code: 'GLUE', name: 'Склейка', workCenter: 'Склейка', requiredQualification: 2, requiredEquipmentIds: ['EQ-002'], setupMinutes: 20, runMinutesPerUnit: 2 }
     ] }
   ],
   tasks: [], downtimes: [], maintenance: [], results: [], events: []
@@ -105,7 +105,6 @@ async function hydrateRemoteState(): Promise<void> {
     await remoteHydrationPromise;
     return;
   }
-
   remoteHydrationPromise = (async () => {
     do {
       remoteHydrationRequested = false;
@@ -130,7 +129,6 @@ async function hydrateRemoteState(): Promise<void> {
       render();
     } while (remoteHydrationRequested && authState.identity);
   })().finally(() => { remoteHydrationPromise = null; });
-
   await remoteHydrationPromise;
 }
 
@@ -324,7 +322,7 @@ async function assignEmployee(taskId: string, employeeId: string): Promise<void>
 }
 
 async function assignEquipment(taskId: string, equipmentId: string): Promise<void> {
-  const task = state.tasks.find(item => item.id === taskId);
+  const task = state.tasks.find(t => t.id === taskId);
   if (!task) return;
   if (remoteReady() && remotePlanning) {
     try {
@@ -419,6 +417,7 @@ function render(): void {
 
   root.innerHTML = `${authHtml()}<header><h1>MES — оперативное управление производством</h1><div class="subtitle">1–30 дней · План/Факт · исполнение · простой · ТО · перепланирование</div></header><section class="kpis"><div class="kpi"><span>Операции</span><strong>${operations.length}</strong></div><div class="kpi"><span>Задания</span><strong>${state.tasks.length}</strong></div><div class="kpi"><span>Выпущено</span><strong>${totalGood}</strong></div><div class="kpi"><span>Открытые простои</span><strong>${openDowntime}</strong></div><div class="kpi"><span>Конфликты</span><strong>${conflicts.length}</strong></div></section>${renderDispatchBoard(dispatchOptions)}${renderCalendarEditor({ calendar: state.calendar, shifts: state.shifts, employees: state.employees, employeeSchedules: state.employeeSchedules, equipment: state.equipment, equipmentBlocks: state.equipmentBlocks, onCalendarChange: updateCalendarDay, onEmployeeScheduleChange: updateEmployeeSchedule, onAddBlock: addEquipmentBlock, onRemoveBlock: removeEquipmentBlock, onError: showError })}${renderExecutionPanel({ tasks: state.tasks, employees: state.employees, equipment: state.equipment, results: state.results, downtimes: state.downtimes, onAction: handleAction, onResult: handleResult, onDowntimeStart: handleDowntimeStart, onDowntimeEnd: handleDowntimeEnd })}${renderMaintenancePanel({ state, onCreate: createMaintenance, onAction: changeMaintenanceStatus, onError: showError })}${renderPlanFactPanel({ orders: state.orders, tasks: state.tasks, results: state.results, downtimes: state.downtimes, now: new Date() })}${renderReplanPanel({ tasks: state.tasks, downtimes: state.downtimes, plan: state.plan, onApply: applyControlledReplan })}${renderIntegrationPanel({ store: integrationStore, onRefresh: () => render() })}`;
 
+  bindDispatchBoard(root, dispatchOptions);
   bindCalendarEditor(root, { calendar: state.calendar, shifts: state.shifts, employees: state.employees, employeeSchedules: state.employeeSchedules, equipment: state.equipment, equipmentBlocks: state.equipmentBlocks, onCalendarChange: updateCalendarDay, onEmployeeScheduleChange: updateEmployeeSchedule, onAddBlock: addEquipmentBlock, onRemoveBlock: removeEquipmentBlock, onError: showError });
   bindExecutionPanel(root, { tasks: state.tasks, employees: state.employees, equipment: state.equipment, results: state.results, downtimes: state.downtimes, onAction: handleAction, onResult: handleResult, onDowntimeStart: handleDowntimeStart, onDowntimeEnd: handleDowntimeEnd });
   bindMaintenancePanel(root, { state, onCreate: createMaintenance, onAction: changeMaintenanceStatus, onError: showError });
