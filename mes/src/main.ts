@@ -340,9 +340,16 @@ async function assignEquipment(taskId: string, equipmentId: string): Promise<voi
 }
 
 async function handleAction(taskId: string, action: 'PREPARE' | MesExecutionAction): Promise<void> {
-  if (remoteReady() && action !== 'PREPARE') {
+  if (remoteReady()) {
     try {
-      await remoteExecution!.executeTaskAction(taskId, action, new Date().toISOString());
+      if (action === 'PREPARE') {
+        if (!remotePlanning) return;
+        const task = state.tasks.find(item => item.id === taskId);
+        await remotePlanning.prepareTask(taskId, task?.version);
+      } else {
+        if (!remoteExecution) return;
+        await remoteExecution.executeTaskAction(taskId, action, new Date().toISOString());
+      }
       await hydrateRemoteState();
     } catch (error) { showError(error); }
     return;
