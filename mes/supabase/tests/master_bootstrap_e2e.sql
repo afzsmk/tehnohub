@@ -40,6 +40,7 @@ select is((select count(*) from employees where id='BOOT-EMP-1'),1::bigint,'boot
 select is((select count(*) from employee_qualifications where employee_id='BOOT-EMP-1' and qualification_id='BOOT-QUAL-1'),1::bigint,'bootstrap imports employee qualification');
 select is((select count(*) from work_centers where id='BOOT-WC-1'),1::bigint,'bootstrap imports work center');
 select is((select count(*) from equipment where id='BOOT-EQ-1'),1::bigint,'bootstrap imports equipment');
+select is((select work_center_id from equipment where id='BOOT-EQ-1'),'BOOT-WC-1','equipment is bound to normalized work center');
 select is((select count(*) from equipment_capabilities where equipment_id='BOOT-EQ-1' and operation_code='BOOT-CUT'),1::bigint,'bootstrap imports equipment capability');
 select is((select count(*) from routes where id='BOOT-ROUTE-1' and product_id='BOOT-PROD-1' and version=1),1::bigint,'bootstrap imports route header');
 select is((select count(*) from route_operations where id='BOOT-OP-1'),1::bigint,'bootstrap imports route operation');
