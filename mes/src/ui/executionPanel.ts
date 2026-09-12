@@ -35,6 +35,8 @@ function actionButtons(task: ProductionTask): string {
   }
   if (task.status === 'PAUSED') {
     buttons.push(`<button class="tiny action-start" data-action="RESUME" data-task="${task.id}">▶ Продолжить</button>`);
+  }
+  if (task.status === 'RUNNING' || task.status === 'PAUSED' || task.status === 'PARTIALLY_COMPLETED') {
     buttons.push(`<button class="tiny" data-action="BLOCK" data-task="${task.id}">⚠ Блок</button>`);
   }
   if (task.status === 'RUNNING' || task.status === 'PARTIALLY_COMPLETED') {
