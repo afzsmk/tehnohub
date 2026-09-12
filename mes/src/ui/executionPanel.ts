@@ -114,18 +114,24 @@ export function bindExecutionPanel(root: ParentNode, options: ExecutionPanelOpti
   root.querySelector<HTMLFormElement>('#result-form')?.addEventListener('submit', event => {
     event.preventDefault();
     const form = event.currentTarget as HTMLFormElement;
+    const submit = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+    if (submit?.disabled) return;
     const data = new FormData(form);
-    options.onResult(
-      String(data.get('task') ?? ''),
-      Number(data.get('good') ?? 0),
-      Number(data.get('scrap') ?? 0),
-      String(data.get('comment') ?? '')
-    );
+    const taskId = String(data.get('task') ?? '');
+    const goodQuantity = Number(data.get('good') ?? 0);
+    const scrapQuantity = Number(data.get('scrap') ?? 0);
+    const comment = String(data.get('comment') ?? '');
+    if (!taskId || !Number.isFinite(goodQuantity) || !Number.isFinite(scrapQuantity) || goodQuantity < 0 || scrapQuantity < 0 || goodQuantity + scrapQuantity <= 0) return;
+    if (submit) submit.disabled = true;
+    options.onResult(taskId, goodQuantity, scrapQuantity, comment);
   });
   root.querySelector<HTMLFormElement>('#downtime-form')?.addEventListener('submit', event => {
     event.preventDefault();
     const form = event.currentTarget as HTMLFormElement;
+    const submit = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+    if (submit?.disabled) return;
     const data = new FormData(form);
+    if (submit) submit.disabled = true;
     options.onDowntimeStart(String(data.get('equipment') ?? ''), String(data.get('reason') ?? 'OTHER'), String(data.get('comment') ?? ''));
   });
 }
