@@ -64,6 +64,10 @@ select ok(
   not has_function_privilege('authenticated', 'public.mes_sync_order_after_task_change()', 'execute'),
   'authenticated cannot execute internal task trigger helper'
 );
+select ok(
+  not has_function_privilege('authenticated', 'public.mes_require_master_editor()', 'execute'),
+  'authenticated cannot execute master editor authorization guard directly'
+);
 
 -- Workforce -> MES plan ingestion is server-to-server only. The browser must
 -- reach the Workforce publisher Edge Function instead of calling this RPC.
