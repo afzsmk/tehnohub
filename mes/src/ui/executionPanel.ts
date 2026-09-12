@@ -24,20 +24,36 @@ function qualityLabel(task: ProductionTask): string {
 
 function actionButtons(task: ProductionTask): string {
   const buttons: string[] = [];
-  if (task.status === 'PLANNED' || task.status === 'ASSIGNED') buttons.push(`<button class="tiny" data-action="PREPARE" data-task="${task.id}">Подготовить</button>`);
-  if (task.status === 'READY') buttons.push(`<button class="tiny action-start" data-action="START" data-task="${task.id}">▶ Запуск</button>`);
-  if (task.status === 'RUNNING') buttons.push(`<button class="tiny" data-action="PAUSE" data-task="${task.id}">Ⅱ Пауза</button>`);
-  if (task.status === 'PAUSED') buttons.push(`<button class="tiny action-start" data-action="RESUME" data-task="${task.id}">▶ Продолжить</button>`);
-  if (task.status === 'RUNNING' || task.status === 'PARTIALLY_COMPLETED') buttons.push(`<button class="tiny" data-action="BLOCK" data-task="${task.id}">⚠ Блок</button>`);
+  if (task.status === 'PLANNED' || task.status === 'ASSIGNED') {
+    buttons.push(`<button class="tiny" data-action="PREPARE" data-task="${task.id}">Подготовить</button>`);
+  }
+  if (task.status === 'READY') {
+    buttons.push(`<button class="tiny action-start" data-action="START" data-task="${task.id}">▶ Запуск</button>`);
+  }
+  if (task.status === 'RUNNING') {
+    buttons.push(`<button class="tiny" data-action="PAUSE" data-task="${task.id}">Ⅱ Пауза</button>`);
+  }
+  if (task.status === 'PAUSED') {
+    buttons.push(`<button class="tiny action-start" data-action="RESUME" data-task="${task.id}">▶ Продолжить</button>`);
+    buttons.push(`<button class="tiny" data-action="BLOCK" data-task="${task.id}">⚠ Блок</button>`);
+  }
   if (task.status === 'RUNNING' || task.status === 'PARTIALLY_COMPLETED') {
     const qualityBlocked = Boolean(task.qualityRequired) && task.qualityStatus !== 'APPROVED';
-    buttons.push(`<button class="tiny action-complete" data-action="COMPLETE" data-task="${task.id}" ${qualityBlocked ? 'disabled title="Сначала получить одобрение ОТК"' : ''}>✓ Завершить</button>`);
+    const quantityBlocked = task.actualQuantity < task.plannedQuantity;
+    const disabled = qualityBlocked || quantityBlocked;
+    const title = qualityBlocked
+      ? 'Сначала получить одобрение ОТК'
+      : quantityBlocked
+        ? 'Сначала зафиксировать весь плановый выпуск'
+        : '';
+    buttons.push(`<button class="tiny action-complete" data-action="COMPLETE" data-task="${task.id}" ${disabled ? `disabled title="${title}"` : ''}>✓ Завершить</button>`);
   }
   return buttons.join(' ') || '<span class="subtle">—</span>';
 }
 
 export function renderExecutionPanel(options: ExecutionPanelOptions): string {
   const activeTasks = options.tasks.filter(task => !['COMPLETED', 'CANCELLED'].includes(task.status));
+  const executableTasks = activeTasks.filter(task => ['RUNNING', 'PARTIALLY_COMPLETED'].includes(task.status));
   const openDowntime = options.downtimes.filter(event => !event.endedAt);
   const rows = activeTasks.map(task => {
     const employee = options.employees.find(e => e.id === task.assignedEmployeeIds[0]);
@@ -67,11 +83,11 @@ export function renderExecutionPanel(options: ExecutionPanelOptions): string {
       <div class="execution-side">
         <form id="result-form" class="result-form">
           <h3>Записать выпуск</h3>
-          <select name="task" required><option value="">Выберите задание</option>${activeTasks.map(t => `<option value="${t.id}">${t.id} · план ${t.plannedQuantity}${t.qualityRequired ? ' · ОТК' : ''}</option>`).join('')}</select>
+          <select name="task" required><option value="">Выберите выполняемое задание</option>${executableTasks.map(t => `<option value="${t.id}">${t.id} · план ${t.plannedQuantity}${t.qualityRequired ? ' · ОТК' : ''}</option>`).join('')}</select>
           <input name="good" type="number" min="0" step="1" placeholder="Годная продукция" required>
           <input name="scrap" type="number" min="0" step="1" value="0" placeholder="Брак" required>
           <input name="comment" placeholder="Комментарий">
-          <button class="primary" type="submit">Записать факт</button>
+          <button class="primary" type="submit" ${executableTasks.length ? '' : 'disabled'}>Записать факт</button>
         </form>
         <form id="downtime-form" class="result-form">
           <h3>Начать простой</h3>
