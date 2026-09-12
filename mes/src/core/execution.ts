@@ -134,12 +134,14 @@ export function recordProductionResult(
   };
   state.results.push(result);
   task.actualQuantity += input.goodQuantity;
-  if (task.actualQuantity >= task.plannedQuantity && canTransition(task.status, 'COMPLETED') && (!task.qualityRequired || task.qualityStatus === 'APPROVED')) {
+  if (task.qualityRequired) {
+    task.status = 'PARTIALLY_COMPLETED';
+    task.qualityStatus = 'PENDING';
+  } else if (task.actualQuantity >= task.plannedQuantity && canTransition(task.status, 'COMPLETED')) {
     task.status = 'COMPLETED';
     task.actualEnd ??= at;
   } else if (canTransition(task.status, 'PARTIALLY_COMPLETED')) {
     task.status = 'PARTIALLY_COMPLETED';
-    if (task.qualityRequired) task.qualityStatus = 'PENDING';
   }
   task.version += 1;
   state.events.push({
