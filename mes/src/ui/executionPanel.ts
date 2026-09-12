@@ -6,10 +6,10 @@ export interface ExecutionPanelOptions {
   equipment: Equipment[];
   results: ProductionResult[];
   downtimes: DowntimeEvent[];
-  onAction: (taskId: string, action: 'PREPARE' | 'START' | 'PAUSE' | 'RESUME' | 'BLOCK' | 'COMPLETE') => void;
-  onResult: (taskId: string, goodQuantity: number, scrapQuantity: number, comment: string) => void;
-  onDowntimeStart: (equipmentId: string, reasonCode: string, comment: string) => void;
-  onDowntimeEnd: (downtimeId: string) => void;
+  onAction: (taskId: string, action: 'PREPARE' | 'START' | 'PAUSE' | 'RESUME' | 'BLOCK' | 'COMPLETE') => void | Promise<void>;
+  onResult: (taskId: string, goodQuantity: number, scrapQuantity: number, comment: string) => void | Promise<void>;
+  onDowntimeStart: (equipmentId: string, reasonCode: string, comment: string) => void | Promise<void>;
+  onDowntimeEnd: (downtimeId: string) => void | Promise<void>;
 }
 
 function qualityLabel(task: ProductionTask): string {
@@ -106,10 +106,10 @@ export function renderExecutionPanel(options: ExecutionPanelOptions): string {
 
 export function bindExecutionPanel(root: ParentNode, options: ExecutionPanelOptions): void {
   root.querySelectorAll<HTMLButtonElement>('[data-action]').forEach(button => {
-    button.addEventListener('click', () => options.onAction(button.dataset.task ?? '', button.dataset.action as 'PREPARE' | 'START' | 'PAUSE' | 'RESUME' | 'BLOCK' | 'COMPLETE'));
+    button.addEventListener('click', () => void Promise.resolve(options.onAction(button.dataset.task ?? '', button.dataset.action as 'PREPARE' | 'START' | 'PAUSE' | 'RESUME' | 'BLOCK' | 'COMPLETE')).catch(() => undefined));
   });
   root.querySelectorAll<HTMLButtonElement>('[data-end-downtime]').forEach(button => {
-    button.addEventListener('click', () => options.onDowntimeEnd(button.dataset.endDowntime ?? ''));
+    button.addEventListener('click', () => void Promise.resolve(options.onDowntimeEnd(button.dataset.endDowntime ?? '')).catch(() => undefined));
   });
   root.querySelector<HTMLFormElement>('#result-form')?.addEventListener('submit', event => {
     event.preventDefault();
@@ -123,7 +123,9 @@ export function bindExecutionPanel(root: ParentNode, options: ExecutionPanelOpti
     const comment = String(data.get('comment') ?? '');
     if (!taskId || !Number.isFinite(goodQuantity) || !Number.isFinite(scrapQuantity) || goodQuantity < 0 || scrapQuantity < 0 || goodQuantity + scrapQuantity <= 0) return;
     if (submit) submit.disabled = true;
-    options.onResult(taskId, goodQuantity, scrapQuantity, comment);
+    void Promise.resolve(options.onResult(taskId, goodQuantity, scrapQuantity, comment)).finally(() => {
+      if (submit) submit.disabled = false;
+    });
   });
   root.querySelector<HTMLFormElement>('#downtime-form')?.addEventListener('submit', event => {
     event.preventDefault();
@@ -132,6 +134,8 @@ export function bindExecutionPanel(root: ParentNode, options: ExecutionPanelOpti
     if (submit?.disabled) return;
     const data = new FormData(form);
     if (submit) submit.disabled = true;
-    options.onDowntimeStart(String(data.get('equipment') ?? ''), String(data.get('reason') ?? 'OTHER'), String(data.get('comment') ?? ''));
+    void Promise.resolve(options.onDowntimeStart(String(data.get('equipment') ?? ''), String(data.get('reason') ?? 'OTHER'), String(data.get('comment') ?? ''))).finally(() => {
+      if (submit) submit.disabled = false;
+    });
   });
 }
