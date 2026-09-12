@@ -13,7 +13,6 @@ import { mountDispatchGanttPage } from './ui/dispatchGanttPage';
 import { mountMasterDataPage } from './ui/masterDataPage';
 import { mountMasterTopologyPage } from './ui/masterTopologyPage';
 import { mountImportCenterPage } from './ui/importCenterPage';
-import { subscribeMesRealtime } from './integration/mesRealtime';
 import { getMesSupabaseClient } from './services/supabase';
 
 const supabase = getMesSupabaseClient();
@@ -42,8 +41,4 @@ void import('./main').then(async () => {
   await mountMasterTopologyPage(app, supabase);
   await mountImportCenterPage(app, supabase);
   await mountRouteEditor(app, supabase);
-  subscribeMesRealtime(supabase, {
-    tables: ['production_orders','production_tasks','task_assignments','production_results','quality_inspections','downtime_events','maintenance_orders','equipment_blocks','production_events'],
-    onChange: () => window.dispatchEvent(new CustomEvent('mes-realtime-update'))
-  });
 }).catch(reportRemoteFailure);
