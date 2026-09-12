@@ -42,13 +42,40 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v2
         with:
-          version: 2.105.0
+          version: 2.117.0
       - name: Install dependencies
         run: npm install
       - name: Start local Supabase
-        run: supabase start
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            echo "Starting local Supabase (attempt ${attempt}/3)..."
+            if supabase start; then
+              exit 0
+            fi
+            echo "Supabase start failed; cleaning up before retry..."
+            supabase stop || true
+            sleep $((attempt * 5))
+          done
+          echo "Supabase failed to start after 3 attempts."
+          exit 1
       - name: Reset local database from migrations
-        run: supabase db reset --local --no-seed
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            echo "Resetting local database from migrations (attempt ${attempt}/3)..."
+            if supabase db reset --local --no-seed; then
+              exit 0
+            fi
+            echo "Database reset failed; this may be a transient container restart failure."
+            supabase stop || true
+            sleep $((attempt * 5))
+            if ! supabase start; then
+              echo "Supabase restart after failed reset did not complete; next reset attempt will retry startup."
+            fi
+          done
+          echo "Local database reset failed after 3 attempts."
+          exit 1
       - name: Run database security regression tests
         run: supabase test db --local
       - name: Run tests
