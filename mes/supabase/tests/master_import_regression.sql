@@ -23,6 +23,18 @@ where n.nspname = 'public'
   and pg_get_function_identity_arguments(p.oid) = 'p_source_name text, p_payload jsonb';
 
 select ok(
+  exists (
+    select 1
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = 'mes_master_save_product'
+      and pg_get_function_identity_arguments(p.oid) = 'p_id text, p_code text, p_name text, p_unit text, p_external_id text'
+  ),
+  'controlled product master-data RPC exists with external_id contract'
+);
+
+select ok(
   not has_function_privilege('anon', p.oid, 'execute'),
   'master bootstrap importer is not executable by anon'
 )
