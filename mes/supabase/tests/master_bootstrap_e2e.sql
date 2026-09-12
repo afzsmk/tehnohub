@@ -7,7 +7,9 @@ select no_plan();
 select set_config('request.jwt.claim.sub','22222222-2222-2222-2222-222222222222',false);
 select set_config('request.jwt.claims','{"sub":"22222222-2222-2222-2222-222222222222","app_metadata":{"mes_role":"ADMIN"}}',false);
 
-create temporary table tmp_bootstrap_payload(payload jsonb) on commit drop;
+-- pg_prove may commit between individual statements. Do not use ON COMMIT DROP here,
+-- otherwise the fixture disappears immediately after CREATE TEMP TABLE.
+create temporary table tmp_bootstrap_payload(payload jsonb);
 
 insert into tmp_bootstrap_payload(payload)
 values (jsonb_build_object(
