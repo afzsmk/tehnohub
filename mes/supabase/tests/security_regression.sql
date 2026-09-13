@@ -68,6 +68,14 @@ select ok(
   not has_function_privilege('authenticated', 'public.mes_require_master_editor()', 'execute'),
   'authenticated cannot execute master editor authorization guard directly'
 );
+select ok(
+  not has_function_privilege('authenticated', 'public.mes_record_production_result_impl_v104(text,numeric,numeric,jsonb,text,timestamptz,text)', 'execute'),
+  'authenticated cannot execute internal production-result idempotency helper'
+);
+select ok(
+  not has_function_privilege('authenticated', 'public.mes_submit_quality_inspection_impl_v102(text,text,numeric,numeric,text,text,timestamptz,text)', 'execute'),
+  'authenticated cannot execute internal quality idempotency helper'
+);
 
 -- Workforce -> MES plan ingestion is server-to-server only. The browser must
 -- reach the Workforce publisher Edge Function instead of calling this RPC.
