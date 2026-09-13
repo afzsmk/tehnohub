@@ -64,10 +64,24 @@ select is((select count(*) from production_events where task_id = 'ER-TASK' and 
 select is((select actual_quantity from production_tasks where id = 'ER-TASK'), 10::numeric, 'replay leaves task actual quantity unchanged');
 select is((select version from production_tasks where id = 'ER-TASK'), 3, 'replay does not increment task version');
 
-select throws_ok(
-  $$select mes_record_production_result('ER-TASK', 9, 0, '[]'::jsonb, 'conflicting retry', '2026-03-02T09:00:00Z', 'result-key-1')$$,
-  'Ключ идемпотентности уже используется для другого результата',
-  'idempotency key cannot be reused with a different quantity'
-);
+do $$
+declare
+  v_caught boolean := false;
+begin
+  begin
+    perform mes_record_production_result(
+      'ER-TASK', 9, 0, '[]'::jsonb, 'conflicting retry',
+      '2026-03-02T09:00:00Z', 'result-key-1'
+    );
+  exception when others then
+    v_caught := sqlerrm = 'Ключ идемпотентности уже используется для другого результата';
+  end;
+  if not v_caught then
+    raise exception 'Ожидалась ошибка конфликта ключа идемпотентности результата';
+  end if;
+end;
+$$;
+
+select ok(true, 'idempotency key cannot be reused with a different quantity');
 
 select * from finish();
