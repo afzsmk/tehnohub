@@ -77,6 +77,13 @@ select is(
   'blocked equipment leaves task READY'
 );
 
+-- The exact block start belongs to the half-open [start_at,end_at) blocked interval.
+select throws_ok(
+  $$select mes_execute_task_action('EA-TASK-BLOCK', 'START', '2026-03-02T07:00:00Z')$$,
+  'Нельзя запустить задание: оборудование EA-EQ заблокировано на момент запуска',
+  'START rejects the exact equipment block start instant'
+);
+
 -- An open downtime is a runtime-unavailable condition and must prevent START.
 insert into downtime_events(id, equipment_id, reason_code, started_at, ended_at, comment)
 values ('EA-DT', 'EA-EQ', 'BREAKDOWN', '2026-03-03T07:30:00Z', null, 'open runtime downtime');
