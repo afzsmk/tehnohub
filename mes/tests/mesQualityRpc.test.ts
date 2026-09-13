@@ -27,11 +27,11 @@ describe('Supabase MES Quality RPC', () => {
     expect(result.version).toBe(7);
   });
 
-  it('submits an approved inspection', async () => {
+  it('submits an approved inspection with an idempotency key', async () => {
     const calls: Array<{name:string;args:Record<string,unknown>}> = [];
     const rpc = new SupabaseMesQualityRpc(fakeClient(inspection, null, calls));
-    const result = await rpc.submitQualityInspection('T-1','APPROVED',75,0,'','OK','2030-01-01T10:01:00.000Z');
-    expect(calls[0]).toEqual({name:'mes_submit_quality_inspection',args:{p_task_id:'T-1',p_status:'APPROVED',p_good_quantity:75,p_scrap_quantity:0,p_defect_code:null,p_comment:'OK',p_inspected_at:'2030-01-01T10:01:00.000Z'}});
+    const result = await rpc.submitQualityInspection('T-1','APPROVED',75,0,'','OK','2030-01-01T10:01:00.000Z','quality-key-test');
+    expect(calls[0]).toEqual({name:'mes_submit_quality_inspection',args:{p_task_id:'T-1',p_status:'APPROVED',p_good_quantity:75,p_scrap_quantity:0,p_defect_code:null,p_comment:'OK',p_inspected_at:'2030-01-01T10:01:00.000Z',p_idempotency_key:'quality-key-test'}});
     expect(result.status).toBe('APPROVED');
     expect(result.taskId).toBe('T-1');
   });
