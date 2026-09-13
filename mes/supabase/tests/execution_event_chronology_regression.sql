@@ -14,6 +14,15 @@ values ('EC-PLAN', 1, '2026-04-01T00:00:00Z', '2026-04-30T00:00:00Z', 'DRAFT');
 insert into products(id, code, name, unit)
 values ('EC-PRODUCT', 'EC-PROD', 'Event Chronology Test Product', 'шт');
 
+insert into route_operations(
+  id, product_id, sequence, code, name, work_center,
+  required_qualification, required_equipment_ids,
+  setup_minutes, run_minutes_per_unit, active
+) values (
+  'EC-OP', 'EC-PRODUCT', 10, 'EC-OP', 'Event Chronology Operation', 'EC-WC',
+  1, '[]'::jsonb, 0, 1, true
+);
+
 insert into production_orders(
   id, external_id, number, plan_id, product_id,
   quantity, completed_quantity, due_at, priority, status
