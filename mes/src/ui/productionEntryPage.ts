@@ -47,6 +47,10 @@ function actionButtons(task: TaskRow): string {
   if (task.status === 'RUNNING') buttons.push(`<button class="tiny" type="button" data-task-action="PAUSE" data-task-id="${esc(task.id)}">Ⅱ Пауза</button>`);
   if (task.status === 'PAUSED') buttons.push(`<button class="tiny action-start" type="button" data-task-action="RESUME" data-task-id="${esc(task.id)}">▶ Продолжить</button>`);
   if (['RUNNING','PAUSED','PARTIALLY_COMPLETED'].includes(task.status)) buttons.push(`<button class="tiny" type="button" data-task-action="BLOCK" data-task-id="${esc(task.id)}">⚠ Блокировать</button>`);
+  const qualityAllowed = !task.quality_required || task.quality_status === 'APPROVED';
+  if (['RUNNING','PARTIALLY_COMPLETED'].includes(task.status) && task.actual_quantity >= task.planned_quantity && qualityAllowed) {
+    buttons.push(`<button class="tiny action-complete" type="button" data-task-action="COMPLETE" data-task-id="${esc(task.id)}">✓ Завершить</button>`);
+  }
   return buttons.join(' ') || '<span class="subtle">Ожидает подготовки диспетчером</span>';
 }
 
@@ -59,7 +63,7 @@ export async function mountProductionEntryPage(root: HTMLElement, client: Supaba
   host.className = 'panel production-entry-page';
   host.innerHTML = `
     <div class="panel-head">
-      <div><h2>Рабочее место оператора</h2><div class="subtle">Запуск · пауза · продолжение · блокировка · выпуск · повторная безопасная отправка</div></div>
+      <div><h2>Рабочее место оператора</h2><div class="subtle">Запуск · пауза · продолжение · блокировка · выпуск · завершение</div></div>
       <button class="primary" data-production-entry-refresh>Обновить</button>
     </div>
     <div class="production-entry-body" data-production-entry-body><div class="subtle">Загрузка…</div></div>`;
@@ -135,7 +139,7 @@ export async function mountProductionEntryPage(root: HTMLElement, client: Supaba
         button.addEventListener('click', async () => {
           const taskId = button.dataset.taskId ?? '';
           const action = button.dataset.taskAction as MesExecutionAction;
-          if (!taskId || !['START','PAUSE','RESUME','BLOCK'].includes(action)) return;
+          if (!taskId || !['START','PAUSE','RESUME','BLOCK','COMPLETE'].includes(action)) return;
           button.disabled = true;
           try {
             await execution.executeTaskAction(taskId, action, new Date().toISOString());
