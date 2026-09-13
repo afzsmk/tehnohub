@@ -47,6 +47,11 @@ function asStringArray(value: unknown): string[] {
   return value.filter((item): item is string => typeof item === 'string');
 }
 
+function createIdempotencyKey(): string {
+  if (typeof globalThis.crypto?.randomUUID === 'function') return globalThis.crypto.randomUUID();
+  return `mes-result-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+}
+
 async function loadAssignments(client: SupabaseClient, taskId: string): Promise<{ employeeIds: string[]; equipmentIds: string[] }> {
   const { data, error } = await client
     .from('task_assignments')
@@ -148,7 +153,7 @@ export class SupabaseMesExecutionRpc implements MesExecutionRpc {
       p_equipment_ids: equipmentIds,
       p_comment: comment ?? null,
       p_recorded_at: recordedAt ?? new Date().toISOString(),
-      p_idempotency_key: idempotencyKey ?? null
+      p_idempotency_key: idempotencyKey ?? createIdempotencyKey()
     });
     if (error) throw error;
     return mapResult(assertRpcRow<DbResult>(data, 'mes_record_production_result'));
