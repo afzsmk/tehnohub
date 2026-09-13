@@ -17,7 +17,7 @@ values ('RS-PROD', 'RS-PROD', 'Result Snapshot Product', 'шт');
 insert into employees(id, personnel_no, name, profession, qualification_level, active)
 values ('RS-EMP', 'RS-001', 'Result Snapshot Employee', 'Оператор', 3, true);
 insert into equipment(id, code, name, work_center, capabilities, active)
-values ('RS-EQ', 'RS-EQ', 'Result Snapshot Equipment', 'RS-WC', '[]'::jsonb);
+values ('RS-EQ', 'RS-EQ', 'Result Snapshot Equipment', 'RS-WC', '[]'::jsonb, true);
 insert into route_operations(
   id, product_id, sequence, code, name, work_center,
   required_qualification, required_equipment_ids,
