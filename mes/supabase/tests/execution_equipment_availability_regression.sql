@@ -87,6 +87,10 @@ select throws_ok(
   'START rejects open downtime at the execution timestamp'
 );
 
+-- Close the runtime downtime before exercising the independent maintenance
+-- scenario and the later block-vs-downtime validation.
+select mes_end_downtime('EA-DT', '2026-03-03T09:00:00Z');
+
 -- IN_PROGRESS maintenance is a runtime-unavailable state even if the original
 -- planned block interval has already elapsed (for example, a late repair).
 insert into maintenance_orders(
