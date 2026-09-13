@@ -121,12 +121,16 @@ select throws_ok(
   'downtime cannot be started inside an equipment block'
 );
 
--- A non-overlapping interval remains valid.
-select ok(
-  (mes_start_downtime('EA-EQ', 'BREAKDOWN', 'valid downtime', '2026-03-05T08:00:00Z')).id = any (
-    array(select id from downtime_events where equipment_id = 'EA-EQ')
-  ),
-  'downtime can still be created outside a block'
+-- A non-overlapping interval remains valid. Assert the persisted state separately
+-- from the function call so SQL evaluation order cannot make the assertion flaky.
+select lives_ok(
+  $$select mes_start_downtime('EA-EQ', 'BREAKDOWN', 'valid downtime', '2026-03-05T08:00:00Z')$$,
+  'downtime can be created outside a block'
+);
+select is(
+  (select count(*) from downtime_events where equipment_id = 'EA-EQ' and comment = 'valid downtime'),
+  1::bigint,
+  'valid downtime is persisted once'
 );
 
 select * from finish();
