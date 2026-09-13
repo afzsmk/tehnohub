@@ -2,10 +2,11 @@ import './productionEntryPage.css';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ProductionTask } from '../types';
 import { getMesAuthState } from '../integration/auth';
-import { SupabaseMesExecutionRpc } from '../integration/mesExecutionRpc';
+import { SupabaseMesExecutionRpc, MesExecutionAction } from '../integration/mesExecutionRpc';
 
 const ENTRY_ROLES = ['ADMIN', 'PRODUCTION_MANAGER', 'MASTER', 'OPERATOR', 'DISPATCHER'];
 
+type AssignmentRow = { task_id: string; employee_id: string | null; equipment_id: string | null };
 interface TaskRow {
   id: string;
   order_id: string;
@@ -15,17 +16,20 @@ interface TaskRow {
   actual_quantity: number;
   quality_required: boolean;
   quality_status: string;
+  actual_start: string | null;
+  actual_end: string | null;
   version: number;
 }
-
 interface OrderRow { id: string; number: string; quantity: number; status: string; }
+interface EmployeeRow { id: string; name: string; }
+interface EquipmentRow { id: string; name: string; }
 
 function esc(value: unknown): string {
   return String(value ?? '').replace(/[&<>\"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;' }[ch] ?? ch));
 }
 
 function label(value: string): string {
-  return ({ RUNNING:'В работе', PAUSED:'Пауза', PARTIALLY_COMPLETED:'Частично', COMPLETED:'Завершено', PENDING:'Ожидает ОТК', APPROVED:'Одобрено', REJECTED:'Отклонено' } as Record<string,string>)[value] ?? value;
+  return ({ READY:'Готово', RUNNING:'В работе', PAUSED:'Пауза', BLOCKED:'Заблокировано', PARTIALLY_COMPLETED:'Частично', COMPLETED:'Завершено', PENDING:'Ожидает ОТК', APPROVED:'Одобрено', REJECTED:'Отклонено' } as Record<string,string>)[value] ?? value;
 }
 
 function statusClass(value: string): string {
@@ -35,8 +39,15 @@ function statusClass(value: string): string {
   return 'status-neutral';
 }
 
-function newIdempotencyKey(): string {
-  return crypto.randomUUID();
+function newIdempotencyKey(): string { return crypto.randomUUID(); }
+
+function actionButtons(task: TaskRow): string {
+  const buttons: string[] = [];
+  if (task.status === 'READY') buttons.push(`<button class="primary" type="button" data-task-action="START" data-task-id="${esc(task.id)}">▶ Запустить</button>`);
+  if (task.status === 'RUNNING') buttons.push(`<button class="tiny" type="button" data-task-action="PAUSE" data-task-id="${esc(task.id)}">Ⅱ Пауза</button>`);
+  if (task.status === 'PAUSED') buttons.push(`<button class="tiny action-start" type="button" data-task-action="RESUME" data-task-id="${esc(task.id)}">▶ Продолжить</button>`);
+  if (['RUNNING','PAUSED','PARTIALLY_COMPLETED'].includes(task.status)) buttons.push(`<button class="tiny" type="button" data-task-action="BLOCK" data-task-id="${esc(task.id)}">⚠ Блокировать</button>`);
+  return buttons.join(' ') || '<span class="subtle">Ожидает подготовки диспетчером</span>';
 }
 
 export async function mountProductionEntryPage(root: HTMLElement, client: SupabaseClient): Promise<void> {
@@ -48,7 +59,7 @@ export async function mountProductionEntryPage(root: HTMLElement, client: Supaba
   host.className = 'panel production-entry-page';
   host.innerHTML = `
     <div class="panel-head">
-      <div><h2>Регистрация производства</h2><div class="subtle">Фиксация фактического выпуска через серверный MES RPC · роль ${esc(role)}</div></div>
+      <div><h2>Рабочее место оператора</h2><div class="subtle">Запуск · пауза · продолжение · блокировка · выпуск · повторная безопасная отправка</div></div>
       <button class="primary" data-production-entry-refresh>Обновить</button>
     </div>
     <div class="production-entry-body" data-production-entry-body><div class="subtle">Загрузка…</div></div>`;
@@ -56,39 +67,85 @@ export async function mountProductionEntryPage(root: HTMLElement, client: Supaba
 
   const body = host.querySelector<HTMLElement>('[data-production-entry-body]')!;
   const execution = new SupabaseMesExecutionRpc(client);
-
   const refresh = async (): Promise<void> => {
     body.innerHTML = '<div class="subtle">Загрузка заданий…</div>';
     try {
       const [tasksResult, ordersResult] = await Promise.all([
-        client.from('production_tasks').select('id,order_id,operation_sequence,status,planned_quantity,actual_quantity,quality_required,quality_status,version').in('status', ['RUNNING','PAUSED','PARTIALLY_COMPLETED']).order('operation_sequence', { ascending: true }).limit(200),
+        client.from('production_tasks').select('id,order_id,operation_sequence,status,planned_quantity,actual_quantity,quality_required,quality_status,actual_start,actual_end,version').in('status', ['READY','RUNNING','PAUSED','PARTIALLY_COMPLETED']).order('operation_sequence', { ascending: true }).limit(200),
         client.from('production_orders').select('id,number,quantity,status').limit(250)
       ]);
       if (tasksResult.error) throw tasksResult.error;
       if (ordersResult.error) throw ordersResult.error;
       const tasks = (tasksResult.data ?? []) as TaskRow[];
       const orders = (ordersResult.data ?? []) as OrderRow[];
+      const assignmentsResult = tasks.length ? await client.from('task_assignments').select('task_id,employee_id,equipment_id').in('task_id', tasks.map(task => task.id)) : { data: [], error: null };
+      if (assignmentsResult.error) throw assignmentsResult.error;
+      const assignments = (assignmentsResult.data ?? []) as AssignmentRow[];
+      const assignmentByTask = new Map<string, AssignmentRow>();
+      assignments.forEach(item => assignmentByTask.set(item.task_id, item));
+      const employeeIds = [...new Set(assignments.map(item => item.employee_id).filter((id): id is string => Boolean(id)))];
+      const equipmentIds = [...new Set(assignments.map(item => item.equipment_id).filter((id): id is string => Boolean(id)))];
+      const [employeesResult, equipmentResult] = await Promise.all([
+        employeeIds.length ? client.from('employees').select('id,name').in('id', employeeIds) : Promise.resolve({ data: [], error: null }),
+        equipmentIds.length ? client.from('equipment').select('id,name').in('id', equipmentIds) : Promise.resolve({ data: [], error: null })
+      ]);
+      if (employeesResult.error) throw employeesResult.error;
+      if (equipmentResult.error) throw equipmentResult.error;
+      const employees = (employeesResult.data ?? []) as EmployeeRow[];
+      const equipment = (equipmentResult.data ?? []) as EquipmentRow[];
+      const employeeName = new Map(employees.map(item => [item.id, item.name]));
+      const equipmentName = new Map(equipment.map(item => [item.id, item.name]));
 
-      body.innerHTML = tasks.length ? `
-        <div class="production-entry-list">
-          ${tasks.map(task => {
-            const order = orders.find(item => item.id === task.order_id);
-            const remaining = Math.max(0, task.planned_quantity - task.actual_quantity);
-            return `<form class="production-entry-card" data-result-task="${esc(task.id)}">
-              <div class="production-entry-head">
-                <div><strong>${esc(order?.number ?? task.order_id)}</strong><div class="subtle">Задание ${esc(task.id)} · операция ${task.operation_sequence} · v${task.version}</div></div>
-                <span class="status-pill ${statusClass(task.status)}">${label(task.status)}</span>
-              </div>
-              <div class="production-entry-facts"><span>План: <strong>${task.planned_quantity}</strong></span><span>Факт: <strong>${task.actual_quantity}</strong></span><span>Осталось: <strong>${remaining}</strong></span>${task.quality_required ? `<span>ОТК: <strong class="status-pill ${statusClass(task.quality_status)}">${label(task.quality_status)}</strong></span>` : '<span>ОТК: не требуется</span>'}</div>
+      body.innerHTML = tasks.length ? `<div class="production-entry-list">
+        ${tasks.map(task => {
+          const order = orders.find(item => item.id === task.order_id);
+          const assignment = assignmentByTask.get(task.id);
+          const remaining = Math.max(0, task.planned_quantity - task.actual_quantity);
+          const completion = task.planned_quantity > 0 ? Math.min(100, task.actual_quantity / task.planned_quantity * 100) : 0;
+          const canRecord = ['RUNNING','PAUSED','PARTIALLY_COMPLETED'].includes(task.status) && remaining > 0;
+          const equipmentId = assignment?.equipment_id ?? '';
+          return `<article class="production-entry-card" data-task-card="${esc(task.id)}">
+            <div class="production-entry-head">
+              <div><strong>${esc(order?.number ?? task.order_id)}</strong><div class="subtle">Задание ${esc(task.id)} · операция ${task.operation_sequence} · v${task.version}</div></div>
+              <span class="status-pill ${statusClass(task.status)}">${label(task.status)}</span>
+            </div>
+            <div class="production-entry-facts">
+              <span>План: <strong>${task.planned_quantity}</strong></span>
+              <span>Факт: <strong>${task.actual_quantity}</strong></span>
+              <span>Осталось: <strong>${remaining}</strong></span>
+              <span>Прогресс: <strong>${completion.toFixed(1)}%</strong></span>
+              <span>Оператор: <strong>${esc(employeeName.get(assignment?.employee_id ?? '') ?? 'не назначен')}</strong></span>
+              <span>Оборудование: <strong>${esc(equipmentName.get(equipmentId) ?? 'не назначено')}</strong></span>
+              ${task.quality_required ? `<span>ОТК: <strong class="status-pill ${statusClass(task.quality_status)}">${label(task.quality_status)}</strong></span>` : '<span>ОТК: не требуется</span>'}
+            </div>
+            <div class="production-entry-actions">${actionButtons(task)}</div>
+            ${canRecord ? `<form class="production-entry-form" data-result-task="${esc(task.id)}">
               <div class="production-entry-form-grid">
                 <label>Годно<input name="good" type="number" min="0" max="${remaining}" step="0.001" value="${remaining}" required></label>
                 <label>Брак<input name="scrap" type="number" min="0" step="0.001" value="0" required></label>
-                <label class="production-entry-comment">Комментарий<input name="comment" type="text" maxlength="500" placeholder="Причина/примечание"></label>
-                <button class="primary" type="submit">Зафиксировать факт</button>
+                <label class="production-entry-comment">Комментарий<input name="comment" type="text" maxlength="500" placeholder="Причина / примечание"></label>
+                <button class="primary" type="submit">Зафиксировать выпуск</button>
               </div>
-            </form>`;
-          }).join('')}
-        </div>` : '<div class="subtle">Нет выполняемых заданий, доступных для регистрации выпуска.</div>';
+            </form>` : '<div class="subtle">Для регистрации выпуска сначала запустите задание.</div>'}
+          </article>`;
+        }).join('')}
+      </div>` : '<div class="subtle">Нет заданий в рабочем состоянии. Диспетчер должен подготовить и назначить ресурсам следующее задание.</div>';
+
+      body.querySelectorAll<HTMLButtonElement>('[data-task-action]').forEach(button => {
+        button.addEventListener('click', async () => {
+          const taskId = button.dataset.taskId ?? '';
+          const action = button.dataset.taskAction as MesExecutionAction;
+          if (!taskId || !['START','PAUSE','RESUME','BLOCK'].includes(action)) return;
+          button.disabled = true;
+          try {
+            await execution.executeTaskAction(taskId, action, new Date().toISOString());
+            await refresh();
+          } catch (error) {
+            window.alert(error instanceof Error ? error.message : 'Не удалось изменить состояние задания');
+            button.disabled = false;
+          }
+        });
+      });
 
       body.querySelectorAll<HTMLFormElement>('[data-result-task]').forEach(form => {
         form.addEventListener('submit', async event => {
@@ -107,7 +164,7 @@ export async function mountProductionEntryPage(root: HTMLElement, client: Supaba
           const idempotencyKey = form.dataset.idempotencyKey ?? newIdempotencyKey();
           form.dataset.idempotencyKey = idempotencyKey;
           try {
-            await execution.recordProductionResult(taskId, good, scrap, [], comment || undefined, new Date().toISOString(), idempotencyKey);
+            await execution.recordProductionResult(taskId, good, scrap, equipmentIdFor(taskId, assignmentByTask), comment || undefined, new Date().toISOString(), idempotencyKey);
             await refresh();
           } catch (error) {
             window.alert(error instanceof Error ? error.message : 'Не удалось зарегистрировать факт выпуска');
@@ -115,6 +172,11 @@ export async function mountProductionEntryPage(root: HTMLElement, client: Supaba
           }
         });
       });
+
+      function equipmentIdFor(taskId: string, map: Map<string, AssignmentRow>): string[] {
+        const id = map.get(taskId)?.equipment_id;
+        return id ? [id] : [];
+      }
     } catch (error) {
       body.innerHTML = `<div class="detail-error">${esc(error instanceof Error ? error.message : 'Ошибка загрузки заданий')}</div>`;
     }
