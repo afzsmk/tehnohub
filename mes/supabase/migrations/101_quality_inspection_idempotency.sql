@@ -112,7 +112,7 @@ begin
     p_task_id, p_inspected_at, auth.uid()::text, p_status,
     p_good_quantity, p_scrap_quantity, nullif(trim(p_defect_code), ''), nullif(p_comment, ''), v_key
   )
-  on conflict (idempotency_key) do nothing
+  on conflict (idempotency_key) where idempotency_key is not null do nothing
   returning * into v_inspection;
 
   if v_inspection.id is null then
