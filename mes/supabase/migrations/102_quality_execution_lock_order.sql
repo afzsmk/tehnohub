@@ -15,7 +15,7 @@ create or replace function mes_submit_quality_inspection(
 returns quality_inspections
 language plpgsql
 security definer
-set search_path = public, pg_temp
+set search_path = public
 as $$
 declare
   v_plan_id text;
