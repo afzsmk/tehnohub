@@ -2,6 +2,7 @@ select no_plan();
 
 -- Production facts must retain the server-side assignment snapshot when the UI
 -- does not provide equipment ids. The client must not be able to invent resources.
+-- The same business submission must also be idempotent across retries.
 select set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333333', false);
 select set_config(
   'request.jwt.claims',
@@ -35,7 +36,7 @@ insert into task_assignments(task_id, employee_id, equipment_id)
 values ('RS-TASK', 'RS-EMP', 'RS-EQ');
 
 select (mes_record_production_result(
-  'RS-TASK', 3, 1, '[]'::jsonb, 'server derives assigned equipment', '2026-03-02T08:30:00Z'
+  'RS-TASK', 3, 1, '[]'::jsonb, 'server derives assigned equipment', '2026-03-02T08:30:00Z', 'result-key-1'
 )).id;
 
 select is(
@@ -53,11 +54,50 @@ select is(
   3::numeric,
   'good quantity is accumulated independently of the resource snapshot'
 );
+select is(
+  (select count(*) from production_results where task_id = 'RS-TASK'),
+  1::bigint,
+  'first submission creates exactly one production fact'
+);
+select is(
+  (select count(*) from production_events where task_id = 'RS-TASK' and type = 'RESULT_RECORDED'),
+  1::bigint,
+  'first submission creates exactly one result event'
+);
+
+select is(
+  (mes_record_production_result(
+    'RS-TASK', 3, 1, '[]'::jsonb, 'server derives assigned equipment', '2026-03-02T08:30:00Z', 'result-key-1'
+  )).id,
+  (select id from production_results where idempotency_key = 'result-key-1'),
+  'retry with the same idempotency key returns the original result'
+);
+select is(
+  (select count(*) from production_results where task_id = 'RS-TASK'),
+  1::bigint,
+  'idempotent retry does not create a duplicate fact'
+);
+select is(
+  (select actual_quantity from production_tasks where id = 'RS-TASK'),
+  3::numeric,
+  'idempotent retry does not increase task actual quantity twice'
+);
+select is(
+  (select count(*) from production_events where task_id = 'RS-TASK' and type = 'RESULT_RECORDED'),
+  1::bigint,
+  'idempotent retry does not duplicate the result event'
+);
 
 select throws_ok(
   $$select mes_record_production_result('RS-TASK', 1, 0, '["RS-OTHER"]'::jsonb, null, '2026-03-02T08:40:00Z')$$,
   'Оборудование RS-OTHER не назначено на это задание',
   'client cannot claim equipment outside the task assignment'
+);
+
+select throws_ok(
+  $$select mes_record_production_result('RS-TASK', 4, 0, '[]'::jsonb, null, '2026-03-02T08:50:00Z', 'result-key-1')$$,
+  'Ключ идемпотентности уже используется для другого результата',
+  'an idempotency key cannot be reused with a different quantity'
 );
 
 select * from finish();
