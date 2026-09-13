@@ -196,6 +196,8 @@ begin
 end;
 $$;
 
+-- The obsolete 7-argument signature is deliberately not referenced here:
+-- it was dropped above. Only the authoritative 8-argument RPC is granted/revoked.
 revoke execute on function mes_submit_quality_inspection(text,text,numeric,numeric,text,text,timestamptz,text) from public;
 revoke execute on function mes_submit_quality_inspection(text,text,numeric,numeric,text,text,timestamptz,text) from anon;
 grant execute on function mes_submit_quality_inspection(text,text,numeric,numeric,text,text,timestamptz,text) to authenticated;
