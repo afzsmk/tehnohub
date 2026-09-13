@@ -196,8 +196,6 @@ begin
 end;
 $$;
 
-revoke execute on function mes_submit_quality_inspection(text,text,numeric,numeric,text,text,timestamptz) from public;
-revoke execute on function mes_submit_quality_inspection(text,text,numeric,numeric,text,text,timestamptz) from anon;
 revoke execute on function mes_submit_quality_inspection(text,text,numeric,numeric,text,text,timestamptz,text) from public;
 revoke execute on function mes_submit_quality_inspection(text,text,numeric,numeric,text,text,timestamptz,text) from anon;
 grant execute on function mes_submit_quality_inspection(text,text,numeric,numeric,text,text,timestamptz,text) to authenticated;
