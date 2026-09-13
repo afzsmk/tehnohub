@@ -12,7 +12,8 @@ export interface MesExecutionRpc {
     scrapQuantity: number,
     equipmentIds?: string[],
     comment?: string,
-    recordedAt?: string
+    recordedAt?: string,
+    idempotencyKey?: string
   ): Promise<ProductionResult>;
   startDowntime(equipmentId: string, reasonCode: string, comment?: string, startedAt?: string): Promise<DowntimeEvent>;
   endDowntime(downtimeId: string, endedAt?: string): Promise<DowntimeEvent>;
@@ -137,7 +138,8 @@ export class SupabaseMesExecutionRpc implements MesExecutionRpc {
     scrapQuantity: number,
     equipmentIds: string[] = [],
     comment?: string,
-    recordedAt?: string
+    recordedAt?: string,
+    idempotencyKey?: string
   ): Promise<ProductionResult> {
     const { data, error } = await this.client.rpc('mes_record_production_result', {
       p_task_id: taskId,
@@ -145,7 +147,8 @@ export class SupabaseMesExecutionRpc implements MesExecutionRpc {
       p_scrap_quantity: scrapQuantity,
       p_equipment_ids: equipmentIds,
       p_comment: comment ?? null,
-      p_recorded_at: recordedAt ?? new Date().toISOString()
+      p_recorded_at: recordedAt ?? new Date().toISOString(),
+      p_idempotency_key: idempotencyKey ?? null
     });
     if (error) throw error;
     return mapResult(assertRpcRow<DbResult>(data, 'mes_record_production_result'));
