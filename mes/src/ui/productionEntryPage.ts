@@ -35,6 +35,10 @@ function statusClass(value: string): string {
   return 'status-neutral';
 }
 
+function newIdempotencyKey(): string {
+  return crypto.randomUUID();
+}
+
 export async function mountProductionEntryPage(root: HTMLElement, client: SupabaseClient): Promise<void> {
   const auth = await getMesAuthState(client);
   const role = auth.identity?.role;
@@ -98,9 +102,12 @@ export async function mountProductionEntryPage(root: HTMLElement, client: Supaba
             return;
           }
           const button = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+          if (button?.disabled) return;
           if (button) button.disabled = true;
+          const idempotencyKey = form.dataset.idempotencyKey ?? newIdempotencyKey();
+          form.dataset.idempotencyKey = idempotencyKey;
           try {
-            await execution.recordProductionResult(taskId, good, scrap, [], comment || undefined, new Date().toISOString());
+            await execution.recordProductionResult(taskId, good, scrap, [], comment || undefined, new Date().toISOString(), idempotencyKey);
             await refresh();
           } catch (error) {
             window.alert(error instanceof Error ? error.message : 'Не удалось зарегистрировать факт выпуска');
