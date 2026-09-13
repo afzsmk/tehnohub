@@ -31,38 +31,45 @@ declare
   v_assigned_equipment_ids jsonb;
   v_effective_equipment_ids jsonb;
   v_employee_id text;
+  v_plan_id text;
   v_result production_results%rowtype;
   v_existing_result production_results%rowtype;
   v_new_actual numeric;
-  v_quality_required boolean;
+  v_quality_gate boolean;
   v_equipment_id text;
   v_key text := nullif(btrim(p_idempotency_key), '');
 begin
   if auth.uid() is null then
     raise exception 'MES authentication required';
   end if;
-
+  if not mes_has_role(array['ADMIN','PRODUCTION_MANAGER','DISPATCHER','MASTER','OPERATOR']) then
+    raise exception 'Недостаточно прав для регистрации выпуска';
+  end if;
   if p_good_quantity is null or p_scrap_quantity is null
      or p_good_quantity < 0 or p_scrap_quantity < 0
      or p_good_quantity + p_scrap_quantity <= 0 then
     raise exception 'Некорректное количество выпуска/брака';
   end if;
-
+  if p_recorded_at is null then
+    raise exception 'Время регистрации не должно быть null';
+  end if;
   if v_key is not null and length(v_key) > 200 then
     raise exception 'Ключ идемпотентности слишком длинный';
   end if;
 
-  if jsonb_typeof(coalesce(p_equipment_ids, '[]'::jsonb)) <> 'array' then
-    raise exception 'Идентификаторы оборудования должны быть строковым JSON-массивом';
+  if p_equipment_ids is not null and jsonb_typeof(p_equipment_ids) <> 'array' then
+    raise exception 'equipmentIds должен быть массивом или null';
   end if;
   if exists (
     select 1
-      from jsonb_array_elements(coalesce(p_equipment_ids, '[]'::jsonb)) value
-     where jsonb_typeof(value) <> 'string'
+      from jsonb_array_elements(coalesce(p_equipment_ids, '[]'::jsonb)) item
+     where jsonb_typeof(item) <> 'string'
   ) then
-    raise exception 'Идентификаторы оборудования должны быть строками';
+    raise exception 'equipmentIds должен содержать только строки';
   end if;
 
+  -- Fast replay path. The unique key is the business-operation boundary;
+  -- no task/order/event side effects are re-applied on a retry.
   if v_key is not null then
     select * into v_existing_result
       from production_results
@@ -77,16 +84,51 @@ begin
     end if;
   end if;
 
+  -- Serialize execution facts against assignment/replan mutations on the same
+  -- operational plan, then serialize the task itself.
+  select o.plan_id
+    into v_plan_id
+    from production_tasks t
+    join production_orders o on o.id = t.order_id
+   where t.id = p_task_id;
+  if v_plan_id is null then
+    raise exception 'Операционный план задания не найден: %', p_task_id;
+  end if;
+
+  perform 1
+    from operational_plans
+   where id = v_plan_id
+   for update;
+  if not found then
+    raise exception 'Операционный план не найден: %', v_plan_id;
+  end if;
+
   select * into v_task
     from production_tasks
    where id = p_task_id
    for update;
-  if not found then raise exception 'Задание не найдено: %', p_task_id; end if;
-  if v_task.status in ('COMPLETED','CANCELLED') then
-    raise exception 'Задание уже завершено или отменено';
+  if not found then
+    raise exception 'Задание не найдено: %', p_task_id;
   end if;
-  if v_task.status not in ('RUNNING','PARTIALLY_COMPLETED') then
-    raise exception 'Регистрация факта разрешена только для выполняемого задания';
+  if v_task.status in ('CANCELLED','DRAFT','PLANNED','ASSIGNED','READY') then
+    raise exception 'Регистрация выпуска разрешена только для выполняемого задания';
+  end if;
+  if v_task.status = 'COMPLETED' then
+    raise exception 'Нельзя регистрировать выпуск для уже завершённого задания';
+  end if;
+  if v_task.actual_start is not null and p_recorded_at < v_task.actual_start then
+    raise exception 'Время выпуска раньше фактического начала задания';
+  end if;
+
+  v_employee_id := mes_current_employee_id();
+  if mes_current_role() = 'OPERATOR' and v_employee_id is null then
+    raise exception 'Пользователь MES не привязан к сотруднику';
+  end if;
+  if mes_current_role() = 'OPERATOR' and not exists (
+    select 1 from task_assignments a
+     where a.task_id = p_task_id and a.employee_id = v_employee_id
+  ) then
+    raise exception 'Оператор не назначен на это задание';
   end if;
 
   select coalesce(jsonb_agg(a.employee_id order by a.employee_id) filter (where a.employee_id is not null), '[]'::jsonb),
@@ -94,19 +136,6 @@ begin
     into v_employee_ids, v_assigned_equipment_ids
     from task_assignments a
    where a.task_id = p_task_id;
-
-  if mes_current_role() = 'OPERATOR' then
-    v_employee_id := mes_current_employee_id();
-    if v_employee_id is null then
-      raise exception 'Пользователь MES не привязан к сотруднику';
-    end if;
-    if not exists (
-      select 1 from task_assignments a where a.task_id = p_task_id and a.employee_id = v_employee_id
-    ) then
-      raise exception 'Оператор не назначен на это задание';
-    end if;
-    v_employee_ids := jsonb_build_array(v_employee_id);
-  end if;
 
   if jsonb_array_length(coalesce(p_equipment_ids, '[]'::jsonb)) = 0 then
     v_effective_equipment_ids := v_assigned_equipment_ids;
@@ -121,7 +150,8 @@ begin
     select value from jsonb_array_elements_text(coalesce(v_effective_equipment_ids, '[]'::jsonb))
   loop
     if not exists (
-      select 1 from task_assignments a where a.task_id = p_task_id and a.equipment_id = v_equipment_id
+      select 1 from task_assignments a
+       where a.task_id = p_task_id and a.equipment_id = v_equipment_id
     ) then
       raise exception 'Оборудование % не назначено на это задание', v_equipment_id;
     end if;
@@ -141,7 +171,8 @@ begin
   end if;
 
   v_new_actual := v_task.actual_quantity + p_good_quantity;
-  v_quality_required := coalesce(v_task.quality_required, false);
+  v_quality_gate := coalesce(v_task.quality_required, false)
+                    and coalesce(v_task.quality_status, 'NOT_REQUIRED') <> 'APPROVED';
 
   insert into production_results(
     id, task_id, recorded_at, good_quantity, scrap_quantity,
@@ -152,12 +183,12 @@ begin
     p_recorded_at,
     p_good_quantity,
     p_scrap_quantity,
-    coalesce(v_employee_ids, '[]'::jsonb),
+    case when mes_current_role() = 'OPERATOR' then jsonb_build_array(v_employee_id) else coalesce(v_employee_ids, '[]'::jsonb) end,
     coalesce(v_effective_equipment_ids, '[]'::jsonb),
     nullif(p_comment, ''),
     v_key
   )
-  on conflict (idempotency_key) do nothing
+  on conflict (idempotency_key) where idempotency_key is not null do nothing
   returning * into v_result;
 
   if v_result.id is null then
@@ -178,16 +209,19 @@ begin
   update production_tasks
      set actual_quantity = v_new_actual,
          status = case
-           when v_quality_required then 'PARTIALLY_COMPLETED'
+           when v_new_actual >= planned_quantity and v_quality_gate then 'PARTIALLY_COMPLETED'
            when v_new_actual >= planned_quantity then 'COMPLETED'
            else 'PARTIALLY_COMPLETED'
          end,
          actual_end = case
-           when v_quality_required then null
-           when v_new_actual >= planned_quantity then coalesce(actual_end, p_recorded_at)
+           when v_new_actual >= planned_quantity and not v_quality_gate
+             then coalesce(actual_end, p_recorded_at)
            else actual_end
          end,
-         quality_status = case when v_quality_required then 'PENDING' else quality_status end,
+         quality_status = case
+           when v_quality_gate or coalesce(quality_required, false) then 'PENDING'
+           else quality_status
+         end,
          version = version + 1
    where id = p_task_id;
 
@@ -202,9 +236,9 @@ begin
       'resultId', v_result.id,
       'goodQuantity', p_good_quantity,
       'scrapQuantity', p_scrap_quantity,
-      'employeeIds', coalesce(v_employee_ids, '[]'::jsonb),
+      'employeeIds', case when mes_current_role() = 'OPERATOR' then jsonb_build_array(v_employee_id) else coalesce(v_employee_ids, '[]'::jsonb) end,
       'equipmentIds', coalesce(v_effective_equipment_ids, '[]'::jsonb),
-      'qualityGateReopened', v_quality_required,
+      'qualityGateReopened', v_quality_gate,
       'role', mes_current_role(),
       'idempotencyKey', v_key
     )
