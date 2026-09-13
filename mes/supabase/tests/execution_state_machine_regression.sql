@@ -127,4 +127,56 @@ select throws_ok(
   'completed task cannot accept another production fact'
 );
 
+-- BLOCK must be represented as its own production event rather than masquerading as PAUSE.
+insert into production_orders(
+  id, external_id, number, plan_id, product_id,
+  quantity, completed_quantity, due_at, priority, status
+) values (
+  'SM-BLOCK-ORDER', 'SM-BLOCK-EXT', 'SM-BLOCK-001', 'SM-PLAN', 'SM-PRODUCT',
+  10, 0, '2026-02-12T00:00:00Z', 'NORMAL', 'IN_EXECUTION'
+);
+insert into production_tasks(
+  id, order_id, operation_id, operation_sequence, status,
+  planned_start, planned_end, planned_quantity, actual_quantity,
+  version, quality_required, quality_status
+) values (
+  'SM-BLOCK-TASK', 'SM-BLOCK-ORDER', 'SM-OP', 10, 'READY',
+  '2026-02-03T08:00:00Z', '2026-02-03T10:00:00Z', 10, 0,
+  1, false, 'NOT_REQUIRED'
+);
+insert into task_assignments(task_id, employee_id, equipment_id)
+values ('SM-BLOCK-TASK', 'SM-EMP', 'SM-EQ');
+
+select (mes_execute_task_action('SM-BLOCK-TASK', 'BLOCK', '2026-02-03T08:00:00Z')).id;
+select is(
+  (select status from production_tasks where id = 'SM-BLOCK-TASK'),
+  'BLOCKED',
+  'BLOCK action enters the BLOCKED state'
+);
+select is(
+  (select version from production_tasks where id = 'SM-BLOCK-TASK'),
+  2,
+  'BLOCK increments task version'
+);
+select ok(
+  (select count(*) from production_events
+    where task_id = 'SM-BLOCK-TASK'
+      and type = 'TASK_BLOCKED') = 1,
+  'BLOCK emits a distinct TASK_BLOCKED event'
+);
+select ok(
+  not exists (
+    select 1 from production_events
+     where task_id = 'SM-BLOCK-TASK'
+       and type = 'TASK_PAUSED'
+  ),
+  'BLOCK does not emit a PAUSE event'
+);
+select is(
+  (select payload->>'fromStatus' from production_events
+    where task_id = 'SM-BLOCK-TASK' and type = 'TASK_BLOCKED'),
+  'READY',
+  'BLOCK event preserves source task status'
+);
+
 select * from finish();
