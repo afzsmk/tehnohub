@@ -36,7 +36,7 @@ insert into task_assignments(task_id, employee_id, equipment_id)
 values ('RS-TASK', 'RS-EMP', 'RS-EQ');
 
 select (mes_record_production_result(
-  'RS-TASK', 3, 1, '[]'::jsonb, 'server derives assigned equipment', '2026-03-02T08:30:00Z', 'result-key-1'
+  'RS-TASK', 3, 1, '[]'::jsonb, 'server derives assigned equipment', '2026-03-02T08:30:00Z', 'rs-result-key-1'
 )).id;
 
 select is(
@@ -67,9 +67,9 @@ select is(
 
 select is(
   (mes_record_production_result(
-    'RS-TASK', 3, 1, '[]'::jsonb, 'server derives assigned equipment', '2026-03-02T08:30:00Z', 'result-key-1'
+    'RS-TASK', 3, 1, '[]'::jsonb, 'server derives assigned equipment', '2026-03-02T08:30:00Z', 'rs-result-key-1'
   )).id,
-  (select id from production_results where idempotency_key = 'result-key-1'),
+  (select id from production_results where idempotency_key = 'rs-result-key-1'),
   'retry with the same idempotency key returns the original result'
 );
 select is(
@@ -94,10 +94,24 @@ select throws_ok(
   'client cannot claim equipment outside the task assignment'
 );
 
-select throws_ok(
-  $$select mes_record_production_result('RS-TASK', 4, 0, '[]'::jsonb, null, '2026-03-02T08:50:00Z', 'result-key-1')$$,
-  'Ключ идемпотентности уже используется для другого результата',
-  'an idempotency key cannot be reused with a different quantity'
-);
+do $$
+declare
+  v_caught boolean := false;
+begin
+  begin
+    perform mes_record_production_result(
+      'RS-TASK', 4, 0, '[]'::jsonb, null,
+      '2026-03-02T08:50:00Z', 'rs-result-key-1'
+    );
+  exception when others then
+    v_caught := sqlerrm = 'Ключ идемпотентности уже используется для другого результата';
+  end;
+  if not v_caught then
+    raise exception 'Ожидалась ошибка конфликта ключа идемпотентности результата';
+  end if;
+end;
+$$;
+
+select ok(true, 'an idempotency key cannot be reused with a different quantity');
 
 select * from finish();

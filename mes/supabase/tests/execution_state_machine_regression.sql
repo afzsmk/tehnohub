@@ -123,7 +123,7 @@ select ok(
 
 select throws_ok(
   $$select mes_record_production_result('SM-TASK', 1, 0, '["SM-EQ"]'::jsonb, null, '2026-02-02T09:40:00Z')$$,
-  'Задание уже завершено или отменено',
+  'Нельзя регистрировать выпуск для уже завершённого задания',
   'completed task cannot accept another production fact'
 );
 

@@ -29,11 +29,11 @@ insert into production_orders(id, external_id, number, plan_id, product_id, quan
 values ('QI-ORDER', 'QI-EXT', 'QI-001', 'QI-PLAN', 'QI-PROD', 10, 0, '2026-01-10T00:00:00Z', 'NORMAL', 'IN_EXECUTION');
 insert into production_tasks(
   id, order_id, operation_id, operation_sequence, status,
-  planned_start, planned_end, planned_quantity, actual_quantity,
+  planned_start, planned_end, actual_start, planned_quantity, actual_quantity,
   version, quality_required, quality_status
 ) values (
   'QI-TASK', 'QI-ORDER', 'QI-OP', 10, 'RUNNING',
-  '2026-01-02T08:00:00Z', '2026-01-02T10:00:00Z', 10, 10,
+  '2026-01-02T08:00:00Z', '2026-01-02T10:00:00Z', '2026-01-02T08:00:00Z', 10, 10,
   2, true, 'PENDING'
 );
 insert into task_assignments(task_id, employee_id, equipment_id)
@@ -58,9 +58,29 @@ select is((select count(*) from production_events where task_id = 'QI-TASK'), 2:
 select is((select status from production_tasks where id = 'QI-TASK'), 'COMPLETED', 'quality retry leaves completed task unchanged');
 select is((select status from production_orders where id = 'QI-ORDER'), 'COMPLETED', 'quality retry leaves completed order unchanged');
 
-select throws_ok(
-  $$select mes_submit_quality_inspection('QI-TASK', 'APPROVED', 9, 0, null, 'conflicting retry', '2026-01-02T10:10:00Z', 'quality-key-1')$$,
-  'Ключ идемпотентности уже используется для другого решения ОТК',
+-- pgTAP's throws_ok can surface a caught SECURITY DEFINER exception to psql's
+-- stderr on this path. Catch the business conflict explicitly so the TAP stream
+-- remains valid while still asserting the exact idempotency guard.
+do $$
+declare
+  v_caught boolean := false;
+begin
+  begin
+    perform mes_submit_quality_inspection(
+      'QI-TASK', 'APPROVED', 9, 0, null, 'conflicting retry',
+      '2026-01-02T10:10:00Z', 'quality-key-1'
+    );
+  exception when others then
+    v_caught := sqlerrm = 'Ключ идемпотентности уже используется для другого решения ОТК';
+  end;
+  if not v_caught then
+    raise exception 'Ожидалась ошибка конфликта ключа идемпотентности ОТК';
+  end if;
+end;
+$$;
+
+select ok(
+  true,
   'quality idempotency key cannot be reused with different inspected quantity'
 );
 
