@@ -104,7 +104,46 @@ jobs:
 
       - name: Lint database schema
         working-directory: ./mes
-        run: supabase db lint --local --level error
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          lint_output=$(mktemp)
+          trap 'rm -f "${lint_output}"' EXIT
+
+          set +e
+          supabase db lint --local --level error 2>&1 | tee "${lint_output}"
+          lint_status=${PIPESTATUS[0]}
+          set -e
+
+          if [[ "${lint_status}" -ne 0 ]]; then
+            echo "Database lint command failed with exit ${lint_status}."
+            exit "${lint_status}"
+          fi
+
+          # Supabase lint currently reports one known static-analysis false positive:
+          # mes_apply_replan creates a transaction-local temp table named
+          # mes_replan_changes, which the lint parser cannot resolve. All other
+          # error-level diagnostics remain release-blocking.
+          lint_errors=$(jq -c '
+            [ .[]
+              | {function, issues: [.issues[] | select(.level == "error")]}
+              | select(.issues | length > 0)
+              | select(
+                  .function != "public.mes_apply_replan"
+                  or any(.issues[]; .message != "relation \"mes_replan_changes\" does not exist")
+                )
+            ]' "${lint_output}")
+
+          if [[ "${lint_errors}" != "[]" ]]; then
+            echo "Unexpected database lint errors detected:"
+            echo "${lint_errors}"
+            exit 1
+          fi
+
+          if grep -q '"function": "public.mes_apply_replan"' "${lint_output}"; then
+            echo "Accepted known lint diagnostic for transaction-local mes_replan_changes temp table."
+          fi
 
       - name: Stop local Supabase
         if: always()
@@ -118,30 +157,68 @@ jobs:
 
           api_key="${MES_SUPABASE_PUBLISHABLE_KEY}"
           base_url="${MES_SUPABASE_URL}"
+          transient_codes='^(502|503|504|000)$'
 
-          auth_code=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
-            -H "apikey: ${api_key}" \
-            "${base_url}/auth/v1/settings")
+          auth_code=000
+          for attempt in 1 2 3 4 5; do
+            auth_code=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+              --connect-timeout 5 --max-time 20 \
+              -H "apikey: ${api_key}" \
+              "${base_url}/auth/v1/settings" || true)
+
+            if [[ "${auth_code}" == "200" ]]; then
+              echo "Production Supabase Auth API probe passed on attempt ${attempt}."
+              break
+            fi
+
+            if [[ "${auth_code}" =~ ${transient_codes} && "${attempt}" -lt 5 ]]; then
+              echo "Production Auth probe attempt ${attempt}: transient HTTP ${auth_code}; retrying."
+              sleep $((attempt * 3))
+              continue
+            fi
+
+            echo "Production Supabase Auth API probe failed: HTTP ${auth_code}"
+            exit 1
+          done
 
           if [[ "${auth_code}" != "200" ]]; then
-            echo "Production Supabase Auth API probe failed: HTTP ${auth_code}"
+            echo "Production Supabase Auth API did not recover after retries."
             exit 1
           fi
 
           rpc_body=$(mktemp)
           trap 'rm -f "${rpc_body}"' EXIT
 
-          rpc_code=$(curl --silent --show-error --output "${rpc_body}" --write-out '%{http_code}' \
-            -X POST \
-            -H "apikey: ${api_key}" \
-            -H "Content-Type: application/json" \
-            --data '{}' \
-            "${base_url}/rest/v1/rpc/mes_get_runtime_snapshot")
+          rpc_code=000
+          for attempt in 1 2 3 4 5; do
+            : > "${rpc_body}"
+            rpc_code=$(curl --silent --show-error --output "${rpc_body}" --write-out '%{http_code}' \
+              --connect-timeout 5 --max-time 20 \
+              -X POST \
+              -H "apikey: ${api_key}" \
+              -H "Content-Type: application/json" \
+              --data '{}' \
+              "${base_url}/rest/v1/rpc/mes_get_runtime_snapshot" || true)
 
-          if [[ "${rpc_code}" -lt 400 || "${rpc_code}" -ge 500 ]]; then
+            if [[ "${rpc_code}" -ge 400 && "${rpc_code}" -lt 500 ]]; then
+              echo "Production MES RPC denial check passed: HTTP ${rpc_code}."
+              break
+            fi
+
+            if [[ "${rpc_code}" =~ ${transient_codes} && "${attempt}" -lt 5 ]]; then
+              echo "Production MES RPC probe attempt ${attempt}: transient HTTP ${rpc_code}; retrying."
+              sleep $((attempt * 3))
+              continue
+            fi
+
             echo "Expected unauthenticated MES RPC call to be denied, got HTTP ${rpc_code}"
             echo "Response body:"
             cat "${rpc_body}"
+            exit 1
+          done
+
+          if [[ "${rpc_code}" -lt 400 || "${rpc_code}" -ge 500 ]]; then
+            echo "Production MES RPC denial check did not reach an expected 4xx response."
             exit 1
           fi
 
