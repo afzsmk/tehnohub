@@ -14,6 +14,7 @@ import { mountDispatchGanttPage } from './ui/dispatchGanttPage';
 import { mountMasterDataPage } from './ui/masterDataPage';
 import { mountMasterTopologyPage } from './ui/masterTopologyPage';
 import { mountImportCenterPage } from './ui/importCenterPage';
+import { mountMesWorkspaceNav } from './ui/mesWorkspaceNav';
 import { getMesSupabaseClient } from './services/supabase';
 
 const supabase = getMesSupabaseClient();
@@ -43,4 +44,5 @@ void import('./main').then(async () => {
   await mountMasterTopologyPage(app, supabase);
   await mountImportCenterPage(app, supabase);
   await mountRouteEditor(app, supabase);
+  await mountMesWorkspaceNav(app, supabase);
 }).catch(reportRemoteFailure);
