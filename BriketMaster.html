@@ -803,6 +803,10 @@
             align-items: center;
             backdrop-filter: blur(3px);
         }
+
+        #universalModal {
+    z-index: 1000;
+}
         .modal-content {
             background: var(--panel);
             border-radius: 16px;
@@ -2679,7 +2683,7 @@
                     saveState();
                 });
 
-                ['saveModal', 'historyModal', 'econModal', 'shiftTaskModal', 'calcModal', 'universalModal'].forEach(id => {
+               ['saveModal', 'historyModal', 'econModal', 'shiftTaskModal', 'calcModal'].forEach(id => {
                     const el = document.getElementById(id);
                     el.addEventListener('click', function(e) {
                         if (e.target === this) this.style.display = 'none';
