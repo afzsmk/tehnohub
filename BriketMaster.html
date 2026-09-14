@@ -1838,7 +1838,7 @@
                 document.getElementById('edgeTrim').style.borderColor = (edgeTrim >= blankWidth) ? 'var(--danger)' : '';
 
 // Длина брикета = 4/3 ширины исходной панели
-                const bLen = (B+edgeTrim*2) * 4 / 3;               
+                const bLen = B * 4 / 3 + edgeTrim*2;               
                 const tileBL = document.getElementById('tileBL');
                 if (bLen > 2000) {
                     tileBL.classList.add('tile-warning');
@@ -2433,7 +2433,7 @@
                 const edgeTrim = parseFloat(document.getElementById('edgeTrim').value) || 0;
                 const sawBlade = parseFloat(document.getElementById('sawBlade').value) || 0;
                 const usableWidth = Math.max(0, blankWidth - edgeTrim);
-                const bLen = (B+edgeTrim*2) * 4/3;
+                const bLen = B * 4/3 + edgeTrim*2;
                 const nPure = nFromParams(L, cellSize, margin);
 
                 const foilMassPure = (nPure * bLen * blankWidth * foilT * 2.7) / 1000000;
