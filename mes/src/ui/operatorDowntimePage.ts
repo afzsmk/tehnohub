@@ -2,11 +2,12 @@ import './operatorDowntimePage.css';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getMesAuthState } from '../integration/auth';
 import { SupabaseMesExecutionRpc } from '../integration/mesExecutionRpc';
+import { subscribeMesRealtime } from '../integration/mesRealtime';
 
 type Assignment = { task_id: string; employee_id: string | null; equipment_id: string | null };
 type Equipment = { id: string; name: string; active: boolean };
 type Downtime = { id: string; equipment_id: string; reason_code: string; started_at: string; ended_at: string | null };
-const esc=(v:unknown)=>String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]??c));
+const esc=(v:unknown)=>String(v??'').replace(/[&<>\\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\\"':'&quot;',"'":'&#39;'}[c]??c));
 const dt=(v:string)=>new Date(v).toLocaleString('ru-RU',{dateStyle:'short',timeStyle:'short'});
 export async function mountOperatorDowntimePage(root:HTMLElement,client:SupabaseClient):Promise<void>{
  const auth=await getMesAuthState(client);if(!auth.identity)return;
@@ -31,5 +32,7 @@ export async function mountOperatorDowntimePage(root:HTMLElement,client:Supabase
   body.querySelector<HTMLFormElement>('[data-start-operator-downtime]')?.addEventListener('submit',async e=>{e.preventDefault();const f=e.currentTarget as HTMLFormElement;const d=new FormData(f);const submit=f.querySelector<HTMLButtonElement>('button[type=submit]');if(submit)submit.disabled=true;try{await rpc.startDowntime(String(d.get('equipment')??''),String(d.get('reason')??'OTHER'),String(d.get('comment')??'')||undefined);await refresh();}catch(err){window.alert(err instanceof Error?err.message:'Не удалось зарегистрировать простой');if(submit)submit.disabled=false;}});
   body.querySelectorAll<HTMLButtonElement>('[data-end-operator-downtime]').forEach(b=>b.addEventListener('click',async()=>{b.disabled=true;try{await rpc.endDowntime(b.dataset.endOperatorDowntime??'',new Date().toISOString());await refresh();}catch(err){window.alert(err instanceof Error?err.message:'Не удалось закрыть простой');b.disabled=false;}}));
  }catch(err){body.innerHTML=`<div class="detail-error">${esc(err instanceof Error?err.message:'Ошибка загрузки простоев')}</div>`;}};
- section.querySelector<HTMLButtonElement>('[data-operator-downtime-refresh]')?.addEventListener('click',()=>void refresh());await refresh();
+ section.querySelector<HTMLButtonElement>('[data-operator-downtime-refresh]')?.addEventListener('click',()=>void refresh());
+ subscribeMesRealtime(client,{tables:['production_tasks','task_assignments','equipment','downtime_events'],debounceMs:350,onChange:()=>void refresh()});
+ await refresh();
 }
