@@ -4,7 +4,7 @@ import { getMesAuthState } from '../integration/auth';
 import { SupabaseMesMaintenanceRpc } from '../integration/mesMaintenanceRpc';
 import { subscribeMesRealtime } from '../integration/mesRealtime';
 
-const ROLES = ['ADMIN','PRODUCTION_MANAGER','MASTER','DISPATCHER','MAINTENANCE','OPERATOR'];
+const ROLES = ['ADMIN','PRODUCTION_MANAGER','MASTER','DISPATCHER','MAINTENANCE'];
 interface EquipmentRow { id:string; code:string; name:string; work_center:string; active:boolean; }
 interface DowntimeRow { id:string; equipment_id:string; reason_code:string; started_at:string; ended_at:string|null; comment:string|null; }
 interface MaintenanceRow { id:string; equipment_id:string; type:MaintenanceOrder['type']; planned_start:string; planned_end:string; status:MaintenanceOrder['status']; comment:string|null; }
