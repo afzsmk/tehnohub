@@ -2,12 +2,13 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { MaintenanceOrder } from '../types';
 import { getMesAuthState } from '../integration/auth';
 import { SupabaseMesMaintenanceRpc } from '../integration/mesMaintenanceRpc';
+import { subscribeMesRealtime } from '../integration/mesRealtime';
 
 const ROLES = ['ADMIN','PRODUCTION_MANAGER','MASTER','DISPATCHER','MAINTENANCE','OPERATOR'];
 interface EquipmentRow { id:string; code:string; name:string; work_center:string; active:boolean; }
 interface DowntimeRow { id:string; equipment_id:string; reason_code:string; started_at:string; ended_at:string|null; comment:string|null; }
 interface MaintenanceRow { id:string; equipment_id:string; type:MaintenanceOrder['type']; planned_start:string; planned_end:string; status:MaintenanceOrder['status']; comment:string|null; }
-function esc(v:unknown):string { return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]??c)); }
+function esc(v:unknown):string { return String(v??'').replace(/[&<>\\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\\"':'&quot;',"'":'&#39;'}[c]??c)); }
 function statusClass(v:string):string { if(['DONE'].includes(v))return 'status-ok'; if(['CANCELLED'].includes(v))return 'status-danger'; if(['IN_PROGRESS'].includes(v))return 'status-warning'; return 'status-neutral'; }
 function dt(v:string):string { return new Date(v).toLocaleString('ru-RU',{dateStyle:'short',timeStyle:'short'}); }
 
@@ -41,5 +42,6 @@ export async function mountEquipmentOperationsPage(root:HTMLElement,client:Supab
     }catch(err){const msg=esc(err instanceof Error?err.message:'Ошибка загрузки оборудования');downtimeHost.innerHTML=maintHost.innerHTML=`<div class="detail-error">${msg}</div>`;}
   };
   host.querySelector<HTMLButtonElement>('[data-eq-refresh]')?.addEventListener('click',()=>void refresh());
+  subscribeMesRealtime(client,{tables:['equipment','downtime_events','maintenance_orders'],debounceMs:350,onChange:()=>void refresh()});
   await refresh();
 }
