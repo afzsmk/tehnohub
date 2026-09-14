@@ -49,8 +49,10 @@ export async function mountProductionEntryPage(root: HTMLElement, client: Supaba
       const assignments = (assignmentsResult.data ?? []) as AssignmentRow[];
       const assignmentByTask = new Map<string, AssignmentRow>();
       assignments.forEach(item => assignmentByTask.set(item.task_id, item));
-      const tasks = role === 'OPERATOR' && auth.identity?.employeeId
-        ? loadedTasks.filter(task => assignmentByTask.get(task.id)?.employee_id === auth.identity?.employeeId)
+      const tasks = role === 'OPERATOR'
+        ? auth.identity?.employeeId
+          ? loadedTasks.filter(task => assignmentByTask.get(task.id)?.employee_id === auth.identity?.employeeId)
+          : []
         : loadedTasks;
       const visibleTaskIds = new Set(tasks.map(task => task.id));
       const visibleAssignments = assignments.filter(item => visibleTaskIds.has(item.task_id));
@@ -67,7 +69,9 @@ export async function mountProductionEntryPage(root: HTMLElement, client: Supaba
       body.innerHTML = tasks.length ? `<div class="production-entry-list">${tasks.map(task => {
         const order = orders.find(item => item.id === task.order_id); const assignment = visibleAssignmentByTask.get(task.id); const remaining = Math.max(0, task.planned_quantity - task.actual_quantity); const completion = task.planned_quantity > 0 ? Math.min(100, task.actual_quantity / task.planned_quantity * 100) : 0; const canRecord = ['RUNNING','PAUSED','PARTIALLY_COMPLETED'].includes(task.status) && remaining > 0; const equipmentId = assignment?.equipment_id ?? '';
         return `<article class="production-entry-card" data-task-card="${esc(task.id)}"><div class="production-entry-head"><div><strong>${esc(order?.number ?? task.order_id)}</strong><div class="subtle">Задание ${esc(task.id)} · операция ${task.operation_sequence} · v${task.version}</div></div><span class="status-pill ${statusClass(task.status)}">${label(task.status)}</span></div><div class="production-entry-facts"><span>План: <strong>${task.planned_quantity}</strong></span><span>Факт: <strong>${task.actual_quantity}</strong></span><span>Осталось: <strong>${remaining}</strong></span><span>Прогресс: <strong>${completion.toFixed(1)}%</strong></span><span>Оператор: <strong>${esc(employeeName.get(assignment?.employee_id ?? '') ?? 'не назначен')}</strong></span><span>Оборудование: <strong>${esc(equipmentName.get(equipmentId) ?? 'не назначено')}</strong></span>${task.quality_required ? `<span>ОТК: <strong class="status-pill ${statusClass(task.quality_status)}">${label(task.quality_status)}</strong></span>` : '<span>ОТК: не требуется</span>'}</div><div class="production-entry-actions">${actionButtons(task)}</div>${canRecord ? `<form class="production-entry-form" data-result-task="${esc(task.id)}"><div class="production-entry-form-grid"><label>Годно<input name="good" type="number" min="0" max="${remaining}" step="0.001" value="${remaining}" required></label><label>Брак<input name="scrap" type="number" min="0" step="0.001" value="0" required></label><label class="production-entry-comment">Комментарий<input name="comment" type="text" maxlength="500" placeholder="Причина / примечание"></label><button class="primary" type="submit">Зафиксировать выпуск</button></div></form>` : '<div class="subtle">Для регистрации выпуска сначала запустите задание.</div>'}</article>`;
-      }).join('')}</div>` : '<div class="subtle">Нет назначенных заданий в рабочем состоянии. Диспетчер должен подготовить и назначить ресурсам следующее задание.</div>';
+      }).join('')}</div>` : role === 'OPERATOR' && !auth.identity?.employeeId
+        ? '<div class="subtle">Рабочее место оператора не привязано к сотруднику. Обратитесь к администратору MES.</div>'
+        : '<div class="subtle">Нет назначенных заданий в рабочем состоянии. Диспетчер должен подготовить и назначить ресурсам следующее задание.</div>';
       body.querySelectorAll<HTMLButtonElement>('[data-task-action]').forEach(button => button.addEventListener('click', async () => {
         const taskId = button.dataset.taskId ?? ''; const action = button.dataset.taskAction as MesExecutionAction; if (!taskId || !['START','PAUSE','RESUME','BLOCK','COMPLETE'].includes(action)) return; button.disabled = true;
         try { await execution.executeTaskAction(taskId, action, new Date().toISOString()); await refresh(); } catch (error) { window.alert(error instanceof Error ? error.message : 'Не удалось изменить состояние задания'); button.disabled = false; }
