@@ -109,7 +109,8 @@ jobs:
           set -euo pipefail
 
           lint_output=$(mktemp)
-          trap 'rm -f "${lint_output}"' EXIT
+          lint_json=$(mktemp)
+          trap 'rm -f "${lint_output}" "${lint_json}"' EXIT
 
           set +e
           supabase db lint --local --level error 2>&1 | tee "${lint_output}"
@@ -121,10 +122,28 @@ jobs:
             exit "${lint_status}"
           fi
 
-          # Supabase lint currently reports one known static-analysis false positive:
-          # mes_apply_replan creates a transaction-local temp table named
-          # mes_replan_changes, which the lint parser cannot resolve. All other
-          # error-level diagnostics remain release-blocking.
+          # Supabase CLI prefixes its JSON diagnostics with status lines. Extract the
+          # first JSON array and validate that payload independently from the text log.
+          python3 - "${lint_output}" "${lint_json}" <<'PY'
+          import json
+          import sys
+
+          src, dst = sys.argv[1:3]
+          text = open(src, encoding='utf-8').read()
+          start = text.find('[')
+          end = text.rfind(']')
+          if start < 0 or end < start:
+              payload = []
+          else:
+              try:
+                  payload = json.loads(text[start:end + 1])
+              except json.JSONDecodeError as exc:
+                  print(f'Unable to parse Supabase lint JSON: {exc}', file=sys.stderr)
+                  sys.exit(1)
+          with open(dst, 'w', encoding='utf-8') as handle:
+              json.dump(payload, handle, ensure_ascii=False)
+          PY
+
           lint_errors=$(jq -c '
             [ .[]
               | {function, issues: [.issues[] | select(.level == "error")]}
@@ -133,7 +152,7 @@ jobs:
                   .function != "public.mes_apply_replan"
                   or any(.issues[]; .message != "relation \"mes_replan_changes\" does not exist")
                 )
-            ]' "${lint_output}")
+            ]' "${lint_json}")
 
           if [[ "${lint_errors}" != "[]" ]]; then
             echo "Unexpected database lint errors detected:"
