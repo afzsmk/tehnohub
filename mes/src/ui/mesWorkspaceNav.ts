@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getMesAuthState } from '../integration/auth';
+import './mesWorkspaceNav.css';
 
 const MAP: Record<string,[string,string][]> = {
   OPERATOR:[['Работа','.production-entry-page'],['Простой','.operator-downtime-page'],['ОТК','.quality-page'],['События','.event-journal-page']],
