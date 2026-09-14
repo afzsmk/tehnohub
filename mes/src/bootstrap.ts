@@ -8,6 +8,7 @@ import { mountIntegrityPage } from './ui/integrityPage';
 import { mountOperationalWorkflowPage } from './ui/operationalWorkflowPage';
 import { mountWorkflowMonitorPage } from './ui/workflowMonitorPage';
 import { mountProductionEntryPage } from './ui/productionEntryPage';
+import { mountOperatorDowntimePage } from './ui/operatorDowntimePage';
 import { mountEquipmentOperationsPage } from './ui/equipmentOperationsPage';
 import { mountDispatchGanttPage } from './ui/dispatchGanttPage';
 import { mountMasterDataPage } from './ui/masterDataPage';
@@ -30,6 +31,7 @@ void import('./main').then(async () => {
   await mountMesDashboardPage(app, supabase);
   await mountOperationalWorkflowPage(app, supabase);
   await mountProductionEntryPage(app, supabase);
+  await mountOperatorDowntimePage(app, supabase);
   await mountEquipmentOperationsPage(app, supabase);
   await mountDispatchGanttPage(app, supabase);
   await mountOrdersPage(app, supabase);
