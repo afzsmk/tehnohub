@@ -1837,7 +1837,8 @@
                 document.getElementById('resUsableWidth').innerText = usableWidth.toFixed(1);
                 document.getElementById('edgeTrim').style.borderColor = (edgeTrim >= blankWidth) ? 'var(--danger)' : '';
 
-                const bLen = B * 1.5;
+// Длина брикета = 4/3 ширины исходной панели
+                const bLen = B * 4 / 3;
                 const tileBL = document.getElementById('tileBL');
                 if (bLen > 2000) {
                     tileBL.classList.add('tile-warning');
