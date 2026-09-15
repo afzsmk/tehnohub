@@ -40,24 +40,24 @@ jobs:
           db_url="postgresql://postgres.${SUPABASE_PROJECT_REF}:${SUPABASE_DB_PASSWORD}@${SUPABASE_POOLER_HOST}:${SUPABASE_DB_PORT}/${SUPABASE_DB_NAME}?sslmode=require"
 
           echo 'Remote migration history before reconciliation:'
-          supabase migration list --db-url "${db_url}"
+          history_output="$(supabase migration list --db-url "${db_url}")"
+          printf '%s\n' "${history_output}"
 
-          mapfile -t remote_versions < <(
-            supabase migration list --db-url "${db_url}" |
+          mapfile -t remote_timestamp_versions < <(
+            printf '%s\n' "${history_output}" |
               sed -nE 's/.*\| `([0-9]{14})` \|.*/\1/p' |
               sort -u
           )
 
-          if ((${#remote_versions[@]} == 0)); then
-            echo 'No remote timestamp migrations found; refusing to perform history reconciliation.'
-            exit 1
+          if ((${#remote_timestamp_versions[@]} > 0)); then
+            echo "Reverting ${#remote_timestamp_versions[@]} legacy timestamped history entries (schema is preserved)."
+            for version in "${remote_timestamp_versions[@]}"; do
+              echo "Reverting remote history entry ${version}"
+              supabase migration repair "${version}" --status reverted --db-url "${db_url}"
+            done
+          else
+            echo 'No legacy timestamped history remains; continuing with repository history reconciliation.'
           fi
-
-          echo "Reverting ${#remote_versions[@]} remote history entries (schema is preserved)."
-          for version in "${remote_versions[@]}"; do
-            echo "Reverting remote history entry ${version}"
-            supabase migration repair "${version}" --status reverted --db-url "${db_url}"
-          done
 
           mapfile -t local_versions < <(
             find supabase/migrations -maxdepth 1 -type f -name '*.sql' -printf '%f\n' |
@@ -65,16 +65,25 @@ jobs:
               sort -V
           )
 
-          echo 'Marking all repository migrations through 094 as already applied.'
+          echo 'Marking repository migrations semantically before 095 as already applied.'
           for version in "${local_versions[@]}"; do
-            if [[ "${version}" =~ ^[0-9]+$ ]] && ((10#${version} < 95)); then
-              echo "Marking local migration ${version} as applied"
-              supabase migration repair "${version}" --status applied --db-url "${db_url}"
+            semantic_version="${version}"
+            if [[ "${version}" =~ ^0[0-9]{3}$ ]]; then
+              semantic_version="${version:1}"
+            elif [[ "${version}" =~ ^0[0-9]{3}[0-9]$ ]]; then
+              semantic_version="${version:1:3}"
+            fi
+            semantic_version=$((10#${semantic_version}))
+            if ((semantic_version < 95)); then
+              if ! printf '%s\n' "${history_output}" | grep -Eq "\\| \`${version}\` \\|"; then
+                echo "Marking local migration ${version} as applied"
+                supabase migration repair "${version}" --status applied --db-url "${db_url}"
+              fi
             fi
           done
 
           echo 'Applying repository migrations 095+.'
-          supabase db push --db-url "${db_url}"
+          supabase db push --include-all --db-url "${db_url}"
 
           echo 'Remote migration history after reconciliation:'
           supabase migration list --db-url "${db_url}"
