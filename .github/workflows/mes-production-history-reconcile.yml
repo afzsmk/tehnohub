@@ -1,0 +1,85 @@
+name: MES Production Migration History Reconcile
+
+on:
+  push:
+    paths:
+      - .github/workflows/mes-production-history-reconcile.yml
+
+permissions:
+  contents: read
+
+env:
+  SUPABASE_PROJECT_REF: caeqoipshdtxezcurnkn
+
+jobs:
+  reconcile:
+    name: Reconcile production MES migration history
+    runs-on: ubuntu-latest
+    environment:
+      name: mes-production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: 2.117.0
+
+      - name: Link production project
+        working-directory: ./mes
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+          supabase link --project-ref "${SUPABASE_PROJECT_REF}" --password "${SUPABASE_DB_PASSWORD}"
+
+      - name: Reconcile migration history and apply remaining migrations
+        working-directory: ./mes
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          echo 'Remote migration history before reconciliation:'
+          supabase migration list --linked
+
+          mapfile -t remote_versions < <(
+            supabase migration list --linked |
+              awk '/^[0-9]+[[:space:]]/ {print $1}'
+          )
+
+          if ((${#remote_versions[@]} == 0)); then
+            echo 'No remote migrations found; refusing to perform history reconciliation.'
+            exit 1
+          fi
+
+          echo "Reverting ${#remote_versions[@]} remote history entries (schema is preserved)."
+          for version in "${remote_versions[@]}"; do
+            echo "Reverting remote history entry ${version}"
+            supabase migration repair "${version}" --status reverted --linked
+          done
+
+          mapfile -t local_versions < <(
+            find supabase/migrations -maxdepth 1 -type f -name '*.sql' -printf '%f\n' |
+              sed -E 's/_.*$//' |
+              sort -V
+          )
+
+          echo 'Marking all repository migrations through 094 as already applied.'
+          for version in "${local_versions[@]}"; do
+            if [[ "${version}" =~ ^[0-9]+$ ]] && ((10#${version} < 95)); then
+              echo "Marking local migration ${version} as applied"
+              supabase migration repair "${version}" --status applied --linked
+            fi
+          done
+
+          echo 'Applying repository migrations that are actually new (095+).'
+          supabase db push --linked
+
+          echo 'Remote migration history after reconciliation:'
+          supabase migration list --linked
