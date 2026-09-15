@@ -9,7 +9,9 @@ permissions:
   contents: read
 
 env:
-  SUPABASE_PROJECT_REF: caeqoipshdtxezcurnkn
+  SUPABASE_DB_HOST: db.caeqoipshdtxezcurnkn.supabase.co
+  SUPABASE_DB_NAME: postgres
+  SUPABASE_DB_PORT: '5432'
 
 jobs:
   reconcile:
@@ -28,28 +30,19 @@ jobs:
         with:
           version: 2.117.0
 
-      - name: Link production project
-        working-directory: ./mes
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-        run: |
-          set -euo pipefail
-          supabase link --project-ref "${SUPABASE_PROJECT_REF}" --password "${SUPABASE_DB_PASSWORD}"
-
       - name: Reconcile migration history and apply remaining migrations
         working-directory: ./mes
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: |
           set -euo pipefail
+          db_url="postgresql://postgres:${SUPABASE_DB_PASSWORD}@${SUPABASE_DB_HOST}:${SUPABASE_DB_PORT}/${SUPABASE_DB_NAME}"
 
           echo 'Remote migration history before reconciliation:'
-          supabase migration list --linked
+          supabase migration list --db-url "${db_url}"
 
           mapfile -t remote_versions < <(
-            supabase migration list --linked |
+            supabase migration list --db-url "${db_url}" |
               awk '/^[0-9]+[[:space:]]/ {print $1}'
           )
 
@@ -61,7 +54,7 @@ jobs:
           echo "Reverting ${#remote_versions[@]} remote history entries (schema is preserved)."
           for version in "${remote_versions[@]}"; do
             echo "Reverting remote history entry ${version}"
-            supabase migration repair "${version}" --status reverted --linked
+            supabase migration repair "${version}" --status reverted --db-url "${db_url}"
           done
 
           mapfile -t local_versions < <(
@@ -74,12 +67,12 @@ jobs:
           for version in "${local_versions[@]}"; do
             if [[ "${version}" =~ ^[0-9]+$ ]] && ((10#${version} < 95)); then
               echo "Marking local migration ${version} as applied"
-              supabase migration repair "${version}" --status applied --linked
+              supabase migration repair "${version}" --status applied --db-url "${db_url}"
             fi
           done
 
           echo 'Applying repository migrations that are actually new (095+).'
-          supabase db push --linked
+          supabase db push --db-url "${db_url}"
 
           echo 'Remote migration history after reconciliation:'
-          supabase migration list --linked
+          supabase migration list --db-url "${db_url}"
