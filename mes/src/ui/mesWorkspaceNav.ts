@@ -20,5 +20,5 @@ export async function mountMesWorkspaceNav(root:HTMLElement,client:SupabaseClien
  const nav=document.createElement('nav');nav.className='mes-workspace-nav';nav.setAttribute('aria-label','Рабочие места MES');
  nav.innerHTML=`<strong>MES · ${role}</strong><div class="mes-workspace-nav-links">${items.map(([label,selector])=>`<button class="mes-nav-link" data-target="${selector}">${label}</button>`).join('')}</div>`;
  root.prepend(nav);
- nav.querySelectorAll<HTMLButtonElement>('[data-target]').forEach(button=>button.addEventListener('click',()=>{const target=root.querySelector(button.dataset.target??'');target?.scrollIntoView({behavior:'smooth',block:'start'}))));
+ nav.querySelectorAll<HTMLButtonElement>('[data-target]').forEach(button=>button.addEventListener('click',()=>{const target=root.querySelector(button.dataset.target??'');target?.scrollIntoView({behavior:'smooth',block:'start'});}));
 }
