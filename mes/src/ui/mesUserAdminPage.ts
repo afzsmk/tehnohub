@@ -22,7 +22,7 @@ export async function mountMesUserAdminPage(root:HTMLElement,client:SupabaseClie
     if(employeeError) throw employeeError;
     const userRows=(users??[]) as UserRow[];
     const employeeRows=(employees??[]) as EmployeeRow[];
-    host.innerHTML=`<div class="panel-head"><div><h2>Доступ к MES</h2><div class="subtle">Пользователи Supabase · MES-роли · привязка оператора к сотруднику</div></div><button class="primary" id="user-admin-refresh">Обновить</button></div><div style="padding:0 18px 12px"><div class="subtle">Новый аккаунт сначала создаётся в Supabase Authentication. Здесь ему назначается MES роль. Для роли ОПЕРАТОР обязательно выбрать сотрудника.</div></div><div class="table-wrap"><table><thead><tr><th>Email</th><th>MES роль</th><th>Сотрудник</th><th>Действие</th></tr></thead><tbody>${userRows.map(u=>{
+    host.innerHTML=`<div class="panel-head"><div><h2>Доступ к MES</h2><div class="subtle">Пользователи MES · роли · привязка оператора к сотруднику</div></div><button class="primary" id="user-admin-refresh">Обновить</button></div><div style="padding:0 18px 12px"><div class="subtle">Пользователь регистрируется на экране входа MES. После регистрации он появляется здесь без роли. ADMIN назначает роль и, для ОПЕРАТОРА, сотрудника. После нового входа или обновления сессии пользователь получает свой рабочий контур.</div></div><div class="table-wrap"><table><thead><tr><th>Email</th><th>MES роль</th><th>Сотрудник</th><th>Действие</th></tr></thead><tbody>${userRows.map(u=>{
       const role=u.mes_role??'';
       const employeeOptions=[`<option value="">— не привязан —</option>`,...employeeRows.filter(e=>e.active||e.id===u.employee_id).map(e=>`<option value="${esc(e.id)}" ${e.id===u.employee_id?'selected':''}>${esc(e.personnel_no)} · ${esc(e.name)}</option>`)].join('');
       const roleOptions=[`<option value="">— не задана —</option>`,...ROLES.map(r=>`<option value="${r}" ${r===role?'selected':''}>${r}</option>`)].join('');
@@ -39,7 +39,7 @@ export async function mountMesUserAdminPage(root:HTMLElement,client:SupabaseClie
       try{
         const {error}=await client.rpc('mes_admin_set_user_role',{p_user_id:userId,p_role:role,p_employee_id:employeeId});
         if(error) throw error;
-        window.alert('Доступ сохранён. Для этого пользователя новые JWT-права применятся при следующем входе/обновлении сессии.');
+        window.alert('Доступ сохранён. Пользователю нужно войти заново или обновить сессию, чтобы получить новую MES роль.');
         await load();
       }catch(error){window.alert(error instanceof Error?error.message:String(error));btn.disabled=false;}
     }));
