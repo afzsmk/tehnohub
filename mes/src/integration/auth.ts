@@ -43,9 +43,6 @@ async function cacheRemoteState(client: SupabaseClient, userId: string): Promise
     storage.setItem(DEMO_BACKUP_KEY, JSON.stringify(current));
   }
 
-  // Always refresh from the authoritative RPC for an authenticated session.
-  // The persisted user marker only prevents unnecessary demo backups; it must
-  // never suppress a refresh after a page reload or a concurrent server update.
   const snapshot = await new SupabaseMesRuntimeSnapshotRpc(client).load(current.plan.id);
   const merged: MesState = {
     ...current,
@@ -97,7 +94,7 @@ export async function getMesAuthState(client: SupabaseClient): Promise<MesAuthSt
   const user = data.session?.user ?? null;
   if (!user) return { user: null, identity: null };
   const identity = await resolveMesIdentity(client);
-  await ensureRemoteStateLoaded(client, user.id);
+  if (identity) await ensureRemoteStateLoaded(client, user.id);
   return { user, identity };
 }
 
@@ -125,7 +122,7 @@ export function subscribeMesAuth(client: SupabaseClient, callback: (state: MesAu
         return;
       }
       const identity = await resolveMesIdentity(client);
-      await ensureRemoteStateLoaded(client, session.user.id);
+      if (identity) await ensureRemoteStateLoaded(client, session.user.id);
       await callback({ user: session.user, identity });
     })().catch(() => undefined);
   });
