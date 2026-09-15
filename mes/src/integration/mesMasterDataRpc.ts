@@ -9,15 +9,61 @@ export interface MasterEmployeeQualification { employee_id:string; qualification
 export interface MasterWorkCenter { id:string; external_id?:string|null; code:string; name:string; site_code?:string|null; description?:string|null; active:boolean; }
 export interface MasterEquipment { id:string; code:string; name:string; work_center:string; work_center_id?:string|null; capabilities:string[]; active:boolean; }
 export interface MasterRoute { id:string; external_id?:string|null; product_id:string; code:string; name:string; version:number; active:boolean; valid_from?:string|null; valid_to?:string|null; description?:string|null; }
+export interface MasterRouteOperation { id:string; route_id?:string|null; product_id:string; sequence:number; code:string; name:string; work_center:string; work_center_id?:string|null; required_qualification?:number|null; required_qualification_id?:string|null; required_equipment_ids:string[]; setup_minutes:number; run_minutes_per_unit:number; setup_norm_hours:number; labor_norm_hours_per_unit:number; workers_required:number; active:boolean; }
 export interface MasterShift { id:string; name:string; start_minute:number; duration_minutes:number; active:boolean; }
-export interface BootstrapRouteOperation { id:string; product_id:string; route_id?:string; sequence:number; code:string; name:string; work_center:string; required_qualification?:number; required_qualification_id?:string; required_equipment_ids:string[]; setup_norm_hours:number; labor_norm_hours_per_unit:number; workers_required:number; active:boolean; }
 export interface MasterEquipmentCapability { equipment_id:string; operation_code:string; capability_level:string; valid_from?:string|null; valid_to?:string|null; notes?:string|null; }
+export interface MasterDowntimeReason { code:string; name:string; category:string; is_planned:boolean; description?:string|null; active:boolean; }
+export interface MasterScrapReason { code:string; name:string; category:string; description?:string|null; active:boolean; }
+export interface BootstrapRouteOperation { id:string; product_id:string; route_id?:string; sequence:number; code:string; name:string; work_center:string; required_qualification?:number; required_qualification_id?:string; required_equipment_ids:string[]; setup_norm_hours:number; labor_norm_hours_per_unit:number; workers_required:number; active:boolean; }
 export interface BootstrapPayload { products?:MasterProduct[]; professions?:MasterProfession[]; qualification_levels?:MasterQualification[]; brigades?:MasterBrigade[]; employees?:MasterEmployee[]; employee_qualifications?:MasterEmployeeQualification[]; work_centers?:MasterWorkCenter[]; equipment?:MasterEquipment[]; equipment_capabilities?:MasterEquipmentCapability[]; routes?:MasterRoute[]; shifts?:MasterShift[]; route_operations?:BootstrapRouteOperation[]; calendar_days?:Record<string,unknown>[]; employee_schedules?:Record<string,unknown>[]; downtime_reasons?:Record<string,unknown>[]; scrap_reasons?:Record<string,unknown>[]; }
 export interface BootstrapValidation { valid:boolean; errors:string[]; warnings:string[]; }
+
+export interface MasterDataWorkspace {
+  products:MasterProduct[];
+  professions:MasterProfession[];
+  qualifications:MasterQualification[];
+  brigades:MasterBrigade[];
+  employees:MasterEmployee[];
+  employeeQualifications:MasterEmployeeQualification[];
+  workCenters:MasterWorkCenter[];
+  equipment:MasterEquipment[];
+  equipmentCapabilities:MasterEquipmentCapability[];
+  routes:MasterRoute[];
+  routeOperations:MasterRouteOperation[];
+  shifts:MasterShift[];
+  downtimeReasons:MasterDowntimeReason[];
+  scrapReasons:MasterScrapReason[];
+}
 
 export class SupabaseMesMasterDataRpc {
   constructor(private readonly client:SupabaseClient){}
   private async call(name:string,args:Record<string,unknown>):Promise<unknown>{const{data,error}=await this.client.rpc(name,args);if(error)throw error;return data;}
+  async loadWorkspace():Promise<MasterDataWorkspace>{
+    const [products,professions,qualifications,brigades,employees,employeeQualifications,workCenters,equipment,equipmentCapabilities,routes,routeOperations,shifts,downtimeReasons,scrapReasons]=await Promise.all([
+      this.client.from('products').select('id,code,name,unit,external_id').order('code'),
+      this.client.from('professions').select('id,external_id,code,name,description,active').order('code'),
+      this.client.from('qualification_levels').select('id,external_id,code,name,level,description,active').order('level').order('code'),
+      this.client.from('brigades').select('id,external_id,code,name,description,active').order('code'),
+      this.client.from('employees').select('id,personnel_no,name,profession,profession_id,brigade_id,qualification_id,qualification_level,active').order('personnel_no'),
+      this.client.from('employee_qualifications').select('employee_id,qualification_id,valid_from,valid_to,is_primary,notes').order('employee_id'),
+      this.client.from('work_centers').select('id,external_id,code,name,site_code,description,active').order('code'),
+      this.client.from('equipment').select('id,code,name,work_center,work_center_id,capabilities,active').order('code'),
+      this.client.from('equipment_capabilities').select('equipment_id,operation_code,capability_level,valid_from,valid_to,notes').order('equipment_id').order('operation_code'),
+      this.client.from('routes').select('id,external_id,product_id,code,name,version,active,valid_from,valid_to,description').order('code').order('version'),
+      this.client.from('route_operations').select('id,route_id,product_id,sequence,code,name,work_center,work_center_id,required_qualification,required_qualification_id,required_equipment_ids,setup_minutes,run_minutes_per_unit,setup_norm_hours,labor_norm_hours_per_unit,workers_required,active').order('route_id').order('sequence'),
+      this.client.from('shift_definitions').select('id,name,start_minute,duration_minutes,active').order('start_minute'),
+      this.client.from('downtime_reasons').select('code,name,category,is_planned,description,active').order('code'),
+      this.client.from('scrap_reasons').select('code,name,category,description,active').order('code')
+    ]);
+    for(const result of [products,professions,qualifications,brigades,employees,employeeQualifications,workCenters,equipment,equipmentCapabilities,routes,routeOperations,shifts,downtimeReasons,scrapReasons]){if(result.error)throw result.error;}
+    return {
+      products:(products.data??[]) as MasterProduct[], professions:(professions.data??[]) as MasterProfession[], qualifications:(qualifications.data??[]) as MasterQualification[],
+      brigades:(brigades.data??[]) as MasterBrigade[], employees:(employees.data??[]) as MasterEmployee[], employeeQualifications:(employeeQualifications.data??[]) as MasterEmployeeQualification[],
+      workCenters:(workCenters.data??[]) as MasterWorkCenter[], equipment:(equipment.data??[]) as MasterEquipment[], equipmentCapabilities:(equipmentCapabilities.data??[]) as MasterEquipmentCapability[],
+      routes:(routes.data??[]) as MasterRoute[], routeOperations:(routeOperations.data??[]) as MasterRouteOperation[], shifts:(shifts.data??[]) as MasterShift[],
+      downtimeReasons:(downtimeReasons.data??[]) as MasterDowntimeReason[], scrapReasons:(scrapReasons.data??[]) as MasterScrapReason[]
+    };
+  }
   saveProduct(v:MasterProduct):Promise<unknown>{return this.call('mes_master_save_product',{p_id:v.id,p_code:v.code,p_name:v.name,p_unit:v.unit,p_external_id:v.external_id??null});}
   saveEmployee(v:MasterEmployee):Promise<unknown>{return this.call('mes_master_save_employee',{p_id:v.id,p_personnel_no:v.personnel_no,p_name:v.name,p_profession:v.profession,p_qualification_level:v.qualification_level,p_active:v.active});}
   saveEquipment(v:MasterEquipment):Promise<unknown>{return this.call('mes_master_save_equipment',{p_id:v.id,p_code:v.code,p_name:v.name,p_work_center:v.work_center,p_capabilities:v.capabilities,p_active:v.active});}
@@ -28,6 +74,7 @@ export class SupabaseMesMasterDataRpc {
   saveBrigade(v:MasterBrigade):Promise<unknown>{return this.call('mes_master_save_brigade',{p_id:v.id,p_external_id:v.external_id??null,p_code:v.code,p_name:v.name,p_description:v.description??null,p_active:v.active});}
   saveWorkCenter(v:MasterWorkCenter):Promise<unknown>{return this.call('mes_master_save_work_center',{p_id:v.id,p_external_id:v.external_id??null,p_code:v.code,p_name:v.name,p_site_code:v.site_code??null,p_description:v.description??null,p_active:v.active});}
   saveRoute(v:MasterRoute):Promise<unknown>{return this.call('mes_master_save_route',{p_id:v.id,p_external_id:v.external_id??null,p_product_id:v.product_id,p_code:v.code,p_name:v.name,p_version:v.version,p_active:v.active,p_valid_from:v.valid_from??null,p_valid_to:v.valid_to??null,p_description:v.description??null});}
+  saveRouteOperation(v:MasterRouteOperation):Promise<unknown>{return this.call('mes_master_save_route_operation_v2',{p_id:v.id,p_route_id:v.route_id??null,p_sequence:v.sequence,p_code:v.code,p_name:v.name,p_work_center_id:v.work_center_id??v.work_center,p_required_qualification_id:v.required_qualification_id??null,p_required_equipment_ids:v.required_equipment_ids,p_setup_norm_hours:v.setup_norm_hours,p_labor_norm_hours_per_unit:v.labor_norm_hours_per_unit,p_workers_required:v.workers_required,p_active:v.active});}
   saveDowntimeReason(v:{code:string;name:string;category:string;is_planned:boolean;description?:string|null;active:boolean}):Promise<unknown>{return this.call('mes_master_save_downtime_reason',{p_code:v.code,p_name:v.name,p_category:v.category,p_is_planned:v.is_planned,p_description:v.description??null,p_active:v.active});}
   saveScrapReason(v:{code:string;name:string;category:string;description?:string|null;active:boolean}):Promise<unknown>{return this.call('mes_master_save_scrap_reason',{p_code:v.code,p_name:v.name,p_category:v.category,p_description:v.description??null,p_active:v.active});}
   saveEquipmentCapability(v:MasterEquipmentCapability):Promise<unknown>{return this.call('mes_master_save_equipment_capability',{p_equipment_id:v.equipment_id,p_operation_code:v.operation_code,p_capability_level:v.capability_level,p_valid_from:v.valid_from??null,p_valid_to:v.valid_to??null,p_notes:v.notes??null});}
