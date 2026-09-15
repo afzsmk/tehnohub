@@ -8,7 +8,7 @@ const timeToMin=(s:string)=>{const [h,m]=s.split(':').map(Number);return (Number
 
 export async function mountMasterDataPage(root:HTMLElement,client:SupabaseClient):Promise<void>{
   const auth=await getMesAuthState(client);if(!auth.identity)return;
-  const host=document.createElement('section');host.className='panel';root.querySelector('main.page')?.appendChild(host);
+  const host=document.createElement('section');host.className='panel master-data-page';root.querySelector('main.page')?.appendChild(host);
   const rpc=new SupabaseMesMasterDataRpc(client);const state={tab:'products'};
   async function load(){
     const [p,e,eq,sh,pr,ql,br,dr,sr]=await Promise.all([
