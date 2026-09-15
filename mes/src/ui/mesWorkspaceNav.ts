@@ -11,7 +11,7 @@ const MAP: Record<string,[string,string][]> = {
   MAINTENANCE:[['Оборудование','.equipment-operations-page'],['Простой','.operator-downtime-page'],['События','.event-journal-page']],
   ANALYST:[['Dashboard','.mes-dashboard-page'],['План / факт','.plan-fact-panel'],['События','.event-journal-page']],
   PRODUCTION_MANAGER:[['Обзор','.mes-dashboard-page'],['Заказы','.orders-page'],['Gantt','.dispatch-gantt-page'],['Работа','.production-entry-page'],['Оборудование','.equipment-operations-page'],['НСИ','.master-data-page'],['Импорт','.import-center-page'],['ОТК','.quality-page'],['События','.event-journal-page']],
-  ADMIN:[['Обзор','.mes-dashboard-page'],['Заказы','.orders-page'],['Gantt','.dispatch-gantt-page'],['Работа','.production-entry-page'],['Оборудование','.equipment-operations-page'],['НСИ','.master-data-page'],['Импорт','.import-center-page'],['ОТК','.quality-page'],['События','.event-journal-page'],['Контроль','.integrity-page']]
+  ADMIN:[['Обзор','.mes-dashboard-page'],['Заказы','.orders-page'],['Gantt','.dispatch-gantt-page'],['Работа','.production-entry-page'],['Оборудование','.equipment-operations-page'],['НСИ','.master-data-page'],['Импорт','.import-center-page'],['ОТК','.quality-page'],['События','.event-journal-page'],['Пользователи','.mes-user-admin-page'],['Контроль','.integrity-page']]
 };
 
 export async function mountMesWorkspaceNav(root:HTMLElement,client:SupabaseClient):Promise<void>{
