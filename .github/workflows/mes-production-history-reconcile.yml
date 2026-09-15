@@ -44,11 +44,12 @@ jobs:
 
           mapfile -t remote_versions < <(
             supabase migration list --db-url "${db_url}" |
-              awk '/^[0-9]+[[:space:]]/ {print $1}'
+              sed -nE 's/.*\| `([0-9]{14})` \|.*/\1/p' |
+              sort -u
           )
 
           if ((${#remote_versions[@]} == 0)); then
-            echo 'No remote migrations found; refusing to perform history reconciliation.'
+            echo 'No remote timestamp migrations found; refusing to perform history reconciliation.'
             exit 1
           fi
 
@@ -72,7 +73,7 @@ jobs:
             fi
           done
 
-          echo 'Applying repository migrations that are actually new (095+).'
+          echo 'Applying repository migrations 095+.'
           supabase db push --db-url "${db_url}"
 
           echo 'Remote migration history after reconciliation:'
