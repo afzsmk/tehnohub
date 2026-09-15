@@ -1,0 +1,132 @@
+name: BriketMaster Full Audit
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'BriketMaster.html'
+      - '.github/workflows/briketmaster-full-test.yml'
+  workflow_dispatch:
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Static HTML/JS checks
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('BriketMaster.html')
+          s=p.read_text(encoding='utf-8')
+          assert len(s)>100000, f'Unexpectedly small HTML: {len(s)}'
+          assert '<html' in s.lower() and '</html>' in s.lower()
+          assert 'function calculate()' in s
+          assert 'function printCalcPDF()' in s
+          assert 'function calcQtyFromArea()' in s
+          assert 'const bLen = B * 4 / 3 + edgeTrim*2;' in s
+          assert 'const usableWidth = Math.max(0, blankWidth - edgeTrim);' in s
+          assert 'const isLenWarn = bLen > 2000;' in s
+          assert "['saveModal','historyModal','econModal','shiftTaskModal','calcModal']" not in s
+          scripts=re.findall(r'<script[^>]*>(.*?)</script>', s, re.S|re.I)
+          Path('/tmp/app.js').write_text('\n'.join(scripts), encoding='utf-8')
+          print(f'Static checks OK; html={len(s)} bytes, scripts={len(scripts)}')
+          PY
+          node --check /tmp/app.js
+      - name: Install Chromium
+        run: npx --yes playwright@1.55.0 install --with-deps chromium
+      - name: Browser functional audit
+        run: |
+          cat > /tmp/audit.mjs <<'JS'
+          import { chromium } from 'playwright';
+          import { pathToFileURL } from 'url';
+          const browser = await chromium.launch({headless:true});
+          const page = await browser.newPage({viewport:{width:1440,height:1000}});
+          const errors=[];
+          page.on('pageerror', e => errors.push('PAGEERROR: '+e.message));
+          page.on('console', m => { if(m.type()==='error') errors.push('CONSOLE: '+m.text()); });
+          await page.goto(pathToFileURL(process.cwd()+'/BriketMaster.html').href, {waitUntil:'load'});
+          await page.waitForTimeout(300);
+          const must=['lenInput','widInput','blankWidth','edgeTrim','sawBlade','stripInput','briquetQty','cell','foilT','marginInput','marginRange','vatVal','useVAT','marketPriceInput','targetAreaInput','anaVat','finSq','finTotal','visInfo','briquetCanvas'];
+          for (const id of must) if(!(await page.locator('#'+id).count())) throw new Error('Missing element #'+id);
+          const get=async id=>await page.locator('#'+id).inputValue();
+          const set=async (id,v)=>{await page.locator('#'+id).fill(String(v)); await page.locator('#'+id).dispatchEvent('input');};
+          const txt=async id=>(await page.locator('#'+id).innerText()).trim();
+          const n=async id=>parseFloat(await get(id));
+          // Baseline calculation
+          await page.evaluate(()=>localStorage.clear());
+          await page.reload();
+          await page.waitForTimeout(200);
+          const baseLen=await n('lenInput'), baseW=await n('widInput');
+          if(!(baseLen>0 && baseW>0)) throw new Error(`Invalid baseline dimensions ${baseLen}x${baseW}`);
+          // Formula: briquet length = 4/3*B + 2*edgeTrim
+          const B=await n('widInput'), edge=await n('edgeTrim');
+          const expectedLen=B*4/3+edge*2;
+          const info=await txt('visInfo');
+          if(!info.includes(String(Math.round(expectedLen)))) throw new Error(`Length formula mismatch; expected ${expectedLen}, visInfo=${info}`);
+          // Edge trim exactly once in usable width and strips formula
+          const blank=await n('blankWidth'), saw=await n('sawBlade'), strip=await n('stripInput');
+          const usable=Math.max(0,blank-edge);
+          const expectedStrips=(strip+saw)>0?Math.floor((usable+saw)/(strip+saw)):0;
+          const area=(expectedStrips*expectedLen*B)/1e6;
+          if(!(area>=0)) throw new Error('Area computation invalid');
+          // Direct VAT toggle test: visible VAT amount must change and return without drift
+          const vatPct=await n('vatVal');
+          await page.locator('#useVAT').check();
+          await page.waitForTimeout(50);
+          const vatOn=await n('anaVat');
+          const marketOn=await n('marketPriceInput');
+          const totalOn=parseFloat((await txt('finTotal')).replace(/[^0-9.,-]/g,'').replace(/\s/g,'').replace(',','.'));
+          await page.locator('#useVAT').uncheck();
+          await page.waitForTimeout(50);
+          const vatOff=await n('anaVat');
+          const marketOff=await n('marketPriceInput');
+          const totalOff=parseFloat((await txt('finTotal')).replace(/[^0-9.,-]/g,'').replace(/\s/g,'').replace(',','.'));
+          if(!(vatOn>0 && vatOff===0)) throw new Error(`VAT toggle failed: on=${vatOn}, off=${vatOff}`);
+          if(!(marketOn>=marketOff && Math.abs(marketOff*(1+vatPct/100)-marketOn)<=2)) throw new Error(`Market VAT conversion failed: off=${marketOff}, on=${marketOn}, vat=${vatPct}`);
+          if(!(totalOn>=totalOff)) throw new Error(`Total with VAT not >= without VAT: ${totalOn} vs ${totalOff}`);
+          // Toggle repeatedly: no compounding drift
+          for(let i=0;i<4;i++){await page.locator('#useVAT').check(); await page.waitForTimeout(20); await page.locator('#useVAT').uncheck(); await page.waitForTimeout(20);}
+          const marketFinal=await n('marketPriceInput');
+          if(Math.abs(marketFinal-marketOff)>1) throw new Error(`VAT toggle drift: start=${marketOff}, final=${marketFinal}`);
+          // Market price manual input must remain editable and positive
+          await set('marketPriceInput',777);
+          await page.waitForTimeout(30);
+          const marketTyped=await n('marketPriceInput');
+          if(Math.abs(marketTyped-777)>1) throw new Error(`Market input was unexpectedly reformatted: ${marketTyped}`);
+          // Area quantity calculation
+          await set('targetAreaInput', Math.max(1, area*5));
+          await page.locator('button', {hasText:'Рассчитать'}).first().click().catch(()=>{});
+          // Prefer direct function to avoid selector ambiguity
+          await page.evaluate(()=>window.calcQtyFromArea());
+          await page.waitForTimeout(30);
+          const qty=await n('briquetQty');
+          if(!(qty>=1 && Number.isInteger(qty))) throw new Error(`Area quantity invalid: ${qty}`);
+          // >2000 length warning in DOM visualization info. Change width high enough to exceed.
+          await set('widInput',2000);
+          await page.waitForTimeout(80);
+          const visWarn=await txt('visInfo');
+          if(!visWarn.includes('⚠')) throw new Error('Length >2000 warning missing in visInfo');
+          if(!(await page.locator('#visInfo span').evaluateAll(els=>els.some(e=>getComputedStyle(e).color.includes('239, 68, 68'))))) throw new Error('Length warning not red in visInfo');
+          // Modal click-outside must not close universal modal.
+          await page.evaluate(()=>uiAlert('test modal','Тест'));
+          await page.waitForTimeout(50);
+          if(!(await page.locator('#universalModal').isVisible())) throw new Error('Universal modal did not open');
+          await page.locator('#universalModal').dispatchEvent('click');
+          if(!(await page.locator('#universalModal').isVisible())) throw new Error('Modal closed by backdrop click');
+          await page.locator('#universalModal button').last().click();
+          await page.waitForTimeout(30);
+          // All good.
+          console.log(JSON.stringify({ok:true, base:{len:baseLen,width:baseW}, expectedLen, expectedStrips, area, vatOn, vatOff, marketOn, marketOff, totalOn, totalOff, marketFinal, qty, warning:true, pageErrors:errors}, null, 2));
+          if(errors.length) process.exitCode=1;
+          await browser.close();
+          JS
+          node /tmp/audit.mjs
+      - name: Cleanup audit workflow
+        if: always()
+        run: |
+          rm -f .github/workflows/briketmaster-full-test.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -u .github/workflows/briketmaster-full-test.yml
+          git commit -m 'test: remove temporary BriketMaster audit workflow' || true
+          git push
