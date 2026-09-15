@@ -1,4 +1,5 @@
 import { getMesAuthState } from './integration/auth';
+import { mountMesRegistration } from './integration/mesRegistration';
 import { mountRouteEditor } from './ui/routeEditor';
 import { mountQualityPage } from './ui/qualityPage';
 import { mountMesDashboardPage } from './ui/mesDashboardPage';
@@ -27,6 +28,7 @@ function reportRemoteFailure(error: unknown): void {
 
 void import('./main').then(async () => {
   if (!supabase) return;
+  mountMesRegistration(supabase);
   const auth = await getMesAuthState(supabase);
   if (!auth.identity) return;
   const app = document.querySelector<HTMLDivElement>('#app') ?? document.body;
