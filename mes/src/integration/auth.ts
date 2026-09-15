@@ -91,7 +91,6 @@ export async function getMesAuthState(client: SupabaseClient): Promise<MesAuthSt
   const user = data.session?.user ?? null;
   if (!user) return { user: null, identity: null };
   const identity = await resolveIdentityOrNull(client);
-  if (identity) await ensureRemoteStateLoaded(client, user.id);
   return { user, identity };
 }
 
