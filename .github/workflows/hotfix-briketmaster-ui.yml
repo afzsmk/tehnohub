@@ -1,0 +1,102 @@
+name: hotfix-briketmaster-ui
+
+on:
+  push:
+    paths:
+      - '.github/workflows/hotfix-briketmaster-ui.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Apply BriketMaster UI fixes
+        shell: python
+        run: |
+          from pathlib import Path
+          import subprocess
+
+          path = Path('BriketMaster.html')
+          s = path.read_text(encoding='utf-8')
+          original = s
+
+          # 1) Backdrop clicks must never close any application modal.
+          old = '''               ['saveModal', 'historyModal', 'econModal', 'shiftTaskModal', 'calcModal'].forEach(id => {\n                    const el = document.getElementById(id);\n                    el.addEventListener('click', function(e) {\n                        if (e.target === this) this.style.display = 'none';\n                    });\n                });\n\n'''
+          if old not in s:
+              raise SystemExit('Modal backdrop handler marker not found')
+          s = s.replace(old, '', 1)
+
+          # 2) VAT toggle affects the displayed cost/total/market price without mutating the stored base price.
+          #    Production cost and margin logic remain based on ex-VAT cost.
+          anchor = '''            const CELL_OPTIONS = [6.3, 9.52, 12.3];\n            const PISTON_S = 2 * Math.PI * Math.pow(40, 2);\n'''
+          replacement = '''            const CELL_OPTIONS = [6.3, 9.52, 12.3];\n            const PISTON_S = 2 * Math.PI * Math.pow(40, 2);\n            let marketPriceBaseValue = null;\n'''
+          if anchor not in s:
+              raise SystemExit('Calculation constants marker not found')
+          s = s.replace(anchor, replacement, 1)
+
+          old = '''                // Итоги: себестоимость формируется без НДС. НДС начисляется на цену продажи.\n                const totalNoVAT = totalMaterials + totalProcesses + totalOverhead;\n                const vatRate = Math.max(0, parseFloat(document.getElementById('vatVal').value) || 0) / 100;\n                const useVAT = document.getElementById('useVAT').checked;\n                const costPerM2NoVAT = areaPerBriquet > 0 ? totalNoVAT / areaPerBriquet : 0;\n\n                // Плановая отпускная цена: рентабельность считается от себестоимости без НДС.\n                const marginTarget = parseFloat(document.getElementById('margin_target').value) || 0;\n                const marginPriceBriquet = totalNoVAT * (1 + marginTarget / 100);\n                const marginPriceM2 = costPerM2NoVAT * (1 + marginTarget / 100);\n                const sellingVatAmount = marginPriceBriquet * vatRate;\n                const marginPriceBriquetVAT = marginPriceBriquet + sellingVatAmount;\n                const marginPriceM2VAT = marginPriceM2 * (1 + vatRate);\n\n                // Режим НДС влияет только на сравнение с рынком; исходное поле рынка не меняем.\n                const marketPriceBase = parseFloat(document.getElementById('marketPriceInput').value) || 0;\n                const marketPriceComparable = useVAT ? marketPriceBase * (1 + vatRate) : marketPriceBase;\n                const costPerM2Comparable = useVAT ? costPerM2NoVAT : costPerM2NoVAT;'''
+          new = '''                // Итоги: себестоимость хранится и считается без НДС. Тумблер меняет только экранное представление.\n                const totalNoVAT = totalMaterials + totalProcesses + totalOverhead;\n                const vatRate = Math.max(0, parseFloat(document.getElementById('vatVal').value) || 0) / 100;\n                const useVAT = document.getElementById('useVAT').checked;\n                const costPerM2NoVAT = areaPerBriquet > 0 ? totalNoVAT / areaPerBriquet : 0;\n                const displayVatAmount = useVAT ? totalNoVAT * vatRate : 0;\n                const totalDisplayed = useVAT ? totalNoVAT + displayVatAmount : totalNoVAT;\n                const costPerM2Displayed = areaPerBriquet > 0 ? totalDisplayed / areaPerBriquet : 0;\n\n                // Плановая отпускная цена: рентабельность считается от себестоимости без НДС.\n                const marginTarget = parseFloat(document.getElementById('margin_target').value) || 0;\n                const marginPriceBriquet = totalNoVAT * (1 + marginTarget / 100);\n                const marginPriceM2 = costPerM2NoVAT * (1 + marginTarget / 100);\n                const sellingVatAmount = marginPriceBriquet * vatRate;\n                const marginPriceBriquetVAT = marginPriceBriquet + sellingVatAmount;\n                const marginPriceM2VAT = marginPriceM2 * (1 + vatRate);\n\n                // Рыночная цена хранится в базе без НДС. Переключатель меняет только её отображение.\n                const marketPriceInputValue = parseFloat(document.getElementById('marketPriceInput').value) || 0;\n                const marketPriceBase = Number.isFinite(marketPriceBaseValue)\n                    ? Math.max(0, marketPriceBaseValue)\n                    : Math.max(0, marketPriceInputValue / (useVAT ? (1 + vatRate) : 1));\n                const marketPriceComparable = useVAT ? marketPriceBase * (1 + vatRate) : marketPriceBase;\n                const costPerM2Comparable = costPerM2Displayed;'''
+          if old not in s:
+              raise SystemExit('Economics total block marker not found')
+          s = s.replace(old, new, 1)
+
+          old = '''                // НДС в блоке затрат показываем отдельно: он относится к цене продажи,\n                // поэтому не входит в себестоимость и не искажает структуру затрат.\n                document.getElementById('anaVat').innerText = Math.round(sellingVatAmount).toLocaleString() + ' ₽';\n\n                const pctBase = totalNoVAT > 0 ? totalNoVAT : 1;\n                const pctMat = totalMaterials / pctBase * 100;\n                const pctFot = totalProcesses / pctBase * 100;\n                const pctOvh = totalOverhead / pctBase * 100;\n                document.getElementById('anaMatPct').innerText = pctMat.toFixed(1) + '%';\n                document.getElementById('anaFotPct').innerText = pctFot.toFixed(1) + '%';\n                document.getElementById('anaOvhPct').innerText = pctOvh.toFixed(1) + '%';\n                document.getElementById('anaVatPct').innerText = (sellingVatAmount > 0 ? (sellingVatAmount / marginPriceBriquet * 100) : 0).toFixed(1) + '%';\n\n                document.getElementById('c_mat').style.width = pctMat + '%';\n                document.getElementById('c_fot').style.width = pctFot + '%';\n                document.getElementById('c_ovh').style.width = pctOvh + '%';\n                document.getElementById('c_vat').style.width = '0%';\n\n                document.getElementById('finSq').innerText = Math.round(costPerM2NoVAT).toLocaleString() + ' ₽';\n                document.getElementById('vatLabelSq').innerText = 'себестоимость без НДС';\n                document.getElementById('finTotal').innerText = Math.round(totalNoVAT).toLocaleString() + ' ₽';\n                document.getElementById('vatLabelTotal').innerText = 'себестоимость без НДС';\n\n                // Сравнение с рыночной ценой в выбранной базе, без изменения исходного поля.\n                const mPrice = marketPriceComparable;\n                const diff = mPrice - costPerM2Comparable;\n                const perc = costPerM2Comparable > 0 ? Math.round((diff / costPerM2Comparable) * 100) : 0;'''
+          new = '''                // Экранный блок затрат: тумблер включает/выключает НДС, но не меняет базовую себестоимость.\n                document.getElementById('anaVat').innerText = Math.round(displayVatAmount).toLocaleString() + ' ₽';\n\n                const pctBase = totalDisplayed > 0 ? totalDisplayed : 1;\n                const pctMat = totalMaterials / pctBase * 100;\n                const pctFot = totalProcesses / pctBase * 100;\n                const pctOvh = totalOverhead / pctBase * 100;\n                const pctVat = displayVatAmount / pctBase * 100;\n                document.getElementById('anaMatPct').innerText = pctMat.toFixed(1) + '%';\n                document.getElementById('anaFotPct').innerText = pctFot.toFixed(1) + '%';\n                document.getElementById('anaOvhPct').innerText = pctOvh.toFixed(1) + '%';\n                document.getElementById('anaVatPct').innerText = pctVat.toFixed(1) + '%';\n\n                document.getElementById('c_mat').style.width = pctMat + '%';\n                document.getElementById('c_fot').style.width = pctFot + '%';\n                document.getElementById('c_ovh').style.width = pctOvh + '%';\n                document.getElementById('c_vat').style.width = pctVat + '%';\n\n                const vatLabel = useVAT ? 'с НДС' : 'без НДС';\n                document.getElementById('finSq').innerText = Math.round(costPerM2Displayed).toLocaleString() + ' ₽';\n                document.getElementById('vatLabelSq').innerText = vatLabel;\n                document.getElementById('finTotal').innerText = Math.round(totalDisplayed).toLocaleString() + ' ₽';\n                document.getElementById('vatLabelTotal').innerText = vatLabel;\n                document.getElementById('marketPriceInput').value = Math.round(marketPriceComparable);\n\n                // Сравнение с рынком — в той же налоговой базе, что и экранная себестоимость.\n                const mPrice = marketPriceComparable;\n                const diff = mPrice - costPerM2Comparable;\n                const perc = costPerM2Comparable > 0 ? Math.round((diff / costPerM2Comparable) * 100) : 0;'''
+          if old not in s:
+              raise SystemExit('Cost/VAT display block marker not found')
+          s = s.replace(old, new, 1)
+
+          # 3) Visualization: highlight length > 2000 mm in red like the thickness warning.
+          old = '''                const isThickWarn = thick > 70;\n'''
+          new = '''                const isThickWarn = thick > 70;\n                const isLenWarn = bLen > 2000;\n'''
+          if old not in s:
+              raise SystemExit('Visualization warning marker not found')
+          s = s.replace(old, new, 1)
+
+          old = '''                ctx.fillStyle = '#38bdf8';\n                ctx.textAlign = 'center';\n                ctx.fillText(`L = ${Math.round(bLen)} мм`, 0, 0);'''
+          new = '''                ctx.fillStyle = isLenWarn ? '#ef4444' : '#38bdf8';\n                ctx.textAlign = 'center';\n                ctx.fillText(`L = ${Math.round(bLen)} мм${isLenWarn ? ' ⚠' : ''}`, 0, 0);'''
+          if old not in s:
+              raise SystemExit('Visualization length label marker not found')
+          s = s.replace(old, new, 1)
+
+          old = '''                const thickColor = thickTheor > 70 ? 'var(--danger)' : 'var(--accent)';\n                document.getElementById('visInfo').innerHTML = `${Math.round(bLen)} × ${blankWidth} × <span style="color:${thickColor}">${Math.round(thickTheor)} мм</span>`;'''
+          new = '''                const thickColor = thickTheor > 70 ? 'var(--danger)' : 'var(--accent)';\n                const lenColor = bLen > 2000 ? 'var(--danger)' : 'var(--accent)';\n                document.getElementById('visInfo').innerHTML = `<span style="color:${lenColor}">${Math.round(bLen)}${bLen > 2000 ? ' ⚠' : ''}</span> × ${blankWidth} × <span style="color:${thickColor}">${Math.round(thickTheor)} мм${thickTheor > 70 ? ' ⚠' : ''}</span>`;'''
+          if old not in s:
+              raise SystemExit('Visualization info marker not found')
+          s = s.replace(old, new, 1)
+
+          # 4) Keep a stable base price when the user edits the market-price field.
+          old = '''                    'p_opr', 'p_ohr', 'p_tare', 'comp_width', 'comp_price', 'margin_target',\n                    'vatVal', 'marketPriceInput'\n'''
+          new = '''                    'p_opr', 'p_ohr', 'p_tare', 'comp_width', 'comp_price', 'margin_target',\n                    'vatVal'\n'''
+          if old not in s:
+              raise SystemExit('recalcIds marker not found')
+          s = s.replace(old, new, 1)
+
+          old = '''                recalcIds.forEach(id => {\n                    const el = document.getElementById(id);\n                    if (el) {\n                        el.addEventListener('input', calculate);\n                        el.addEventListener('change', calculate);\n                    }\n                });\n\n                document.querySelectorAll('input:not([type="range"]), select').forEach(el => {'''
+          new = '''                recalcIds.forEach(id => {\n                    const el = document.getElementById(id);\n                    if (el) {\n                        el.addEventListener('input', calculate);\n                        el.addEventListener('change', calculate);\n                    }\n                });\n\n                const marketPriceInputEl = document.getElementById('marketPriceInput');\n                marketPriceInputEl.addEventListener('input', function() {\n                    const entered = Math.max(0, parseFloat(this.value) || 0);\n                    const vat = Math.max(0, parseFloat(document.getElementById('vatVal').value) || 0) / 100;\n                    const useVAT = document.getElementById('useVAT').checked;\n                    marketPriceBaseValue = entered / (useVAT ? (1 + vat) : 1);\n                    calculate();\n                });\n\n                document.querySelectorAll('input:not([type="range"]), select').forEach(el => {'''
+          if old not in s:
+              raise SystemExit('recalc listener marker not found')
+          s = s.replace(old, new, 1)
+
+          # 5) Initialize the market base once from the persisted displayed value after loadState().
+          old = '''            window.onload = function() {\n                loadState();\n                loadPrintParams();\n'''
+          new = '''            window.onload = function() {\n                loadState();\n                const initialMarket = Math.max(0, parseFloat(document.getElementById('marketPriceInput').value) || 0);\n                const initialVat = Math.max(0, parseFloat(document.getElementById('vatVal').value) || 0) / 100;\n                marketPriceBaseValue = initialMarket / (document.getElementById('useVAT').checked ? (1 + initialVat) : 1);\n                loadPrintParams();\n'''
+          if old not in s:
+              raise SystemExit('window.onload marker not found')
+          s = s.replace(old, new, 1)
+
+          if s == original:
+              raise SystemExit('No changes made')
+
+          path.write_text(s, encoding='utf-8')
+          subprocess.run(['git', 'config', 'user.name', 'github-actions[bot]'], check=True)
+          subprocess.run(['git', 'config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com'], check=True)
+          subprocess.run(['git', 'add', 'BriketMaster.html'], check=True)
+          subprocess.run(['git', 'commit', '-m', 'fix: correct BriketMaster VAT toggle and modal behavior'], check=True)
+          subprocess.run(['git', 'push', 'origin', 'HEAD:main'], check=True)
+          print('BriketMaster hotfix committed and pushed')
