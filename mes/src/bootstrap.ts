@@ -1,6 +1,5 @@
 import { getMesAuthState } from './integration/auth';
 import { mountMesRegistration } from './integration/mesRegistration';
-import { mountRouteEditor } from './ui/routeEditor';
 import { mountQualityPage } from './ui/qualityPage';
 import { mountMesDashboardPage } from './ui/mesDashboardPage';
 import { mountOrdersPage } from './ui/ordersPage';
@@ -12,41 +11,31 @@ import { mountProductionEntryPage } from './ui/productionEntryPage';
 import { mountOperatorDowntimePage } from './ui/operatorDowntimePage';
 import { mountEquipmentOperationsPage } from './ui/equipmentOperationsPage';
 import { mountDispatchGanttPage } from './ui/dispatchGanttPage';
-import { mountMasterDataPage } from './ui/masterDataPage';
-import { mountMasterTopologyPage } from './ui/masterTopologyPage';
+import { mountNsiWorkspacePage } from './ui/nsiWorkspacePage';
 import { mountImportCenterPage } from './ui/importCenterPage';
 import { mountMesUserAdminPage } from './ui/mesUserAdminPage';
 import { mountMesWorkspaceNav } from './ui/mesWorkspaceNav';
 import { getMesSupabaseClient } from './services/supabase';
-
 const supabase = getMesSupabaseClient();
-
-function reportRemoteFailure(error: unknown): void {
-  window.alert(error instanceof Error ? error.message : 'Серверная операция MES не выполнена');
-  window.location.reload();
-}
-
+function reportRemoteFailure(error: unknown): void { window.alert(error instanceof Error ? error.message : 'Серверная операция MES не выполнена'); window.location.reload(); }
 void import('./main').then(async () => {
-  if (!supabase) return;
-  mountMesRegistration(supabase);
-  const auth = await getMesAuthState(supabase);
-  if (!auth.identity) return;
-  const app = document.querySelector<HTMLDivElement>('#app') ?? document.body;
-  await mountMesDashboardPage(app, supabase);
-  await mountOperationalWorkflowPage(app, supabase);
-  await mountProductionEntryPage(app, supabase);
-  await mountOperatorDowntimePage(app, supabase);
-  await mountEquipmentOperationsPage(app, supabase);
-  await mountDispatchGanttPage(app, supabase);
-  await mountOrdersPage(app, supabase);
-  await mountQualityPage(app, supabase);
-  await mountEventJournalPage(app, supabase);
-  await mountIntegrityPage(app, supabase);
-  await mountWorkflowMonitorPage(app, supabase);
-  await mountMasterDataPage(app, supabase);
-  await mountMasterTopologyPage(app, supabase);
-  await mountImportCenterPage(app, supabase);
-  await mountMesUserAdminPage(app, supabase);
-  await mountRouteEditor(app, supabase);
-  await mountMesWorkspaceNav(app, supabase);
+ if (!supabase) return;
+ mountMesRegistration(supabase);
+ const auth = await getMesAuthState(supabase); if (!auth.identity) return;
+ const app = document.querySelector<HTMLDivElement>('#app') ?? document.body;
+ await mountMesDashboardPage(app, supabase);
+ await mountOperationalWorkflowPage(app, supabase);
+ await mountProductionEntryPage(app, supabase);
+ await mountOperatorDowntimePage(app, supabase);
+ await mountEquipmentOperationsPage(app, supabase);
+ await mountDispatchGanttPage(app, supabase);
+ await mountOrdersPage(app, supabase);
+ await mountQualityPage(app, supabase);
+ await mountEventJournalPage(app, supabase);
+ await mountIntegrityPage(app, supabase);
+ await mountWorkflowMonitorPage(app, supabase);
+ await mountNsiWorkspacePage(app, supabase);
+ await mountImportCenterPage(app, supabase);
+ await mountMesUserAdminPage(app, supabase);
+ await mountMesWorkspaceNav(app, supabase);
 }).catch(reportRemoteFailure);
