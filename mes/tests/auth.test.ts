@@ -64,7 +64,7 @@ describe('MES auth remote hydration', () => {
     else (globalThis as { window?: Window }).window = originalWindow;
   });
 
-  it('hydrates the local cache from the authoritative runtime snapshot RPC', async () => {
+  it('hydrates the local cache from the authoritative runtime snapshot RPC without reloading the page', async () => {
     const storage = memoryStorage();
     const reloadCalls: number[] = [];
     (globalThis as { window?: Window }).window = {
@@ -115,11 +115,11 @@ describe('MES auth remote hydration', () => {
     expect(result.identity).toEqual({ userId: 'USER-1', employeeId: 'E-1', role: 'OPERATOR' });
     expect(rpcName).toBe('mes_get_runtime_snapshot');
     expect(rpcArgs).toEqual({ p_plan_id: 'PLAN-1' });
-    expect(reloadCalls).toHaveLength(1);
+    expect(reloadCalls).toHaveLength(0);
     expect(JSON.parse(storage.getItem('zsmk_mes_state_v1') ?? '{}').qualityInspections).toHaveLength(1);
   });
 
-  it('refreshes the authoritative snapshot even when the same user marker already exists', async () => {
+  it('refreshes the authoritative snapshot even when the same user marker already exists without reloading the page', async () => {
     const storage = memoryStorage();
     const reloadCalls: number[] = [];
     (globalThis as { window?: Window }).window = {
@@ -165,7 +165,7 @@ describe('MES auth remote hydration', () => {
     await getMesAuthState(client);
 
     expect(rpcCalls).toBe(1);
-    expect(reloadCalls).toHaveLength(1);
+    expect(reloadCalls).toHaveLength(0);
     expect(JSON.parse(storage.getItem('zsmk_mes_state_v1') ?? '{}').orders).toHaveLength(1);
   });
 
@@ -177,8 +177,6 @@ describe('MES auth remote hydration', () => {
       null
     ));
 
-    // Master users may legitimately have no employee mapping. The identity
-    // contract represents an absent mapping as an empty string, not null.
     expect(result.identity).toEqual({ userId: 'USER-2', employeeId: '', role: 'MASTER' });
   });
 });
