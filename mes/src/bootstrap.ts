@@ -21,7 +21,7 @@ function reportRemoteFailure(error: unknown): void { window.alert(error instance
 void import('./main').then(async () => {
  if (!supabase) return;
  mountMesRegistration(supabase);
- const auth = await getMesAuthState(supabase); if (!auth.identity) return;
+ const auth = await getMesAuthState(supabase, { hydrateSnapshot: false }); if (!auth.identity) return;
  const app = document.querySelector<HTMLDivElement>('#app') ?? document.body;
  await mountMesDashboardPage(app, supabase);
  await mountOperationalWorkflowPage(app, supabase);
