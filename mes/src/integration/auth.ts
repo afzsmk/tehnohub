@@ -1,5 +1,6 @@
 import type { SupabaseClient, User } from '@supabase/supabase-js';
 import { resolveMesIdentity, MesAuthenticatedIdentity } from './identitySession';
+import { SupabaseMesRuntimeSnapshotRpc } from './mesRuntimeSnapshotRpc';
 import type { MesState } from '../types';
 
 const MES_STATE_KEY = 'zsmk_mes_state_v1';
@@ -9,6 +10,10 @@ const REMOTE_USER_KEY = 'zsmk_mes_remote_user_v1';
 export interface MesAuthState {
   user: User | null;
   identity: MesAuthenticatedIdentity | null;
+}
+
+export interface MesAuthOptions {
+  hydrateSnapshot?: boolean;
 }
 
 function browserStorage(): Storage | null {
@@ -31,6 +36,37 @@ function readLocalState(): MesState | null {
   }
 }
 
+async function cacheRemoteState(client: SupabaseClient, userId: string): Promise<boolean> {
+  const storage = browserStorage();
+  if (!storage) return false;
+  const current = readLocalState();
+  if (!current) return false;
+
+  const hadRemoteUser = storage.getItem(REMOTE_USER_KEY) === userId;
+  if (!storage.getItem(DEMO_BACKUP_KEY) && !hadRemoteUser) {
+    storage.setItem(DEMO_BACKUP_KEY, JSON.stringify(current));
+  }
+
+  const snapshot = await new SupabaseMesRuntimeSnapshotRpc(client).load(current.plan.id);
+  const merged: MesState = {
+    ...current,
+    ...(snapshot.plan ? { plan: snapshot.plan } : {}),
+    products: snapshot.products ?? [], employees: snapshot.employees ?? [], equipment: snapshot.equipment ?? [],
+    shifts: snapshot.shifts ?? [], calendar: snapshot.calendar ?? [], employeeSchedules: snapshot.employeeSchedules ?? [],
+    equipmentBlocks: snapshot.equipmentBlocks ?? [], orders: snapshot.orders ?? [], tasks: snapshot.tasks ?? [],
+    downtimes: snapshot.downtimes ?? [], maintenance: snapshot.maintenance ?? [], results: snapshot.results ?? [],
+    qualityInspections: snapshot.qualityInspections ?? [], events: snapshot.events ?? []
+  };
+  const changed = JSON.stringify(current) !== JSON.stringify(merged);
+  if (!changed) {
+    storage.setItem(REMOTE_USER_KEY, userId);
+    return false;
+  }
+  storage.setItem(MES_STATE_KEY, JSON.stringify(merged));
+  storage.setItem(REMOTE_USER_KEY, userId);
+  return true;
+}
+
 function restoreDemoState(): void {
   const storage = browserStorage();
   if (!storage) return;
@@ -49,12 +85,13 @@ async function resolveIdentityOrNull(client: SupabaseClient): Promise<MesAuthent
   }
 }
 
-export async function getMesAuthState(client: SupabaseClient): Promise<MesAuthState> {
+export async function getMesAuthState(client: SupabaseClient, options: MesAuthOptions = {}): Promise<MesAuthState> {
   const { data, error } = await client.auth.getSession();
   if (error) throw error;
   const user = data.session?.user ?? null;
   if (!user) return { user: null, identity: null };
   const identity = await resolveIdentityOrNull(client);
+  if (identity && options.hydrateSnapshot !== false) await cacheRemoteState(client, user.id);
   return { user, identity };
 }
 
@@ -80,6 +117,7 @@ export function subscribeMesAuth(client: SupabaseClient, callback: (state: MesAu
         return;
       }
       const identity = await resolveIdentityOrNull(client);
+      if (identity) await cacheRemoteState(client, session.user.id);
       await callback({ user: session.user, identity });
     })().catch(() => undefined);
   });
