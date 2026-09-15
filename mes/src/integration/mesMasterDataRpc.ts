@@ -19,20 +19,7 @@ export interface BootstrapPayload { products?:MasterProduct[]; professions?:Mast
 export interface BootstrapValidation { valid:boolean; errors:string[]; warnings:string[]; }
 
 export interface MasterDataWorkspace {
-  products:MasterProduct[];
-  professions:MasterProfession[];
-  qualifications:MasterQualification[];
-  brigades:MasterBrigade[];
-  employees:MasterEmployee[];
-  employeeQualifications:MasterEmployeeQualification[];
-  workCenters:MasterWorkCenter[];
-  equipment:MasterEquipment[];
-  equipmentCapabilities:MasterEquipmentCapability[];
-  routes:MasterRoute[];
-  routeOperations:MasterRouteOperation[];
-  shifts:MasterShift[];
-  downtimeReasons:MasterDowntimeReason[];
-  scrapReasons:MasterScrapReason[];
+  products:MasterProduct[]; professions:MasterProfession[]; qualifications:MasterQualification[]; brigades:MasterBrigade[]; employees:MasterEmployee[]; employeeQualifications:MasterEmployeeQualification[]; workCenters:MasterWorkCenter[]; equipment:MasterEquipment[]; equipmentCapabilities:MasterEquipmentCapability[]; routes:MasterRoute[]; routeOperations:MasterRouteOperation[]; shifts:MasterShift[]; downtimeReasons:MasterDowntimeReason[]; scrapReasons:MasterScrapReason[];
 }
 
 export class SupabaseMesMasterDataRpc {
@@ -40,32 +27,13 @@ export class SupabaseMesMasterDataRpc {
   private async call(name:string,args:Record<string,unknown>):Promise<unknown>{const{data,error}=await this.client.rpc(name,args);if(error)throw error;return data;}
   async loadWorkspace():Promise<MasterDataWorkspace>{
     const [products,professions,qualifications,brigades,employees,employeeQualifications,workCenters,equipment,equipmentCapabilities,routes,routeOperations,shifts,downtimeReasons,scrapReasons]=await Promise.all([
-      this.client.from('products').select('id,code,name,unit,external_id').order('code'),
-      this.client.from('professions').select('id,external_id,code,name,description,active').order('code'),
-      this.client.from('qualification_levels').select('id,external_id,code,name,level,description,active').order('level').order('code'),
-      this.client.from('brigades').select('id,external_id,code,name,description,active').order('code'),
-      this.client.from('employees').select('id,personnel_no,name,profession,profession_id,brigade_id,qualification_id,qualification_level,active').order('personnel_no'),
-      this.client.from('employee_qualifications').select('employee_id,qualification_id,valid_from,valid_to,is_primary,notes').order('employee_id'),
-      this.client.from('work_centers').select('id,external_id,code,name,site_code,description,active').order('code'),
-      this.client.from('equipment').select('id,code,name,work_center,work_center_id,capabilities,active').order('code'),
-      this.client.from('equipment_capabilities').select('equipment_id,operation_code,capability_level,valid_from,valid_to,notes').order('equipment_id').order('operation_code'),
-      this.client.from('routes').select('id,external_id,product_id,code,name,version,active,valid_from,valid_to,description').order('code').order('version'),
-      this.client.from('route_operations').select('id,route_id,product_id,sequence,code,name,work_center,work_center_id,required_qualification,required_qualification_id,required_equipment_ids,setup_minutes,run_minutes_per_unit,setup_norm_hours,labor_norm_hours_per_unit,workers_required,active').order('route_id').order('sequence'),
-      this.client.from('shift_definitions').select('id,name,start_minute,duration_minutes,active').order('start_minute'),
-      this.client.from('downtime_reasons').select('code,name,category,is_planned,description,active').order('code'),
-      this.client.from('scrap_reasons').select('code,name,category,description,active').order('code')
+      this.client.from('products').select('id,code,name,unit,external_id').order('code'), this.client.from('professions').select('id,external_id,code,name,description,active').order('code'), this.client.from('qualification_levels').select('id,external_id,code,name,level,description,active').order('level').order('code'), this.client.from('brigades').select('id,external_id,code,name,description,active').order('code'), this.client.from('employees').select('id,personnel_no,name,profession,profession_id,brigade_id,qualification_id,qualification_level,active').order('personnel_no'), this.client.from('employee_qualifications').select('employee_id,qualification_id,valid_from,valid_to,is_primary,notes').order('employee_id'), this.client.from('work_centers').select('id,external_id,code,name,site_code,description,active').order('code'), this.client.from('equipment').select('id,code,name,work_center,work_center_id,capabilities,active').order('code'), this.client.from('equipment_capabilities').select('equipment_id,operation_code,capability_level,valid_from,valid_to,notes').order('equipment_id').order('operation_code'), this.client.from('routes').select('id,external_id,product_id,code,name,version,active,valid_from,valid_to,description').order('code').order('version'), this.client.from('route_operations').select('id,route_id,product_id,sequence,code,name,work_center,work_center_id,required_qualification,required_qualification_id,required_equipment_ids,setup_minutes,run_minutes_per_unit,setup_norm_hours,labor_norm_hours_per_unit,workers_required,active').order('route_id').order('sequence'), this.client.from('shift_definitions').select('id,name,start_minute,duration_minutes,active').order('start_minute'), this.client.from('downtime_reasons').select('code,name,category,is_planned,description,active').order('code'), this.client.from('scrap_reasons').select('code,name,category,description,active').order('code')
     ]);
     for(const result of [products,professions,qualifications,brigades,employees,employeeQualifications,workCenters,equipment,equipmentCapabilities,routes,routeOperations,shifts,downtimeReasons,scrapReasons]){if(result.error)throw result.error;}
-    return {
-      products:(products.data??[]) as MasterProduct[], professions:(professions.data??[]) as MasterProfession[], qualifications:(qualifications.data??[]) as MasterQualification[],
-      brigades:(brigades.data??[]) as MasterBrigade[], employees:(employees.data??[]) as MasterEmployee[], employeeQualifications:(employeeQualifications.data??[]) as MasterEmployeeQualification[],
-      workCenters:(workCenters.data??[]) as MasterWorkCenter[], equipment:(equipment.data??[]) as MasterEquipment[], equipmentCapabilities:(equipmentCapabilities.data??[]) as MasterEquipmentCapability[],
-      routes:(routes.data??[]) as MasterRoute[], routeOperations:(routeOperations.data??[]) as MasterRouteOperation[], shifts:(shifts.data??[]) as MasterShift[],
-      downtimeReasons:(downtimeReasons.data??[]) as MasterDowntimeReason[], scrapReasons:(scrapReasons.data??[]) as MasterScrapReason[]
-    };
+    return {products:(products.data??[]) as MasterProduct[],professions:(professions.data??[]) as MasterProfession[],qualifications:(qualifications.data??[]) as MasterQualification[],brigades:(brigades.data??[]) as MasterBrigade[],employees:(employees.data??[]) as MasterEmployee[],employeeQualifications:(employeeQualifications.data??[]) as MasterEmployeeQualification[],workCenters:(workCenters.data??[]) as MasterWorkCenter[],equipment:(equipment.data??[]) as MasterEquipment[],equipmentCapabilities:(equipmentCapabilities.data??[]) as MasterEquipmentCapability[],routes:(routes.data??[]) as MasterRoute[],routeOperations:(routeOperations.data??[]) as MasterRouteOperation[],shifts:(shifts.data??[]) as MasterShift[],downtimeReasons:(downtimeReasons.data??[]) as MasterDowntimeReason[],scrapReasons:(scrapReasons.data??[]) as MasterScrapReason[]};
   }
   saveProduct(v:MasterProduct):Promise<unknown>{return this.call('mes_master_save_product',{p_id:v.id,p_code:v.code,p_name:v.name,p_unit:v.unit,p_external_id:v.external_id??null});}
-  saveEmployee(v:MasterEmployee):Promise<unknown>{return this.call('mes_master_save_employee',{p_id:v.id,p_personnel_no:v.personnel_no,p_name:v.name,p_profession:v.profession,p_qualification_level:v.qualification_level,p_active:v.active});}
+  saveEmployee(v:MasterEmployee):Promise<unknown>{return this.call('mes_master_save_employee',{p_id:v.id,p_personnel_no:v.personnel_no,p_name:v.name,p_profession_id:v.profession_id??null,p_qualification_id:v.qualification_id??null,p_brigade_id:v.brigade_id??null,p_active:v.active});}
   saveEquipment(v:MasterEquipment):Promise<unknown>{return this.call('mes_master_save_equipment',{p_id:v.id,p_code:v.code,p_name:v.name,p_work_center:v.work_center,p_capabilities:v.capabilities,p_active:v.active});}
   saveEquipmentNormalized(v:MasterEquipment):Promise<unknown>{return this.call('mes_master_save_equipment_v2',{p_id:v.id,p_code:v.code,p_name:v.name,p_work_center_id:v.work_center_id??v.work_center,p_capabilities:v.capabilities,p_active:v.active});}
   saveShift(v:MasterShift):Promise<unknown>{return this.call('mes_master_save_shift',{p_id:v.id,p_name:v.name,p_start_minute:v.start_minute,p_duration_minutes:v.duration_minutes,p_active:v.active});}
@@ -75,9 +43,10 @@ export class SupabaseMesMasterDataRpc {
   saveWorkCenter(v:MasterWorkCenter):Promise<unknown>{return this.call('mes_master_save_work_center',{p_id:v.id,p_external_id:v.external_id??null,p_code:v.code,p_name:v.name,p_site_code:v.site_code??null,p_description:v.description??null,p_active:v.active});}
   saveRoute(v:MasterRoute):Promise<unknown>{return this.call('mes_master_save_route',{p_id:v.id,p_external_id:v.external_id??null,p_product_id:v.product_id,p_code:v.code,p_name:v.name,p_version:v.version,p_active:v.active,p_valid_from:v.valid_from??null,p_valid_to:v.valid_to??null,p_description:v.description??null});}
   saveRouteOperation(v:MasterRouteOperation):Promise<unknown>{return this.call('mes_master_save_route_operation_v2',{p_id:v.id,p_route_id:v.route_id??null,p_sequence:v.sequence,p_code:v.code,p_name:v.name,p_work_center_id:v.work_center_id??v.work_center,p_required_qualification_id:v.required_qualification_id??null,p_required_equipment_ids:v.required_equipment_ids,p_setup_norm_hours:v.setup_norm_hours,p_labor_norm_hours_per_unit:v.labor_norm_hours_per_unit,p_workers_required:v.workers_required,p_active:v.active});}
-  saveDowntimeReason(v:{code:string;name:string;category:string;is_planned:boolean;description?:string|null;active:boolean}):Promise<unknown>{return this.call('mes_master_save_downtime_reason',{p_code:v.code,p_name:v.name,p_category:v.category,p_is_planned:v.is_planned,p_description:v.description??null,p_active:v.active});}
-  saveScrapReason(v:{code:string;name:string;category:string;description?:string|null;active:boolean}):Promise<unknown>{return this.call('mes_master_save_scrap_reason',{p_code:v.code,p_name:v.name,p_category:v.category,p_description:v.description??null,p_active:v.active});}
+  saveDowntimeReason(v:MasterDowntimeReason):Promise<unknown>{return this.call('mes_master_save_downtime_reason',{p_code:v.code,p_name:v.name,p_category:v.category,p_is_planned:v.is_planned,p_description:v.description??null,p_active:v.active});}
+  saveScrapReason(v:MasterScrapReason):Promise<unknown>{return this.call('mes_master_save_scrap_reason',{p_code:v.code,p_name:v.name,p_category:v.category,p_description:v.description??null,p_active:v.active});}
   saveEquipmentCapability(v:MasterEquipmentCapability):Promise<unknown>{return this.call('mes_master_save_equipment_capability',{p_equipment_id:v.equipment_id,p_operation_code:v.operation_code,p_capability_level:v.capability_level,p_valid_from:v.valid_from??null,p_valid_to:v.valid_to??null,p_notes:v.notes??null});}
+  async deleteMaster(kind:string,id:string):Promise<void>{const names:Record<string,string>={product:'mes_master_delete_product',profession:'mes_master_delete_profession',qualification:'mes_master_delete_qualification',brigade:'mes_master_delete_brigade',workCenter:'mes_master_delete_work_center',employee:'mes_master_delete_employee',equipment:'mes_master_delete_equipment',route:'mes_master_delete_route',routeOperation:'mes_master_delete_route_operation',shift:'mes_master_delete_shift',downtimeReason:'mes_master_delete_downtime_reason',scrapReason:'mes_master_delete_scrap_reason'};const name=names[kind];if(!name)throw new Error(`Неизвестный тип НСИ: ${kind}`);await this.call(name,{[kind==='downtimeReason'||kind==='scrapReason'?'p_code':'p_id']:id});}
   async validateBootstrap(payload:BootstrapPayload):Promise<BootstrapValidation>{const data=await this.call('mes_validate_bootstrap',{p_payload:payload});if(!data||typeof data!=='object'||Array.isArray(data))throw new Error('MES validation вернула некорректный результат');const x=data as Record<string,unknown>;return{valid:Boolean(x.valid),errors:Array.isArray(x.errors)?x.errors.map(String):[],warnings:Array.isArray(x.warnings)?x.warnings.map(String):[]};}
   async importBootstrap(sourceName:string,payload:BootstrapPayload):Promise<Record<string,unknown>>{const data=await this.call('mes_import_bootstrap',{p_source_name:sourceName,p_payload:payload});if(!data||typeof data!=='object'||Array.isArray(data))throw new Error('MES импорт вернул некорректный результат');return data as Record<string,unknown>;}
 }
