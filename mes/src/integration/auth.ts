@@ -47,28 +47,17 @@ async function cacheRemoteState(client: SupabaseClient, userId: string): Promise
   const merged: MesState = {
     ...current,
     ...(snapshot.plan ? { plan: snapshot.plan } : {}),
-    products: snapshot.products ?? [],
-    employees: snapshot.employees ?? [],
-    equipment: snapshot.equipment ?? [],
-    shifts: snapshot.shifts ?? [],
-    calendar: snapshot.calendar ?? [],
-    employeeSchedules: snapshot.employeeSchedules ?? [],
-    equipmentBlocks: snapshot.equipmentBlocks ?? [],
-    orders: snapshot.orders ?? [],
-    tasks: snapshot.tasks ?? [],
-    downtimes: snapshot.downtimes ?? [],
-    maintenance: snapshot.maintenance ?? [],
-    results: snapshot.results ?? [],
-    qualityInspections: snapshot.qualityInspections ?? [],
-    events: snapshot.events ?? []
+    products: snapshot.products ?? [], employees: snapshot.employees ?? [], equipment: snapshot.equipment ?? [],
+    shifts: snapshot.shifts ?? [], calendar: snapshot.calendar ?? [], employeeSchedules: snapshot.employeeSchedules ?? [],
+    equipmentBlocks: snapshot.equipmentBlocks ?? [], orders: snapshot.orders ?? [], tasks: snapshot.tasks ?? [],
+    downtimes: snapshot.downtimes ?? [], maintenance: snapshot.maintenance ?? [], results: snapshot.results ?? [],
+    qualityInspections: snapshot.qualityInspections ?? [], events: snapshot.events ?? []
   };
-
   const changed = JSON.stringify(current) !== JSON.stringify(merged);
   if (!changed) {
     storage.setItem(REMOTE_USER_KEY, userId);
     return false;
   }
-
   storage.setItem(MES_STATE_KEY, JSON.stringify(merged));
   storage.setItem(REMOTE_USER_KEY, userId);
   return true;
@@ -88,12 +77,21 @@ async function ensureRemoteStateLoaded(client: SupabaseClient, userId: string): 
   if (loaded && typeof window !== 'undefined') window.location.reload();
 }
 
+async function resolveIdentityOrNull(client: SupabaseClient): Promise<MesAuthenticatedIdentity | null> {
+  try {
+    return await resolveMesIdentity(client);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'У пользователя не задана MES роль') return null;
+    throw error;
+  }
+}
+
 export async function getMesAuthState(client: SupabaseClient): Promise<MesAuthState> {
   const { data, error } = await client.auth.getSession();
   if (error) throw error;
   const user = data.session?.user ?? null;
   if (!user) return { user: null, identity: null };
-  const identity = await resolveMesIdentity(client);
+  const identity = await resolveIdentityOrNull(client);
   if (identity) await ensureRemoteStateLoaded(client, user.id);
   return { user, identity };
 }
@@ -121,7 +119,7 @@ export function subscribeMesAuth(client: SupabaseClient, callback: (state: MesAu
         await callback({ user: null, identity: null });
         return;
       }
-      const identity = await resolveMesIdentity(client);
+      const identity = await resolveIdentityOrNull(client);
       if (identity) await ensureRemoteStateLoaded(client, session.user.id);
       await callback({ user: session.user, identity });
     })().catch(() => undefined);
