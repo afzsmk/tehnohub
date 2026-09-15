@@ -11,10 +11,10 @@ import { mountProductionEntryPage } from './ui/productionEntryPage';
 import { mountOperatorDowntimePage } from './ui/operatorDowntimePage';
 import { mountEquipmentOperationsPage } from './ui/equipmentOperationsPage';
 import { mountDispatchGanttPage } from './ui/dispatchGanttPage';
-import { mountNsiWorkspacePage } from './ui/nsiWorkspacePage';
 import { mountImportCenterPage } from './ui/importCenterPage';
 import { mountMesUserAdminPage } from './ui/mesUserAdminPage';
 import { mountMesWorkspaceNav } from './ui/mesWorkspaceNav';
+import { mountNsiAdminPage } from './ui/nsiAdminPage';
 import { getMesSupabaseClient } from './services/supabase';
 const supabase = getMesSupabaseClient();
 function reportRemoteFailure(error: unknown): void { window.alert(error instanceof Error ? error.message : 'Серверная операция MES не выполнена'); window.location.reload(); }
@@ -34,7 +34,7 @@ void import('./main').then(async () => {
  await mountEventJournalPage(app, supabase);
  await mountIntegrityPage(app, supabase);
  await mountWorkflowMonitorPage(app, supabase);
- await mountNsiWorkspacePage(app, supabase);
+ await mountNsiAdminPage(app, supabase);
  await mountImportCenterPage(app, supabase);
  await mountMesUserAdminPage(app, supabase);
  await mountMesWorkspaceNav(app, supabase);
