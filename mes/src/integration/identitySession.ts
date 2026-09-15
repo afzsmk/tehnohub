@@ -20,11 +20,7 @@ export async function resolveMesIdentity(client: SupabaseClient): Promise<MesAut
 
   const roleValue = user.app_metadata?.mes_role;
   const role = typeof roleValue === 'string' ? roleValue as MesRole : undefined;
-
-  // A signed-in user without an MES role is still an authenticated Supabase
-  // user. Do not throw here: the caller must be able to render a recovery
-  // screen and/or sign out. MES pages remain inaccessible while identity is null.
-  if (!role) return null;
+  if (!role) throw new Error('У пользователя не задана MES роль');
 
   const { data, error } = await client
     .from('mes_user_employee')
