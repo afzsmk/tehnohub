@@ -73,8 +73,7 @@ function restoreDemoState(): void {
 }
 
 async function ensureRemoteStateLoaded(client: SupabaseClient, userId: string): Promise<void> {
-  const loaded = await cacheRemoteState(client, userId);
-  if (loaded && typeof window !== 'undefined') window.location.reload();
+  await cacheRemoteState(client, userId);
 }
 
 async function resolveIdentityOrNull(client: SupabaseClient): Promise<MesAuthenticatedIdentity | null> {
@@ -99,9 +98,7 @@ export async function getMesAuthState(client: SupabaseClient): Promise<MesAuthSt
 export async function signInMes(client: SupabaseClient, email: string, password: string): Promise<MesAuthState> {
   const { error } = await client.auth.signInWithPassword({ email, password });
   if (error) throw error;
-  const state = await getMesAuthState(client);
-  if (typeof window !== 'undefined') window.location.reload();
-  return state;
+  return getMesAuthState(client);
 }
 
 export async function signOutMes(client: SupabaseClient): Promise<void> {
