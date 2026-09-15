@@ -71,7 +71,7 @@ jobs:
             if [[ "${version}" =~ ^0[0-9]{3}$ ]]; then
               semantic_version="${version:1}"
             elif [[ "${version}" =~ ^0[0-9]{3}[0-9]$ ]]; then
-              semantic_version="${version:1:3}"
+              semantic_version="${version:0:3}"
             fi
             semantic_version=$((10#${semantic_version}))
             if ((semantic_version < 95)); then
@@ -83,7 +83,7 @@ jobs:
           done
 
           echo 'Applying repository migrations 095+.'
-          supabase db push --include-all --db-url "${db_url}"
+          supabase db push --db-url "${db_url}"
 
           echo 'Remote migration history after reconciliation:'
           supabase migration list --db-url "${db_url}"
