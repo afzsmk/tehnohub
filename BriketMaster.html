@@ -1546,6 +1546,7 @@
 
             const CELL_OPTIONS = [6.3, 9.52, 12.3];
             const PISTON_S = 2 * Math.PI * Math.pow(40, 2);
+            let marketPriceBaseValue = null;
 
             function nFromParams(L, cellSize, margin) {
                 return Math.ceil(L / (cellSize / 2)) + (margin * 2);
@@ -1681,6 +1682,7 @@
                 const pBack_top = { x: pW_top.x + vx_L, y: pW_top.y + vy_L };
 
                 const isThickWarn = thick > 70;
+                const isLenWarn = bLen > 2000;
 
                 // 1. Левая грань
                 ctx.beginPath();
@@ -1790,9 +1792,9 @@
                 ctx.save();
                 ctx.translate((p0.x + pL.x) / 2, (p0.y + pL.y) / 2 + 14);
                 ctx.rotate(-angleY);
-                ctx.fillStyle = '#38bdf8';
+                ctx.fillStyle = isLenWarn ? '#ef4444' : '#38bdf8';
                 ctx.textAlign = 'center';
-                ctx.fillText(`L = ${Math.round(bLen)} мм`, 0, 0);
+                ctx.fillText(`L = ${Math.round(bLen)} мм${isLenWarn ? ' ⚠' : ''}`, 0, 0);
                 ctx.restore();
 
                 ctx.save();
@@ -1927,7 +1929,8 @@
                 document.getElementById('resMass').innerText = massTotalVal.toFixed(1);
 
                 const thickColor = thickTheor > 70 ? 'var(--danger)' : 'var(--accent)';
-                document.getElementById('visInfo').innerHTML = `${Math.round(bLen)} × ${blankWidth} × <span style="color:${thickColor}">${Math.round(thickTheor)} мм</span>`;
+                const lenColor = bLen > 2000 ? 'var(--danger)' : 'var(--accent)';
+                document.getElementById('visInfo').innerHTML = `<span style="color:${lenColor}">${Math.round(bLen)}${bLen > 2000 ? ' ⚠' : ''}</span> × ${blankWidth} × <span style="color:${thickColor}">${Math.round(thickTheor)} мм${thickTheor > 70 ? ' ⚠' : ''}</span>`;
                 document.getElementById('visTrimText').innerText = `${edgeTrim} мм`;
                 document.getElementById('visStripsText').innerText = `${strips} полос по ${stripW} мм`;
                 document.getElementById('visUsableText').innerText = `${usableWidth.toFixed(1)} мм`;
@@ -1986,11 +1989,14 @@
                 const ohrAmt = overheadBase * (p_ohr / 100);
                 const totalOverhead = oprAmt + ohrAmt + p_tare;
 
-                // Итоги: себестоимость формируется без НДС. НДС начисляется на цену продажи.
+                // Итоги: себестоимость хранится и считается без НДС. Тумблер меняет только экранное представление.
                 const totalNoVAT = totalMaterials + totalProcesses + totalOverhead;
                 const vatRate = Math.max(0, parseFloat(document.getElementById('vatVal').value) || 0) / 100;
                 const useVAT = document.getElementById('useVAT').checked;
                 const costPerM2NoVAT = areaPerBriquet > 0 ? totalNoVAT / areaPerBriquet : 0;
+                const displayVatAmount = useVAT ? totalNoVAT * vatRate : 0;
+                const totalDisplayed = useVAT ? totalNoVAT + displayVatAmount : totalNoVAT;
+                const costPerM2Displayed = areaPerBriquet > 0 ? totalDisplayed / areaPerBriquet : 0;
 
                 // Плановая отпускная цена: рентабельность считается от себестоимости без НДС.
                 const marginTarget = parseFloat(document.getElementById('margin_target').value) || 0;
@@ -2000,38 +2006,43 @@
                 const marginPriceBriquetVAT = marginPriceBriquet + sellingVatAmount;
                 const marginPriceM2VAT = marginPriceM2 * (1 + vatRate);
 
-                // Режим НДС влияет только на сравнение с рынком; исходное поле рынка не меняем.
-                const marketPriceBase = parseFloat(document.getElementById('marketPriceInput').value) || 0;
+                // Рыночная цена хранится в базе без НДС. Переключатель меняет только её отображение.
+                const marketPriceInputValue = parseFloat(document.getElementById('marketPriceInput').value) || 0;
+                const marketPriceBase = Number.isFinite(marketPriceBaseValue)
+                    ? Math.max(0, marketPriceBaseValue)
+                    : Math.max(0, marketPriceInputValue / (useVAT ? (1 + vatRate) : 1));
                 const marketPriceComparable = useVAT ? marketPriceBase * (1 + vatRate) : marketPriceBase;
-                const costPerM2Comparable = useVAT ? costPerM2NoVAT : costPerM2NoVAT;
+                const costPerM2Comparable = costPerM2Displayed;
 
                 document.getElementById('anaMat').innerText = Math.round(totalMaterials).toLocaleString() + ' ₽';
                 document.getElementById('anaFot').innerText = Math.round(totalProcesses).toLocaleString() + ' ₽';
                 document.getElementById('anaOvh').innerText = Math.round(totalOverhead).toLocaleString() + ' ₽';
-                // НДС в блоке затрат показываем отдельно: он относится к цене продажи,
-                // поэтому не входит в себестоимость и не искажает структуру затрат.
-                document.getElementById('anaVat').innerText = Math.round(sellingVatAmount).toLocaleString() + ' ₽';
+                // Экранный блок затрат: тумблер включает/выключает НДС, но не меняет базовую себестоимость.
+                document.getElementById('anaVat').innerText = Math.round(displayVatAmount).toLocaleString() + ' ₽';
 
-                const pctBase = totalNoVAT > 0 ? totalNoVAT : 1;
+                const pctBase = totalDisplayed > 0 ? totalDisplayed : 1;
                 const pctMat = totalMaterials / pctBase * 100;
                 const pctFot = totalProcesses / pctBase * 100;
                 const pctOvh = totalOverhead / pctBase * 100;
+                const pctVat = displayVatAmount / pctBase * 100;
                 document.getElementById('anaMatPct').innerText = pctMat.toFixed(1) + '%';
                 document.getElementById('anaFotPct').innerText = pctFot.toFixed(1) + '%';
                 document.getElementById('anaOvhPct').innerText = pctOvh.toFixed(1) + '%';
-                document.getElementById('anaVatPct').innerText = (sellingVatAmount > 0 ? (sellingVatAmount / marginPriceBriquet * 100) : 0).toFixed(1) + '%';
+                document.getElementById('anaVatPct').innerText = pctVat.toFixed(1) + '%';
 
                 document.getElementById('c_mat').style.width = pctMat + '%';
                 document.getElementById('c_fot').style.width = pctFot + '%';
                 document.getElementById('c_ovh').style.width = pctOvh + '%';
-                document.getElementById('c_vat').style.width = '0%';
+                document.getElementById('c_vat').style.width = pctVat + '%';
 
-                document.getElementById('finSq').innerText = Math.round(costPerM2NoVAT).toLocaleString() + ' ₽';
-                document.getElementById('vatLabelSq').innerText = 'себестоимость без НДС';
-                document.getElementById('finTotal').innerText = Math.round(totalNoVAT).toLocaleString() + ' ₽';
-                document.getElementById('vatLabelTotal').innerText = 'себестоимость без НДС';
+                const vatLabel = useVAT ? 'с НДС' : 'без НДС';
+                document.getElementById('finSq').innerText = Math.round(costPerM2Displayed).toLocaleString() + ' ₽';
+                document.getElementById('vatLabelSq').innerText = vatLabel;
+                document.getElementById('finTotal').innerText = Math.round(totalDisplayed).toLocaleString() + ' ₽';
+                document.getElementById('vatLabelTotal').innerText = vatLabel;
+                document.getElementById('marketPriceInput').value = Math.round(marketPriceComparable);
 
-                // Сравнение с рыночной ценой в выбранной базе, без изменения исходного поля.
+                // Сравнение с рынком — в той же налоговой базе, что и экранная себестоимость.
                 const mPrice = marketPriceComparable;
                 const diff = mPrice - costPerM2Comparable;
                 const perc = costPerM2Comparable > 0 ? Math.round((diff / costPerM2Comparable) * 100) : 0;
@@ -2588,6 +2599,9 @@
 
             window.onload = function() {
                 loadState();
+                const initialMarket = Math.max(0, parseFloat(document.getElementById('marketPriceInput').value) || 0);
+                const initialVat = Math.max(0, parseFloat(document.getElementById('vatVal').value) || 0) / 100;
+                marketPriceBaseValue = initialMarket / (document.getElementById('useVAT').checked ? (1 + initialVat) : 1);
                 loadPrintParams();
 
                 const ranges = [
@@ -2621,7 +2635,7 @@
                     'p_foil', 'p_scrap', 'p_glue', 'p_solv', 'p_aux',
                     't_mix', 'r_mix', 't_press', 't_mhr_line', 'r_mhr_line', 't_mhr_trim', 'r_mhr_trim', 'q_wear', 'r_wear',
                     'p_opr', 'p_ohr', 'p_tare', 'comp_width', 'comp_price', 'margin_target',
-                    'vatVal', 'marketPriceInput'
+                    'vatVal'
                 ];
 
                 recalcIds.forEach(id => {
@@ -2630,6 +2644,15 @@
                         el.addEventListener('input', calculate);
                         el.addEventListener('change', calculate);
                     }
+                });
+
+                const marketPriceInputEl = document.getElementById('marketPriceInput');
+                marketPriceInputEl.addEventListener('input', function() {
+                    const entered = Math.max(0, parseFloat(this.value) || 0);
+                    const vat = Math.max(0, parseFloat(document.getElementById('vatVal').value) || 0) / 100;
+                    const useVAT = document.getElementById('useVAT').checked;
+                    marketPriceBaseValue = entered / (useVAT ? (1 + vat) : 1);
+                    calculate();
                 });
 
                 document.querySelectorAll('input:not([type="range"]), select').forEach(el => {
@@ -2642,13 +2665,6 @@
                 document.getElementById('useVAT').addEventListener('change', function() {
                     calculate();
                     saveState();
-                });
-
-               ['saveModal', 'historyModal', 'econModal', 'shiftTaskModal', 'calcModal'].forEach(id => {
-                    const el = document.getElementById(id);
-                    el.addEventListener('click', function(e) {
-                        if (e.target === this) this.style.display = 'none';
-                    });
                 });
 
                 window.addEventListener('resize', function() {
