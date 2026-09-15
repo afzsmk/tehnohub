@@ -1221,11 +1221,11 @@
 
             <span class="eco-group-title">Сравнение с конкурентом</span>
             <table class="comp-table">
-                <tr><th>Показатель</th><th>Наш</th><th>Конкурент</th><th>Разница</th></tr>
-                <tr><td>Полос, шт</td><td id="cmpStripsOur">0</td><td id="cmpStripsComp">0</td><td id="cmpStripsDiff">0</td></tr>
-                <tr><td>Площадь, м²</td><td id="cmpAreaOur">0</td><td id="cmpAreaComp">0</td><td id="cmpAreaDiff">0</td></tr>
-                <tr><td>Цена/полосу, ₽</td><td id="cmpStripPriceOur">0</td><td id="cmpStripPriceComp">0</td><td id="cmpStripPriceDiff">0</td></tr>
-                <tr><td>Цена/м², ₽</td><td id="cmpM2PriceOur">0</td><td id="cmpM2PriceComp">0</td><td id="cmpM2PriceDiff">0</td></tr>
+                <tr><th>Показатель</th><th>Наш</th><th>Конкурент</th><th>Разница</th><th>Разница, %</th></tr>
+                <tr><td>Полос, шт</td><td id="cmpStripsOur">0</td><td id="cmpStripsComp">0</td><td id="cmpStripsDiff">0</td><td id="cmpStripsPct">0%</td></tr>
+                <tr><td>Площадь, м²</td><td id="cmpAreaOur">0</td><td id="cmpAreaComp">0</td><td id="cmpAreaDiff">0</td><td id="cmpAreaPct">0%</td></tr>
+                <tr><td>Цена/полосу, ₽</td><td id="cmpStripPriceOur">0</td><td id="cmpStripPriceComp">0</td><td id="cmpStripPriceDiff">0</td><td id="cmpStripPricePct">0%</td></tr>
+                <tr><td>Цена/м², ₽</td><td id="cmpM2PriceOur">0</td><td id="cmpM2PriceComp">0</td><td id="cmpM2PriceDiff">0</td><td id="cmpM2PricePct">0%</td></tr>
             </table>
         </div>
     </div>
@@ -1986,44 +1986,55 @@
                 const ohrAmt = overheadBase * (p_ohr / 100);
                 const totalOverhead = oprAmt + ohrAmt + p_tare;
 
-                // Итоги
+                // Итоги: себестоимость формируется без НДС. НДС начисляется на цену продажи.
                 const totalNoVAT = totalMaterials + totalProcesses + totalOverhead;
-                const vatRate = parseFloat(document.getElementById('vatVal').value) / 100;
+                const vatRate = Math.max(0, parseFloat(document.getElementById('vatVal').value) || 0) / 100;
                 const useVAT = document.getElementById('useVAT').checked;
-                const vatAmount = useVAT ? totalNoVAT * vatRate : 0;
-                const totalCost = totalNoVAT + vatAmount;
-                const costPerM2 = areaPerBriquet > 0 ? totalCost / areaPerBriquet : 0;
                 const costPerM2NoVAT = areaPerBriquet > 0 ? totalNoVAT / areaPerBriquet : 0;
+
+                // Плановая отпускная цена: рентабельность считается от себестоимости без НДС.
+                const marginTarget = parseFloat(document.getElementById('margin_target').value) || 0;
+                const marginPriceBriquet = totalNoVAT * (1 + marginTarget / 100);
+                const marginPriceM2 = costPerM2NoVAT * (1 + marginTarget / 100);
+                const sellingVatAmount = marginPriceBriquet * vatRate;
+                const marginPriceBriquetVAT = marginPriceBriquet + sellingVatAmount;
+                const marginPriceM2VAT = marginPriceM2 * (1 + vatRate);
+
+                // Режим НДС влияет только на сравнение с рынком; исходное поле рынка не меняем.
+                const marketPriceBase = parseFloat(document.getElementById('marketPriceInput').value) || 0;
+                const marketPriceComparable = useVAT ? marketPriceBase * (1 + vatRate) : marketPriceBase;
+                const costPerM2Comparable = useVAT ? costPerM2NoVAT : costPerM2NoVAT;
 
                 document.getElementById('anaMat').innerText = Math.round(totalMaterials).toLocaleString() + ' ₽';
                 document.getElementById('anaFot').innerText = Math.round(totalProcesses).toLocaleString() + ' ₽';
                 document.getElementById('anaOvh').innerText = Math.round(totalOverhead).toLocaleString() + ' ₽';
-                document.getElementById('anaVat').innerText = Math.round(vatAmount).toLocaleString() + ' ₽';
+                // НДС в блоке затрат показываем отдельно: он относится к цене продажи,
+                // поэтому не входит в себестоимость и не искажает структуру затрат.
+                document.getElementById('anaVat').innerText = Math.round(sellingVatAmount).toLocaleString() + ' ₽';
 
-                const pctMat = totalCost > 0 ? (totalMaterials / totalCost * 100) : 0;
-                const pctFot = totalCost > 0 ? (totalProcesses / totalCost * 100) : 0;
-                const pctOvh = totalCost > 0 ? (totalOverhead / totalCost * 100) : 0;
-                const pctVat = totalCost > 0 ? (vatAmount / totalCost * 100) : 0;
+                const pctBase = totalNoVAT > 0 ? totalNoVAT : 1;
+                const pctMat = totalMaterials / pctBase * 100;
+                const pctFot = totalProcesses / pctBase * 100;
+                const pctOvh = totalOverhead / pctBase * 100;
                 document.getElementById('anaMatPct').innerText = pctMat.toFixed(1) + '%';
                 document.getElementById('anaFotPct').innerText = pctFot.toFixed(1) + '%';
                 document.getElementById('anaOvhPct').innerText = pctOvh.toFixed(1) + '%';
-                document.getElementById('anaVatPct').innerText = pctVat.toFixed(1) + '%';
+                document.getElementById('anaVatPct').innerText = (sellingVatAmount > 0 ? (sellingVatAmount / marginPriceBriquet * 100) : 0).toFixed(1) + '%';
 
                 document.getElementById('c_mat').style.width = pctMat + '%';
                 document.getElementById('c_fot').style.width = pctFot + '%';
                 document.getElementById('c_ovh').style.width = pctOvh + '%';
-                document.getElementById('c_vat').style.width = pctVat + '%';
+                document.getElementById('c_vat').style.width = '0%';
 
-                const vatLabel = useVAT ? 'с НДС' : 'без НДС';
-                document.getElementById('finSq').innerText = Math.round(costPerM2).toLocaleString() + ' ₽';
-                document.getElementById('vatLabelSq').innerText = vatLabel;
-                document.getElementById('finTotal').innerText = Math.round(totalCost).toLocaleString() + ' ₽';
-                document.getElementById('vatLabelTotal').innerText = vatLabel;
+                document.getElementById('finSq').innerText = Math.round(costPerM2NoVAT).toLocaleString() + ' ₽';
+                document.getElementById('vatLabelSq').innerText = 'себестоимость без НДС';
+                document.getElementById('finTotal').innerText = Math.round(totalNoVAT).toLocaleString() + ' ₽';
+                document.getElementById('vatLabelTotal').innerText = 'себестоимость без НДС';
 
-                // Сравнение с рыночной ценой
-                const mPrice = parseFloat(document.getElementById('marketPriceInput').value) || 0;
-                const diff = mPrice - costPerM2;
-                const perc = costPerM2 > 0 ? Math.round((diff / costPerM2) * 100) : 0;
+                // Сравнение с рыночной ценой в выбранной базе, без изменения исходного поля.
+                const mPrice = marketPriceComparable;
+                const diff = mPrice - costPerM2Comparable;
+                const perc = costPerM2Comparable > 0 ? Math.round((diff / costPerM2Comparable) * 100) : 0;
                 const profitEl = document.getElementById('profitText');
                 const profitRow = document.getElementById('profitRow');
                 if (diff >= 0) {
@@ -2066,26 +2077,53 @@
                     compProfitEl.innerText = '—';
                 }
 
-                // Отпускная цена по рентабельности
-                const marginTarget = parseFloat(document.getElementById('margin_target').value) || 0;
-                const marginPriceBriquet = totalNoVAT * (1 + marginTarget / 100);
-                const marginPriceM2 = costPerM2NoVAT * (1 + marginTarget / 100);
+                // Отпускная цена по рентабельности (рентабельность на себестоимость без НДС).
                 document.getElementById('marginPriceBriquet').innerText = Math.round(marginPriceBriquet).toLocaleString() + ' ₽';
                 document.getElementById('marginPriceM2').innerText = Math.round(marginPriceM2).toLocaleString() + ' ₽';
+
+                // Один источник расчёта для экранной формы и печатной калькуляции.
+                window.currentCalculation = {
+                    production: {
+                        L, B, cellSize, cellText: document.getElementById('cell').options[document.getElementById('cell').selectedIndex]?.text || String(cellSize),
+                        foilT, margin, defectP, stripW, briquetQty, blankWidth, edgeTrim, sawBlade, usableWidth, bLen,
+                        nPure, thickTheor, strips, areaPerBriquet,
+                        foilMassToBuy, foilMassUseful, scrapTotal, glueClean_kg, solvent_kg, massBriquette
+                    },
+                    costs: {
+                        p_foil, p_scrap, p_glue, p_solv, p_aux,
+                        costFoilGross: foilMassToBuy * p_foil, creditScrap: scrapTotal * p_scrap,
+                        costGlue: glueClean_kg * p_glue, costSolvent: solvent_kg * p_solv, costAux: p_aux,
+                        totalMaterials,
+                        fotNet, fotNdfl, fotInsurance, fotHours, fotCrew, crewHourlyRate,
+                        t_mix, r_mix, t_press, t_mhr_line, r_mhr_line, t_mhr_trim, r_mhr_trim, q_wear, r_wear,
+                        mixCost, pressCost, mhrLineCost, mhrTrimCost, wearCost, totalProcesses,
+                        p_opr, p_ohr, p_tare, oprAmt, ohrAmt, totalOverhead, totalNoVAT, costPerM2NoVAT
+                    },
+                    pricing: {
+                        vatRate, useVAT, sellingVatAmount, marginTarget,
+                        marginPriceBriquet, marginPriceM2, marginPriceBriquetVAT, marginPriceM2VAT,
+                        marketPriceBase, marketPriceComparable, diff, perc
+                    },
+                    competitor: { compWidth, compPrice, compStrips, compArea, compPricePerStrip, compPricePerM2, ourPricePerStrip }
+                };
 
                 // Таблица сравнения
                 document.getElementById('cmpStripsOur').innerText = strips;
                 document.getElementById('cmpStripsComp').innerText = compStrips;
                 document.getElementById('cmpStripsDiff').innerText = (strips - compStrips);
+                document.getElementById('cmpStripsPct').innerText = compStrips > 0 ? ((strips - compStrips) / compStrips * 100).toFixed(1) + '%' : '—';
                 document.getElementById('cmpAreaOur').innerText = areaPerBriquet.toFixed(2);
                 document.getElementById('cmpAreaComp').innerText = compArea.toFixed(2);
                 document.getElementById('cmpAreaDiff').innerText = (areaPerBriquet - compArea).toFixed(2);
+                document.getElementById('cmpAreaPct').innerText = compArea > 0 ? ((areaPerBriquet - compArea) / compArea * 100).toFixed(1) + '%' : '—';
                 document.getElementById('cmpStripPriceOur').innerText = Math.round(ourPricePerStrip).toLocaleString();
                 document.getElementById('cmpStripPriceComp').innerText = Math.round(compPricePerStrip).toLocaleString();
                 document.getElementById('cmpStripPriceDiff').innerText = Math.round(ourPricePerStrip - compPricePerStrip).toLocaleString();
+                document.getElementById('cmpStripPricePct').innerText = compPricePerStrip > 0 ? ((ourPricePerStrip - compPricePerStrip) / compPricePerStrip * 100).toFixed(1) + '%' : '—';
                 document.getElementById('cmpM2PriceOur').innerText = Math.round(costPerM2NoVAT).toLocaleString();
                 document.getElementById('cmpM2PriceComp').innerText = Math.round(compPricePerM2).toLocaleString();
                 document.getElementById('cmpM2PriceDiff').innerText = Math.round(costPerM2NoVAT - compPricePerM2).toLocaleString();
+                document.getElementById('cmpM2PricePct').innerText = compPricePerM2 > 0 ? ((costPerM2NoVAT - compPricePerM2) / compPricePerM2 * 100).toFixed(1) + '%' : '—';
             };
 
             // Сохранение расчёта
@@ -2299,6 +2337,7 @@
                 const glueStr = `${glueTotal} кг (Клей: ${glueA} кг, Этилацетат: ${solv} кг)`;
 
                 const w = window.open('', '_blank', 'width=880,height=820');
+                if (!w) { uiAlert('Браузер заблокировал окно печати. Разрешите всплывающие окна для этого приложения.', 'Печать'); return; }
                 w.document.write(`<html><head><title>Сменное задание № ${taskNumber}</title><style>
                     @page { size: A4 portrait; margin: 10mm 12mm; }
                     body { font-family: 'Inter','Arial',sans-serif; padding:0; margin:0; color:#111; font-size: 12px; line-height:1.35; }
@@ -2415,109 +2454,35 @@
                 printCalcPDF();
             };
 
-            // Печать калькуляции (Клей термореактивный, 2 колонки, 1 лист А4)
+            // Печать калькуляции: использует последний снимок window.currentCalculation.
             window.printCalcPDF = function() {
+                const calc = window.currentCalculation;
+                if (!calc) {
+                    calculate();
+                }
+                const c = window.currentCalculation;
+                const p = c.production;
+                const k = c.costs;
+                const pr = c.pricing;
+                const cp = c.competitor;
+
                 const company = document.getElementById('calcCompany').value || 'ООО «ЗСМК»';
                 const author = document.getElementById('calcAuthor').value || '__________________';
                 const reviewer = document.getElementById('calcReviewer').value || '__________________';
                 const approver = document.getElementById('calcApprover').value || '__________________';
-                const briquetQty = document.getElementById('briquetQty').value || 1;
                 const currentDate = new Date().toLocaleDateString('ru-RU');
+                const briquetQty = p.briquetQty || 1;
 
-                const L = parseFloat(document.getElementById('lenInput').value) || 0;
-                const B = parseFloat(document.getElementById('widInput').value) || 0;
-                const cellSelect = document.getElementById('cell');
-                const cellText = cellSelect.options[cellSelect.selectedIndex] ? cellSelect.options[cellSelect.selectedIndex].text : cellSelect.value;
-                const cellSize = parseFloat(cellSelect.value);
-                const foilT = parseFloat(document.getElementById('foilT').value);
-                const margin = parseInt(document.getElementById('marginInput').value) || 0;
-                const defectP = parseFloat(document.getElementById('defectInput').value) || 0;
-                const stripW = parseFloat(document.getElementById('stripInput').value) || 0;
-                const blankWidth = parseFloat(document.getElementById('blankWidth').value) || 0;
-                const edgeTrim = parseFloat(document.getElementById('edgeTrim').value) || 0;
-                const sawBlade = parseFloat(document.getElementById('sawBlade').value) || 0;
-                const usableWidth = Math.max(0, blankWidth - edgeTrim);
-                const bLen = B * 4/3 + edgeTrim*2;
-                const nPure = nFromParams(L, cellSize, margin);
-
-                const foilMassPure = (nPure * bLen * blankWidth * foilT * 2.7) / 1000000;
-                const usefulFraction = blankWidth > 0 ? (usableWidth / blankWidth) : 0;
-                const foilMassToBuy = foilMassPure * (1 + defectP / 100);
-                const foilMassUseful = foilMassPure * usefulFraction;
-                const scrapTotal = Math.max(0, foilMassToBuy - foilMassUseful);
-
-                const massLiqGluePure = (nPure * bLen / 1000 * blankWidth / 1000) * 0.25 * 0.030;
-                const glueWithDefect = massLiqGluePure * (1 + defectP / 100);
-                const glueClean_kg = glueWithDefect * 0.2;
-                const solvent_kg = glueWithDefect * 0.8;
-
-                const strips = (stripW + sawBlade) > 0 ? Math.floor((usableWidth + sawBlade) / (stripW + sawBlade)) : 0;
-                const areaPerBriquet = (strips * L * B) / 1000000;
-
-                const p_foil = parseFloat(document.getElementById('p_foil').value) || 0;
-                const p_scrap = parseFloat(document.getElementById('p_scrap').value) || 0;
-                const p_glue = parseFloat(document.getElementById('p_glue').value) || 0;
-                const p_solv = parseFloat(document.getElementById('p_solv').value) || 0;
-                const p_aux = parseFloat(document.getElementById('p_aux').value) || 0;
-
-                const costFoilGross = foilMassToBuy * p_foil;
-                const creditScrap = scrapTotal * p_scrap;
-                const costGlue = glueClean_kg * p_glue;
-                const costSolvent = solvent_kg * p_solv;
-                const costAux = p_aux;
-                const totalMaterials = costFoilGross - creditScrap + costGlue + costSolvent + costAux;
-
-                const fotNet = parseFloat(document.getElementById('fot_net').value) || 0;
-                const fotNdfl = parseFloat(document.getElementById('fot_ndfl').value) || 0;
-                const fotInsurance = parseFloat(document.getElementById('fot_insurance').value) || 0;
-                const fotHours = parseFloat(document.getElementById('fot_hours').value) || 1;
-                const fotCrew = parseFloat(document.getElementById('fot_crew').value) || 0;
-                const grossSalary = fotNet / (1 - fotNdfl / 100);
-                const insuranceAmt = grossSalary * (fotInsurance / 100);
-                const fullCost1 = grossSalary + insuranceAmt;
-                const crewHourlyRate = (fullCost1 / fotHours) * fotCrew;
-
-                const t_mix = parseFloat(document.getElementById('t_mix').value) || 0;
-                const r_mix = parseFloat(document.getElementById('r_mix').value) || 0;
-                const t_press = parseFloat(document.getElementById('t_press').value) || 0;
-                const t_mhr_line = parseFloat(document.getElementById('t_mhr_line').value) || 0;
-                const r_mhr_line = parseFloat(document.getElementById('r_mhr_line').value) || 0;
-                const t_mhr_trim = parseFloat(document.getElementById('t_mhr_trim').value) || 0;
-                const r_mhr_trim = parseFloat(document.getElementById('r_mhr_trim').value) || 0;
-                const q_wear = parseFloat(document.getElementById('q_wear').value) || 0;
-                const r_wear = parseFloat(document.getElementById('r_wear').value) || 0;
-
-                const mixCost = t_mix * r_mix;
-                const pressCost = t_press * crewHourlyRate;
-                const mhrLineCost = t_mhr_line * r_mhr_line;
-                const mhrTrimCost = t_mhr_trim * r_mhr_trim;
-                const wearCost = q_wear * r_wear;
-                const totalProcesses = mixCost + pressCost + mhrLineCost + mhrTrimCost + wearCost;
-
-                const p_opr = parseFloat(document.getElementById('p_opr').value) || 0;
-                const p_ohr = parseFloat(document.getElementById('p_ohr').value) || 0;
-                const p_tare = parseFloat(document.getElementById('p_tare').value) || 0;
-                const overheadBase = totalMaterials + totalProcesses;
-                const oprAmt = overheadBase * (p_opr / 100);
-                const ohrAmt = overheadBase * (p_ohr / 100);
-                const totalOverhead = oprAmt + ohrAmt + p_tare;
-
-                const totalNoVAT = totalMaterials + totalProcesses + totalOverhead;
-                const vatRate = parseFloat(document.getElementById('vatVal').value) / 100;
-                const useVAT = document.getElementById('useVAT').checked;
-                const vatAmount = useVAT ? totalNoVAT * vatRate : 0;
-                const totalCost = totalNoVAT + vatAmount;
-                const costPerM2 = areaPerBriquet > 0 ? totalCost / areaPerBriquet : 0;
-                const costPerM2NoVAT = areaPerBriquet > 0 ? totalNoVAT / areaPerBriquet : 0;
-
-                const mPrice = parseFloat(document.getElementById('marketPriceInput').value) || 0;
-                const marginTarget = parseFloat(document.getElementById('margin_target').value) || 0;
-                const marginPriceBriquet = totalNoVAT * (1 + marginTarget / 100);
-                const marginPriceM2 = costPerM2NoVAT * (1 + marginTarget / 100);
-                const diff = mPrice - costPerM2;
-                const perc = costPerM2 > 0 ? Math.round((diff / costPerM2) * 100) : 0;
+                const mPriceLabel = pr.useVAT ? `${pr.marketPriceBase} ₽/м² + НДС` : `${pr.marketPriceBase} ₽/м² без НДС`;
+                const marketDiffText = pr.diff >= 0
+                    ? `Выгоднее на ${Math.round(pr.diff).toLocaleString()} ₽ (${pr.perc}%)`
+                    : `Дороже на ${Math.round(Math.abs(pr.diff)).toLocaleString()} ₽ (${Math.abs(pr.perc)}%)`;
 
                 const w = window.open('', '_blank', 'width=880,height=820');
+                if (!w) {
+                    uiAlert('Браузер заблокировал окно печати. Разрешите всплывающие окна для этого приложения.', 'Печать');
+                    return;
+                }
                 w.document.write(`<html><head><title>Плановая калькуляция себестоимости</title><style>
                     @page { size: A4 portrait; margin: 10mm 12mm; }
                     body { font-family: 'Inter','Arial',sans-serif; padding:0; margin:0; color:#111; font-size: 11px; line-height:1.25; }
@@ -2542,8 +2507,8 @@
                     <div class="header">
                         <div class="company">${company}</div>
                         <div class="doc-title">Плановая калькуляция себестоимости</div>
-                        <div class="sub-line">на изготовление сотового заполнителя (брикета) — ${briquetQty} шт. (${(areaPerBriquet * briquetQty).toFixed(1)} м²)</div>
-                        <div class="sub-line">Дата составления: ${currentDate} | Формат панели: ${L} × ${B} мм, ячейка ${cellText}</div>
+                        <div class="sub-line">на изготовление сотового заполнителя (брикета) — ${briquetQty} шт. (${(p.areaPerBriquet * briquetQty).toFixed(1)} м²)</div>
+                        <div class="sub-line">Дата составления: ${currentDate} | Формат панели: ${p.L} × ${p.B} мм, ячейка ${p.cellText}</div>
                     </div>
 
                     <div class="two-col">
@@ -2551,47 +2516,48 @@
                             <div class="sec-hdr">1. Сырьё и материалы</div>
                             <table>
                                 <tr><th>Статья затрат</th><th class="right">Расход</th><th class="right">Цена</th><th class="right">Сумма, ₽</th></tr>
-                                <tr><td>Фольга алюминиевая</td><td class="right">${foilMassToBuy.toFixed(2)} кг</td><td class="right">${p_foil}</td><td class="right">${Math.round(costFoilGross).toLocaleString()}</td></tr>
-                                <tr><td>Возвратный лом (кредит)</td><td class="right">-${scrapTotal.toFixed(2)} кг</td><td class="right">${p_scrap}</td><td class="right">-${Math.round(creditScrap).toLocaleString()}</td></tr>
-                                <tr><td>Клей термореактивный</td><td class="right">${glueClean_kg.toFixed(2)} кг</td><td class="right">${p_glue}</td><td class="right">${Math.round(costGlue).toLocaleString()}</td></tr>
-                                <tr><td>Этилацетат (растворитель)</td><td class="right">${solvent_kg.toFixed(2)} кг</td><td class="right">${p_solv}</td><td class="right">${Math.round(costSolvent).toLocaleString()}</td></tr>
-                                <tr><td>Разделительные материалы</td><td class="right">1 компл.</td><td class="right">${p_aux}</td><td class="right">${Math.round(costAux).toLocaleString()}</td></tr>
-                                <tr class="total-row"><td><strong>Итого материалы:</strong></td><td colspan="3" class="right"><strong>${Math.round(totalMaterials).toLocaleString()} ₽</strong></td></tr>
+                                <tr><td>Фольга алюминиевая</td><td class="right">${p.foilMassToBuy.toFixed(2)} кг</td><td class="right">${k.p_foil}</td><td class="right">${Math.round(k.costFoilGross).toLocaleString()}</td></tr>
+                                <tr><td>Возвратный лом (кредит)</td><td class="right">-${p.scrapTotal.toFixed(2)} кг</td><td class="right">${k.p_scrap}</td><td class="right">-${Math.round(k.creditScrap).toLocaleString()}</td></tr>
+                                <tr><td>Клей термореактивный</td><td class="right">${p.glueClean_kg.toFixed(2)} кг</td><td class="right">${k.p_glue}</td><td class="right">${Math.round(k.costGlue).toLocaleString()}</td></tr>
+                                <tr><td>Этилацетат (растворитель)</td><td class="right">${p.solvent_kg.toFixed(2)} кг</td><td class="right">${k.p_solv}</td><td class="right">${Math.round(k.costSolvent).toLocaleString()}</td></tr>
+                                <tr><td>Разделительные материалы</td><td class="right">1 компл.</td><td class="right">${k.p_aux}</td><td class="right">${Math.round(k.costAux).toLocaleString()}</td></tr>
+                                <tr class="total-row"><td><strong>Итого материалы:</strong></td><td colspan="3" class="right"><strong>${Math.round(k.totalMaterials).toLocaleString()} ₽</strong></td></tr>
                             </table>
 
                             <div class="sec-hdr">2. Технологические переделы (ФОТ и линии)</div>
                             <table>
                                 <tr><th>Статья затрат</th><th class="right">Норма</th><th class="right">Тариф</th><th class="right">Сумма, ₽</th></tr>
-                                <tr><td>Замес клея</td><td class="right">${t_mix} ч</td><td class="right">${r_mix} ₽/ч</td><td class="right">${Math.round(mixCost).toLocaleString()}</td></tr>
-                                <tr><td>Сборка и прессование (звено)</td><td class="right">${t_press} ч</td><td class="right">${Math.round(crewHourlyRate)} ₽/ч</td><td class="right">${Math.round(pressCost).toLocaleString()}</td></tr>
-                                <tr><td>MHR линии нанесения</td><td class="right">${t_mhr_line} ч</td><td class="right">${r_mhr_line} ₽/ч</td><td class="right">${Math.round(mhrLineCost).toLocaleString()}</td></tr>
-                                <tr><td>MHR станка торцовки</td><td class="right">${t_mhr_trim} ч</td><td class="right">${r_mhr_trim} ₽/ч</td><td class="right">${Math.round(mhrTrimCost).toLocaleString()}</td></tr>
-                                <tr><td>Износ инструмента</td><td class="right">${q_wear} шт</td><td class="right">${r_wear} ₽</td><td class="right">${Math.round(wearCost).toLocaleString()}</td></tr>
-                                <tr class="total-row"><td><strong>Итого переделы:</strong></td><td colspan="3" class="right"><strong>${Math.round(totalProcesses).toLocaleString()} ₽</strong></td></tr>
+                                <tr><td>Замес клея</td><td class="right">${k.t_mix} ч</td><td class="right">${k.r_mix} ₽/ч</td><td class="right">${Math.round(k.mixCost).toLocaleString()}</td></tr>
+                                <tr><td>Сборка и прессование (звено)</td><td class="right">${k.t_press} ч</td><td class="right">${Math.round(k.crewHourlyRate)} ₽/ч</td><td class="right">${Math.round(k.pressCost).toLocaleString()}</td></tr>
+                                <tr><td>MHR линии нанесения</td><td class="right">${k.t_mhr_line} ч</td><td class="right">${k.r_mhr_line} ₽/ч</td><td class="right">${Math.round(k.mhrLineCost).toLocaleString()}</td></tr>
+                                <tr><td>MHR станка торцовки</td><td class="right">${k.t_mhr_trim} ч</td><td class="right">${k.r_mhr_trim} ₽/ч</td><td class="right">${Math.round(k.mhrTrimCost).toLocaleString()}</td></tr>
+                                <tr><td>Износ инструмента</td><td class="right">${k.q_wear} шт</td><td class="right">${k.r_wear} ₽</td><td class="right">${Math.round(k.wearCost).toLocaleString()}</td></tr>
+                                <tr class="total-row"><td><strong>Итого переделы:</strong></td><td colspan="3" class="right"><strong>${Math.round(k.totalProcesses).toLocaleString()} ₽</strong></td></tr>
                             </table>
                         </div>
 
                         <div class="col-half">
-                            <div class="sec-hdr">3. Накладные расходы и налоги</div>
+                            <div class="sec-hdr">3. Накладные расходы</div>
                             <table>
                                 <tr><th>Статья расходов</th><th class="right">База / %</th><th class="right">Сумма, ₽</th></tr>
-                                <tr><td>ОПР (общепроизводственные)</td><td class="right">${p_opr}%</td><td class="right">${Math.round(oprAmt).toLocaleString()}</td></tr>
-                                <tr><td>ОХР (общехозяйственные)</td><td class="right">${p_ohr}%</td><td class="right">${Math.round(ohrAmt).toLocaleString()}</td></tr>
-                                <tr><td>Тара и упаковка</td><td class="right">фикс.</td><td class="right">${Math.round(p_tare).toLocaleString()}</td></tr>
-                                <tr class="total-row"><td><strong>Итого накладные:</strong></td><td colspan="2" class="right"><strong>${Math.round(totalOverhead).toLocaleString()} ₽</strong></td></tr>
-                                <tr><td>Себестоимость без НДС</td><td class="right">—</td><td class="right">${Math.round(totalNoVAT).toLocaleString()} ₽</td></tr>
-                                <tr><td>НДС (${useVAT ? vatRate * 100 + '%' : 'не облагается'})</td><td class="right">—</td><td class="right">${Math.round(vatAmount).toLocaleString()} ₽</td></tr>
-                                <tr class="total-row" style="background:#e0f2fe; font-size:11.5px;"><td><strong>ИТОГО себестоимость 1 брикета:</strong></td><td colspan="2" class="right"><strong>${Math.round(totalCost).toLocaleString()} ₽</strong></td></tr>
+                                <tr><td>ОПР (общепроизводственные)</td><td class="right">${k.p_opr}%</td><td class="right">${Math.round(k.oprAmt).toLocaleString()}</td></tr>
+                                <tr><td>ОХР (общехозяйственные)</td><td class="right">${k.p_ohr}%</td><td class="right">${Math.round(k.ohrAmt).toLocaleString()}</td></tr>
+                                <tr><td>Тара и упаковка</td><td class="right">фикс.</td><td class="right">${Math.round(k.p_tare).toLocaleString()}</td></tr>
+                                <tr class="total-row"><td><strong>Итого накладные:</strong></td><td colspan="2" class="right"><strong>${Math.round(k.totalOverhead).toLocaleString()} ₽</strong></td></tr>
+                                <tr class="total-row"><td><strong>Себестоимость без НДС:</strong></td><td class="right">—</td><td class="right"><strong>${Math.round(k.totalNoVAT).toLocaleString()} ₽</strong></td></tr>
                             </table>
 
                             <div class="price-box">
                                 <strong style="font-size:12px; text-transform:uppercase; display:block; margin-bottom:4px;">Ценообразование и рентабельность</strong>
                                 <table style="margin-bottom:0;">
-                                    <tr><td>Площадь в 1 брикете</td><td class="right"><strong>${areaPerBriquet.toFixed(2)} м²</strong></td></tr>
-                                    <tr><td>Себестоимость 1 м² (${useVAT ? 'с НДС' : 'без НДС'})</td><td class="right"><strong>${Math.round(costPerM2).toLocaleString()} ₽/м²</strong></td></tr>
-                                    <tr><td>Рыночный ориентир м²</td><td class="right">${mPrice} ₽/м²</td></tr>
-                                    <tr><td>Сравнение с рынком</td><td class="right" style="font-weight:700;">${diff >= 0 ? 'Выгоднее на ' + Math.round(diff).toLocaleString() + ' ₽ (' + perc + '%)' : 'Дороже на ' + Math.round(Math.abs(diff)).toLocaleString() + ' ₽'}</td></tr>
-                                    <tr style="background:#fef3c7;"><td><strong>Отпускная цена (+${marginTarget}% рентаб.):</strong></td><td class="right"><strong>${Math.round(marginPriceBriquet).toLocaleString()} ₽ / бр.</strong><br>(${Math.round(marginPriceM2).toLocaleString()} ₽/м²)</td></tr>
+                                    <tr><td>Площадь в 1 брикете</td><td class="right"><strong>${p.areaPerBriquet.toFixed(2)} м²</strong></td></tr>
+                                    <tr><td>Себестоимость 1 м²</td><td class="right"><strong>${Math.round(k.costPerM2NoVAT).toLocaleString()} ₽/м² без НДС</strong></td></tr>
+                                    <tr><td>Рыночный ориентир м²</td><td class="right">${mPriceLabel}</td></tr>
+                                    <tr><td>Сравнение с рынком</td><td class="right" style="font-weight:700;">${marketDiffText}</td></tr>
+                                    <tr><td>Рентабельность</td><td class="right"><strong>${pr.marginTarget}%</strong> от себестоимости</td></tr>
+                                    <tr style="background:#fef3c7;"><td><strong>Отпускная цена без НДС:</strong></td><td class="right"><strong>${Math.round(pr.marginPriceBriquet).toLocaleString()} ₽ / бр.</strong><br>(${Math.round(pr.marginPriceM2).toLocaleString()} ₽/м²)</td></tr>
+                                    <tr style="background:#ecfdf5;"><td><strong>НДС (${Math.round(pr.vatRate * 100)}%):</strong></td><td class="right"><strong>${Math.round(pr.sellingVatAmount).toLocaleString()} ₽ / бр.</strong></td></tr>
+                                    <tr style="background:#dbeafe;"><td><strong>Отпускная цена с НДС:</strong></td><td class="right"><strong>${Math.round(pr.marginPriceBriquetVAT).toLocaleString()} ₽ / бр.</strong><br>(${Math.round(pr.marginPriceM2VAT).toLocaleString()} ₽/м²)</td></tr>
                                 </table>
                             </div>
                         </div>
@@ -2674,11 +2640,6 @@
                 });
 
                 document.getElementById('useVAT').addEventListener('change', function() {
-                    const vat = parseFloat(document.getElementById('vatVal').value) / 100;
-                    let mPrice = parseFloat(document.getElementById('marketPriceInput').value) || 0;
-                    if (this.checked) mPrice = mPrice * (1 + vat);
-                    else mPrice = mPrice / (1 + vat);
-                    document.getElementById('marketPriceInput').value = Math.round(mPrice);
                     calculate();
                     saveState();
                 });
