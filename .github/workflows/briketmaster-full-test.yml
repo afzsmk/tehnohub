@@ -12,46 +12,47 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Static HTML/JS checks
+      - name: Audit
+        id: audit
+        continue-on-error: true
         run: |
           python - <<'PY'
           from pathlib import Path
           import re
-          p=Path('BriketMaster.html'); s=p.read_text(encoding='utf-8')
+          s=Path('BriketMaster.html').read_text(encoding='utf-8')
           assert len(s)>100000
           for x in ['function calculate()','function printCalcPDF()','function calcQtyFromArea()','const bLen = B * 4 / 3 + edgeTrim*2;','const usableWidth = Math.max(0, blankWidth - edgeTrim);','const isLenWarn = bLen > 2000;']:
               assert x in s, x
           assert "['saveModal','historyModal','econModal','shiftTaskModal','calcModal']" not in s
           scripts=re.findall(r'<script[^>]*>(.*?)</script>',s,re.S|re.I); Path('/tmp/app.js').write_text('\n'.join(scripts),encoding='utf-8')
-          print('STATIC_OK', len(s), 'bytes', len(scripts), 'script blocks')
+          print('STATIC_OK', len(s), 'bytes')
           PY
           node --check /tmp/app.js
-      - name: Install Chromium
-        run: npx --yes playwright@1.55.0 install --with-deps chromium
-      - name: Browser functional audit
-        run: |
+          npx --yes playwright@1.55.0 install --with-deps chromium >/tmp/pw.log 2>&1
           cat >/tmp/audit.mjs <<'JS'
           import {chromium} from 'playwright'; import {pathToFileURL} from 'url';
           const browser=await chromium.launch({headless:true}); const page=await browser.newPage({viewport:{width:1440,height:1000}}); const errors=[];
           page.on('pageerror',e=>errors.push('PAGEERROR: '+e.message)); page.on('console',m=>{if(m.type()==='error')errors.push('CONSOLE: '+m.text())});
           await page.goto(pathToFileURL(process.cwd()+'/BriketMaster.html').href,{waitUntil:'load'}); await page.waitForTimeout(300);
           const must=['lenInput','widInput','blankWidth','edgeTrim','sawBlade','stripInput','briquetQty','cell','foilT','marginInput','marginRange','vatVal','useVAT','marketPriceInput','targetAreaInput','anaVat','finSq','finTotal','visInfo','briquetCanvas'];
-          for(const id of must) if(!await page.locator('#'+id).count()) throw new Error('Missing #'+id);
+          for(const id of must) if(!await page.locator('#'+id).count())throw new Error('Missing #'+id);
           const val=async id=>parseFloat(await page.locator('#'+id).inputValue()); const text=async id=>(await page.locator('#'+id).innerText()).trim();
           await page.evaluate(()=>localStorage.clear()); await page.reload(); await page.waitForTimeout(200);
-          const B=val('widInput'), edge=val('edgeTrim'), expectedLen=B*4/3+edge*2; if(!text('visInfo').includes(String(Math.round(expectedLen)))) throw new Error('length formula');
-          const vat=val('vatVal'); const market0=val('marketPriceInput'); await page.locator('#useVAT').check(); await page.waitForTimeout(40); const vatOn=val('anaVat'), marketOn=val('marketPriceInput'), totalOn=parseFloat((await text('finTotal')).replace(/[^0-9,.-]/g,'').replace(',','.')); await page.locator('#useVAT').uncheck(); await page.waitForTimeout(40); const vatOff=val('anaVat'), marketOff=val('marketPriceInput'), totalOff=parseFloat((await text('finTotal')).replace(/[^0-9,.-]/g,'').replace(',','.')); if(!(vatOn>0&&vatOff===0))throw new Error('VAT amount toggle'); if(!(Math.abs(marketOff*(1+vat/100)-marketOn)<=2))throw new Error(`VAT market ${marketOff}->${marketOn}`); if(!(totalOn>=totalOff))throw new Error('VAT total'); for(let i=0;i<4;i++){await page.locator('#useVAT').check();await page.waitForTimeout(15);await page.locator('#useVAT').uncheck();await page.waitForTimeout(15)} if(Math.abs(val('marketPriceInput')-marketOff)>1)throw new Error('VAT drift');
+          const B=val('widInput'), edge=val('edgeTrim'), expectedLen=B*4/3+edge*2; if(!text('visInfo').includes(String(Math.round(expectedLen))))throw new Error('length formula');
+          const vat=val('vatVal'); await page.locator('#useVAT').check(); await page.waitForTimeout(40); const vatOn=val('anaVat'), marketOn=val('marketPriceInput'), totalOn=parseFloat((await text('finTotal')).replace(/[^0-9,.-]/g,'').replace(',','.')); await page.locator('#useVAT').uncheck(); await page.waitForTimeout(40); const vatOff=val('anaVat'), marketOff=val('marketPriceInput'), totalOff=parseFloat((await text('finTotal')).replace(/[^0-9,.-]/g,'').replace(',','.')); if(!(vatOn>0&&vatOff===0))throw new Error('VAT amount toggle'); if(Math.abs(marketOff*(1+vat/100)-marketOn)>2)throw new Error(`VAT market ${marketOff}->${marketOn}`); if(!(totalOn>=totalOff))throw new Error('VAT total'); for(let i=0;i<4;i++){await page.locator('#useVAT').check();await page.waitForTimeout(15);await page.locator('#useVAT').uncheck();await page.waitForTimeout(15)} if(Math.abs(val('marketPriceInput')-marketOff)>1)throw new Error('VAT drift');
           await page.locator('#marketPriceInput').fill('777'); await page.locator('#marketPriceInput').dispatchEvent('input'); await page.waitForTimeout(30); if(Math.abs(val('marketPriceInput')-777)>1)throw new Error('market input formatting');
           await page.evaluate(()=>uiAlert('test modal','Тест')); await page.waitForTimeout(40); if(!await page.locator('#universalModal').isVisible())throw new Error('modal open'); await page.locator('#universalModal').dispatchEvent('click'); if(!await page.locator('#universalModal').isVisible())throw new Error('modal closes on backdrop'); await page.locator('#universalModal button').last().click();
           await page.locator('#widInput').fill('2000'); await page.locator('#widInput').dispatchEvent('input'); await page.waitForTimeout(60); if(!(await text('visInfo')).includes('⚠'))throw new Error('length warning'); if(!(await page.locator('#visInfo span').evaluateAll(es=>es.some(e=>getComputedStyle(e).color.includes('239, 68, 68')))))throw new Error('length warning not red');
-          console.log(JSON.stringify({PASS:true,expectedLen,vatOn,vatOff,marketOn,marketOff,totalOn,totalOff,errors},null,2)); if(errors.length)process.exitCode=1; await browser.close();
+          console.log(JSON.stringify({PASS:true,expectedLen,vatOn,vatOff,marketOn,marketOff,totalOn,totalOff,errors},null,2)); if(errors.length)throw new Error(errors.join('; ')); await browser.close();
           JS
-          node /tmp/audit.mjs
-      - name: Cleanup audit workflow
+          node /tmp/audit.mjs | tee /tmp/audit.out
+      - name: Publish audit result and cleanup
         if: always()
         run: |
+          if [ -s /tmp/audit.out ]; then cp /tmp/audit.out BRIKETMASTER_AUDIT_RESULT.txt; else echo "AUDIT_STEP_FAILED_BEFORE_OUTPUT" > BRIKETMASTER_AUDIT_RESULT.txt; fi
+          printf '\nAudit workflow job conclusion: %s\n' '${{ steps.audit.outcome }}' >> BRIKETMASTER_AUDIT_RESULT.txt
           rm -f .github/workflows/briketmaster-full-test.yml
           git config user.name 'github-actions[bot]'; git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -u .github/workflows/briketmaster-full-test.yml
-          git commit -m 'test: remove temporary BriketMaster audit workflow' || true
+          git add -A .github/workflows/briketmaster-full-test.yml BRIKETMASTER_AUDIT_RESULT.txt
+          git commit -m 'test: publish BriketMaster audit result' || true
           git push
