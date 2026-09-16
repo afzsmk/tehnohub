@@ -1,0 +1,220 @@
+name: MES NSI operations and reasons
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/mes-nsi-operations-and-reasons.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Patch MES NSI
+        env:
+          PYTHONUNBUFFERED: '1'
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          rpc_path = Path('mes/src/integration/mesMasterDataRpc.ts')
+          s = rpc_path.read_text()
+          s = s.replace("export interface MasterQualification { id:string; external_id?:string|null; code:string; name:string; level:number; description?:string|null; active:boolean; }\n", "export interface MasterQualification { id:string; external_id?:string|null; code:string; name:string; level:number; description?:string|null; active:boolean; }\nexport interface MasterOperation { id:string; code:string; name:string; description?:string|null; active:boolean; }\n")
+          s = s.replace("export interface MasterDataWorkspace { products:MasterProduct[]; professions:MasterProfession[]; qualifications:MasterQualification[]; brigades:MasterBrigade[];", "export interface MasterDataWorkspace { products:MasterProduct[]; professions:MasterProfession[]; qualifications:MasterQualification[]; operations:MasterOperation[]; brigades:MasterBrigade[];")
+          s = s.replace("const [products,professions,qualifications,brigades,employees,employeeQualifications,workCenters,equipment,equipmentCapabilities,routes,routeOperations,shifts,downtimeReasons,scrapReasons]=await Promise.all([", "const [products,professions,qualifications,operations,brigades,employees,employeeQualifications,workCenters,equipment,equipmentCapabilities,routes,routeOperations,shifts,downtimeReasons,scrapReasons]=await Promise.all([")
+          s = s.replace("this.client.from('qualification_levels').select('id,external_id,code,name,level,description,active').order('level').order('code'),this.client.from('brigades')", "this.client.from('qualification_levels').select('id,external_id,code,name,level,description,active').order('level').order('code'),this.client.from('operation_catalog').select('id,code,name,description,active').order('code'),this.client.from('brigades')")
+          s = s.replace("for(const result of [products,professions,qualifications,brigades,employees,employeeQualifications,workCenters,equipment,equipmentCapabilities,routes,routeOperations,shifts,downtimeReasons,scrapReasons])", "for(const result of [products,professions,qualifications,operations,brigades,employees,employeeQualifications,workCenters,equipment,equipmentCapabilities,routes,routeOperations,shifts,downtimeReasons,scrapReasons])")
+          s = s.replace("return{products:(products.data??[]) as MasterProduct[],professions:(professions.data??[]) as MasterProfession[],qualifications:(qualifications.data??[]) as MasterQualification[],brigades:", "return{products:(products.data??[]) as MasterProduct[],professions:(professions.data??[]) as MasterProfession[],qualifications:(qualifications.data??[]) as MasterQualification[],operations:(operations.data??[]) as MasterOperation[],brigades:")
+          s = s.replace("  saveProduct(v:MasterProduct)", "  saveOperation(v:MasterOperation){return this.call('mes_master_save_operation',{p_id:v.id,p_code:v.code,p_name:v.name,p_description:v.description??null,p_active:v.active});}\n  saveProduct(v:MasterProduct)")
+          s = s.replace("const names:Record<string,string>={products:'mes_master_delete_product',professions:'mes_master_delete_profession',qualifications:'mes_master_delete_qualification',", "const names:Record<string,string>={products:'mes_master_delete_product',professions:'mes_master_delete_profession',qualifications:'mes_master_delete_qualification',operations:'mes_master_delete_operation',")
+          rpc_path.write_text(s)
+
+          ui_path = Path('mes/src/ui/nsiAdminPage.ts')
+          s = ui_path.read_text()
+          s = s.replace("type Tab=keyof Pick<MasterDataWorkspace,'products'|'professions'|'qualifications'|'brigades'", "type Tab=keyof Pick<MasterDataWorkspace,'products'|'professions'|'qualifications'|'operations'|'brigades'")
+          s = s.replace("const tabs:Array<[Tab,string]>=[['products','Продукты'],['professions','Профессии'],['qualifications','Квалификации'],", "const tabs:Array<[Tab,string]>=[['products','Продукты'],['professions','Профессии'],['qualifications','Квалификации'],['operations','Операции'],")
+          s = s.replace("if(tab==='professions')", "if(tab==='operations'){headers='<th>Код</th><th>Название</th><th>Описание</th><th>Статус</th><th>Действия</th>';rows=data.operations.map(x=>`<tr><td><b>${esc(x.code)}</b></td><td>${esc(x.name)}</td><td>${esc(x.description??'—')}</td><td>${status(x.active)}</td>${action('operations',x.id)}</tr>`).join('');}\n    if(tab==='professions')")
+          s = s.replace("const names", "const names")
+          s = s.replace("qualifications:data.qualifications,brigades:data.brigades", "qualifications:data.qualifications,operations:data.operations,brigades:data.brigades")
+          marker = "    if(kind==='professions'){"
+          s = s.replace(marker, "    if(kind==='operations'){const x=existing as any;open(kind,`${title} операция`,field('code','Код','text',x?.code??'')+field('name','Название','text',x?.name??'')+field('description','Описание','text',x?.description??'','full')+check('active','Активна',x?.active!==false),x?.id);}\n"+marker)
+          s = s.replace("+field('setup_norm_hours','Подготовка, н-ч','number',String(x?.setup_norm_hours??0.1),'','min=\"0\" step=\"0.01\"')+field('labor_norm_hours_per_unit','Норма труда, н-ч/ед.','number',String(x?.labor_norm_hours_per_unit??0.1),'','min=\"0\" step=\"0.01\"')", "+field('setup_norm_hours','Подготовка, н-ч','text',decimalInput(x?.setup_norm_hours??0.1),'','','inputmode=\"decimal\"')+field('labor_norm_hours_per_unit','Норма труда, н-ч/ед.','text',decimalInput(x?.labor_norm_hours_per_unit??0.1),'','','inputmode=\"decimal\"')")
+          s = s.replace("const field=(name:string,label:string,type='text',value='',cls='',extra='')", "const decimalInput=(v:unknown)=>{const n=Number(v);return Number.isFinite(n)?n.toFixed(3).replace('.',','): '0,000';};\n  const field=(name:string,label:string,type='text',value='',cls='',extra='')")
+          route_old = "select('route_id','Маршрут',data.routes.map(r=>[r.id,`${r.code} — ${r.name}`]),x?.route_id??'',true)+field('sequence','Порядок','number',String(x?.sequence??10),'','min=\"1\" step=\"1\"')+field('code','Код','text',x?.code??'')+field('name','Операция','text',x?.name??'')"
+          route_new = "select('route_id','Маршрут',data.routes.map(r=>[r.id,`${r.code} — ${r.name}`]),x?.route_id??'',true)+field('sequence','Порядок','number',String(x?.sequence??10),'','min=\"1\" step=\"1\"')+select('operation_id','Операция',data.operations.filter(o=>o.active).map(o=>[o.id,`${o.code} — ${o.name}`]),x?.operation_id??'',true)"
+          s = s.replace(route_old, route_new)
+          s = s.replace("const x=existing as any;open(kind,`${title} операция маршрута`,", "const x=existing as any;open(kind,`${title} операция маршрута`,")
+          s = s.replace("code:String(f.get('code')||''),name:String(f.get('name')||''),work_center:", "code:'',name:'',work_center:")
+          s = s.replace("if(formKind==='products')await rpc.saveProduct", "if(formKind==='operations')await rpc.saveOperation({id,code:String(f.get('code')||''),name:String(f.get('name')||''),description:String(f.get('description')||''),active:av});\n      if(formKind==='products')await rpc.saveProduct")
+          s = s.replace("if(formKind==='routeOperations'){const r=data.routes.find(x=>x.id===String(f.get('route_id')));if(!r)throw new Error('Маршрут не найден');await rpc.saveRouteOperation({id,route_id:r.id,product_id:r.product_id,sequence:Number(f.get('sequence')),code:'',name:'',work_center:", "if(formKind==='routeOperations'){const r=data.routes.find(x=>x.id===String(f.get('route_id')));if(!r)throw new Error('Маршрут не найден');const op=data.operations.find(x=>x.id===String(f.get('operation_id')));if(!op)throw new Error('Операция не найдена');await rpc.saveRouteOperation({id,route_id:r.id,product_id:r.product_id,sequence:Number(f.get('sequence')),code:op.code,name:op.name,work_center:")
+          ui_path.write_text(s)
+          PY
+
+          cat > mes/supabase/migrations/115_operation_catalog_and_reason_seed.sql <<'SQL'
+          -- Normalized manufacturing operation directory + initial downtime/scrap taxonomy.
+          create table if not exists operation_catalog (
+            id text primary key,
+            code text not null unique,
+            name text not null,
+            description text,
+            active boolean not null default true
+          );
+          alter table operation_catalog enable row level security;
+          drop policy if exists operation_catalog_select_authenticated on operation_catalog;
+          create policy operation_catalog_select_authenticated on operation_catalog for select to authenticated using (true);
+          revoke insert, update, delete on operation_catalog from authenticated;
+
+          alter table route_operations add column if not exists operation_id text references operation_catalog(id);
+          create index if not exists idx_route_operations_operation_id on route_operations(operation_id);
+
+          insert into operation_catalog(id,code,name,description,active)
+          select md5(trim(ro.code)), trim(ro.code), trim(ro.name), 'Автоматически перенесено из существующих операций маршрутов', true
+            from route_operations ro
+           where nullif(trim(ro.code),'') is not null
+             and not exists(select 1 from operation_catalog oc where oc.code=trim(ro.code))
+           group by trim(ro.code), trim(ro.name);
+
+          insert into operation_catalog(id,code,name,description,active) values
+          ('op-receive','RECEIVE','Прием сырья','Прием и первичный контроль сырья',true),
+          ('op-crush','CRUSH','Дробление','Измельчение сырья',true),
+          ('op-screen','SCREEN','Грохочение','Разделение материала по фракциям',true),
+          ('op-mix','MIX','Смешивание','Смешивание компонентов по рецептуре',true),
+          ('op-dose','DOSE','Дозирование','Дозированная подача компонентов',true),
+          ('op-dry','DRY','Сушка','Удаление влаги из материала',true),
+          ('op-press','PRESS','Прессование','Формование материала под давлением',true),
+          ('op-briquette','BRIQUETTE','Брикетирование','Изготовление брикета',true),
+          ('op-cool','COOL','Охлаждение','Охлаждение готового продукта',true),
+          ('op-pack','PACK','Упаковка','Упаковка готовой продукции',true),
+          ('op-label','LABEL','Маркировка','Нанесение маркировки',true),
+          ('op-inspect','INSPECT','Контроль качества','Проверка параметров и качества продукции',true),
+          ('op-load','LOAD','Погрузка','Погрузка готовой продукции',true),
+          ('op-clean','CLEAN','Очистка оборудования','Очистка оборудования и рабочей зоны',true)
+          on conflict(code) do update set name=excluded.name, description=excluded.description, active=excluded.active;
+
+          update route_operations ro
+             set operation_id=oc.id,
+                 code=oc.code,
+                 name=oc.name
+            from operation_catalog oc
+           where ro.operation_id is null and ro.code=oc.code;
+
+          create or replace function public.mes_master_save_operation(
+            p_id text,p_code text,p_name text,p_description text,p_active boolean default true
+          ) returns jsonb language plpgsql security definer set search_path=public as $$
+          declare r operation_catalog%rowtype;
+          begin
+            perform mes_require_master_editor();
+            if nullif(trim(p_id),'') is null or nullif(trim(p_code),'') is null or nullif(trim(p_name),'') is null then
+              raise exception 'Код и название операции обязательны';
+            end if;
+            insert into operation_catalog(id,code,name,description,active)
+            values(trim(p_id),trim(p_code),trim(p_name),nullif(trim(coalesce(p_description,'')),''),coalesce(p_active,true))
+            on conflict(id) do update set code=excluded.code,name=excluded.name,description=excluded.description,active=excluded.active;
+            select * into r from operation_catalog where id=trim(p_id);
+            return to_jsonb(r);
+          end; $$;
+
+          create or replace function public.mes_master_delete_operation(p_id text)
+          returns void language plpgsql security definer set search_path=public as $$
+          declare r operation_catalog%rowtype;
+          begin
+            perform mes_require_master_editor();
+            select * into r from operation_catalog where id=trim(p_id) for update;
+            if not found then raise exception 'Операция не найдена'; end if;
+            begin delete from operation_catalog where id=r.id;
+            exception when foreign_key_violation then raise exception 'Операция используется в маршрутах и не может быть удалена. Деактивируйте её.'; end;
+          end; $$;
+
+          revoke execute on function public.mes_master_save_operation(text,text,text,text,boolean) from public,anon;
+          grant execute on function public.mes_master_save_operation(text,text,text,text,boolean) to authenticated;
+          revoke execute on function public.mes_master_delete_operation(text) from public,anon;
+          grant execute on function public.mes_master_delete_operation(text) to authenticated;
+
+          create or replace function public.mes_master_save_route_operation_v3(
+            p_id text,p_route_id text,p_sequence integer,p_operation_id text,p_work_center_id text,
+            p_required_qualification_id text,p_required_equipment_ids jsonb,p_setup_norm_hours numeric,
+            p_labor_norm_hours_per_unit numeric,p_workers_required integer,p_active boolean default true
+          ) returns jsonb language plpgsql security definer set search_path=public as $$
+          declare r route_operations%rowtype; v_product_id text; v_work_center text; v_qualification_level integer; v_equipment_id text; v_op operation_catalog%rowtype;
+          begin
+            perform mes_require_master_editor();
+            select * into v_op from operation_catalog where id=trim(p_operation_id) and active=true;
+            if not found then raise exception 'Выберите активную операцию из справочника'; end if;
+            select product_id into v_product_id from routes where id=trim(p_route_id) and active=true;
+            if v_product_id is null then raise exception 'Активный маршрут не найден: %',p_route_id; end if;
+            select name into v_work_center from work_centers where id=trim(p_work_center_id) and active=true;
+            if v_work_center is null then raise exception 'Активный рабочий центр не найден: %',p_work_center_id; end if;
+            if p_required_qualification_id is not null then
+              select level into v_qualification_level from qualification_levels where id=trim(p_required_qualification_id) and active=true;
+              if v_qualification_level is null then raise exception 'Активная квалификация не найдена: %',p_required_qualification_id; end if;
+            end if;
+            if p_required_equipment_ids is null then p_required_equipment_ids:='[]'::jsonb; end if;
+            if jsonb_typeof(p_required_equipment_ids)<>'array' then raise exception 'required_equipment_ids должен быть JSON array'; end if;
+            for v_equipment_id in select value from jsonb_array_elements_text(p_required_equipment_ids) loop
+              if not exists(select 1 from equipment where id=trim(v_equipment_id) and active) then raise exception 'Активное оборудование не найдено: %',v_equipment_id; end if;
+            end loop;
+            if p_sequence<=0 or p_workers_required<=0 or p_setup_norm_hours<0 or p_labor_norm_hours_per_unit<0 or (p_setup_norm_hours=0 and p_labor_norm_hours_per_unit=0) then
+              raise exception 'Некорректная норма нормализованной операции';
+            end if;
+            insert into route_operations(id,product_id,sequence,code,name,work_center,required_qualification,required_equipment_ids,setup_minutes,run_minutes_per_unit,active,labor_norm_hours_per_unit,setup_norm_hours,workers_required,route_id,work_center_id,required_qualification_id,operation_id)
+            values(trim(p_id),v_product_id,p_sequence,v_op.code,v_op.name,v_work_center,v_qualification_level,p_required_equipment_ids,ceil(p_setup_norm_hours*60)::integer,round(p_labor_norm_hours_per_unit*60,6),coalesce(p_active,true),p_labor_norm_hours_per_unit,p_setup_norm_hours,p_workers_required,trim(p_route_id),trim(p_work_center_id),nullif(trim(p_required_qualification_id),''),v_op.id)
+            on conflict(id) do update set product_id=excluded.product_id,sequence=excluded.sequence,code=excluded.code,name=excluded.name,work_center=excluded.work_center,required_qualification=excluded.required_qualification,required_equipment_ids=excluded.required_equipment_ids,setup_minutes=excluded.setup_minutes,run_minutes_per_unit=excluded.run_minutes_per_unit,active=excluded.active,labor_norm_hours_per_unit=excluded.labor_norm_hours_per_unit,setup_norm_hours=excluded.setup_norm_hours,workers_required=excluded.workers_required,route_id=excluded.route_id,work_center_id=excluded.work_center_id,required_qualification_id=excluded.required_qualification_id,operation_id=excluded.operation_id;
+            select * into r from route_operations where id=trim(p_id); return to_jsonb(r);
+          end; $$;
+          revoke execute on function public.mes_master_save_route_operation_v3(text,text,integer,text,text,text,jsonb,numeric,numeric,integer,boolean) from public,anon;
+          grant execute on function public.mes_master_save_route_operation_v3(text,text,integer,text,text,text,jsonb,numeric,numeric,integer,boolean) to authenticated;
+
+          insert into downtime_reasons(code,name,category,is_planned,description,active) values
+          ('MECH','Неисправность механического оборудования','ОБОРУДОВАНИЕ',false,'Поломка, заклинивание, износ механических узлов',true),
+          ('ELEC','Неисправность электрооборудования','ОБОРУДОВАНИЕ',false,'Отказ электропривода, автоматики, датчиков',true),
+          ('SETUP','Наладка и переналадка','ТЕХНОЛОГИЯ',true,'Плановая подготовка оборудования к выпуску продукции',true),
+          ('CHANGEOVER','Смена материала/продукта','ТЕХНОЛОГИЯ',true,'Плановая смена продукта, рецептуры или формата',true),
+          ('NO_MATERIAL','Нет сырья или материалов','СНАБЖЕНИЕ',false,'Ожидание сырья, топлива, упаковки или комплектующих',true),
+          ('NO_ORDER','Нет производственного задания','ПЛАНИРОВАНИЕ',false,'Рабочий центр не обеспечен актуальным заданием',true),
+          ('QUALITY_HOLD','Ожидание решения по качеству','КАЧЕСТВО',false,'Остановка до решения ОТК/лаборатории',true),
+          ('CLEANING','Очистка оборудования','ТЕХНОЛОГИЯ',true,'Плановая очистка рабочей зоны и оборудования',true),
+          ('MAINT','Плановое техническое обслуживание','ТОИР',true,'Плановые профилактические работы',true),
+          ('WAIT_MAINT','Ожидание ремонта','ТОИР',false,'Оборудование выведено из работы и ожидает ремонт',true),
+          ('POWER','Отсутствие электроэнергии','ИНФРАСТРУКТУРА',false,'Отключение или авария электроснабжения',true),
+          ('UTILITY','Отсутствие инженерного ресурса','ИНФРАСТРУКТУРА',false,'Нет воздуха, воды, пара, газа или другого ресурса',true),
+          ('SAFETY','Требование безопасности','ОРГАНИЗАЦИЯ',false,'Остановка по требованиям охраны труда/промбезопасности',true),
+          ('STAFF','Недостаток персонала','ПЕРСОНАЛ',false,'Нет необходимого оператора/бригады/квалификации',true),
+          ('BREAK','Перерыв','ОРГАНИЗАЦИЯ',true,'Регламентированный перерыв',true)
+          on conflict(code) do nothing;
+
+          insert into scrap_reasons(code,name,category,description,active) values
+          ('DIMENSION','Отклонение размеров','РАЗМЕРЫ','Длина, ширина, высота или геометрия не соответствует допуску',true),
+          ('WEIGHT','Отклонение массы','МАССА','Масса единицы продукции вне установленного диапазона',true),
+          ('MOISTURE','Повышенная/пониженная влажность','ФИЗИКО-ХИМИЧЕСКИЕ','Влажность не соответствует норме',true),
+          ('DENSITY','Отклонение плотности','ФИЗИКО-МЕХАНИЧЕСКИЕ','Плотность продукции вне допуска',true),
+          ('STRENGTH','Недостаточная прочность','ФИЗИКО-МЕХАНИЧЕСКИЕ','Прочность ниже требования спецификации',true),
+          ('CRACK','Трещины/разрушение','ВНЕШНИЙ ВИД','Трещины, расколы, разрушение изделия',true),
+          ('SHAPE','Деформация формы','ВНЕШНИЙ ВИД','Нарушение формы или геометрии изделия',true),
+          ('SURFACE','Дефект поверхности','ВНЕШНИЙ ВИД','Сколы, задиры, раковины, неровность поверхности',true),
+          ('CONTAMINATION','Загрязнение/посторонние включения','ЧИСТОТА','Наличие посторонних материалов или загрязнений',true),
+          ('COLOR','Отклонение цвета','ВНЕШНИЙ ВИД','Цвет не соответствует эталону/требованию',true),
+          ('PACKAGING','Дефект упаковки','УПАКОВКА','Повреждение, неправильная или неполная упаковка',true),
+          ('LABEL','Ошибка маркировки','МАРКИРОВКА','Неверная, отсутствующая или нечитаемая маркировка',true),
+          ('MIXTURE','Нарушение состава смеси','СЫРЬЕ','Несоответствие рецептуре или пропорциям компонентов',true),
+          ('OTHER','Прочее','ПРОЧЕЕ','Причина брака не отнесена к стандартным категориям',true)
+          on conflict(code) do nothing;
+          SQL
+
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('mes/src/integration/mesMasterDataRpc.ts'); s=p.read_text(); s=s.replace("return this.call('mes_master_save_route_operation_v2'", "return this.call('mes_master_save_route_operation_v3'"); s=s.replace("{p_id:v.id,p_route_id:v.route_id??null,p_sequence:v.sequence,p_code:v.code,p_name:v.name,p_work_center_id", "{p_id:v.id,p_route_id:v.route_id??null,p_sequence:v.sequence,p_operation_id:(v as any).operation_id??'',p_work_center_id"); p.write_text(s)
+          PY
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add mes .github/workflows/mes-nsi-operations-and-reasons.yml
+          git commit -m 'feat(mes): normalize operations and seed reason dictionaries' || true
+          git push
+          rm -f .github/workflows/mes-nsi-operations-and-reasons.yml
+          git add .github/workflows/mes-nsi-operations-and-reasons.yml
+          git commit -m 'chore: remove one-off MES NSI patch workflow' || true
+          git push
