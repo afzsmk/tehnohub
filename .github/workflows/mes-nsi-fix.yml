@@ -1,0 +1,42 @@
+name: MES NSI fix
+on:
+  push:
+    paths:
+      - '.github/workflows/mes-nsi-fix.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply corrections
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('mes/src/integration/mesMasterDataRpc.ts')
+          s=p.read_text()
+          s=s.replace("export interface MasterRouteOperation { id:string; route_id?:string|null; product_id:string;", "export interface MasterRouteOperation { id:string; route_id?:string|null; operation_id?:string|null; product_id:string;")
+          s=s.replace("select('id,route_id,product_id,sequence,code,name,work_center,work_center_id,required_qualification,required_qualification_id", "select('id,route_id,operation_id,product_id,sequence,code,name,work_center,work_center_id,required_qualification,required_qualification_id")
+          p.write_text(s)
+
+          p=Path('mes/src/ui/nsiAdminPage.ts')
+          s=p.read_text()
+          s=s.replace("field('setup_norm_hours','Подготовка, н-ч','text',decimalInput(x?.setup_norm_hours??0.1),'','','inputmode=\"decimal\"')", "field('setup_norm_hours','Подготовка, н-ч','text',decimalInput(x?.setup_norm_hours??0.1),'','inputmode=\"decimal\"')")
+          s=s.replace("field('labor_norm_hours_per_unit','Норма труда, н-ч/ед.','text',decimalInput(x?.labor_norm_hours_per_unit??0.1),'','','inputmode=\"decimal\"')", "field('labor_norm_hours_per_unit','Норма труда, н-ч/ед.','text',decimalInput(x?.labor_norm_hours_per_unit??0.1),'','inputmode=\"decimal\"')")
+          s=s.replace("await rpc.saveEquipmentNormalized({id,code:'',name:'',work_center:", "await rpc.saveEquipmentNormalized({id,code:String(f.get('code')||''),name:String(f.get('name')||''),work_center:")
+          s=s.replace("sequence:Number(f.get('sequence')),code:op.code,name:op.name,work_center:", "sequence:Number(f.get('sequence')),operation_id:op.id,code:op.code,name:op.name,work_center:")
+          p.write_text(s)
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add mes .github/workflows/mes-nsi-fix.yml
+          git commit -m 'fix(mes): complete operation reference wiring' || true
+          git push
+          rm -f .github/workflows/mes-nsi-fix.yml
+          git add -u .github/workflows/mes-nsi-fix.yml
+          git commit -m 'chore: remove one-off MES NSI fix workflow' || true
+          git push
