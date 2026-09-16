@@ -36,7 +36,7 @@ insert into operation_catalog(id,code,name,description,active) values
 ('op-inspect','INSPECT','Контроль качества','Проверка параметров и качества продукции',true),
 ('op-load','LOAD','Погрузка','Погрузка готовой продукции',true),
 ('op-clean','CLEAN','Очистка оборудования','Очистка оборудования и рабочей зоны',true)
-on conflict(code) do update set name=excluded.name, description=excluded.description, active=excluded.active;
+on conflict(code) do nothing;
 
 update route_operations ro
    set operation_id=oc.id,
