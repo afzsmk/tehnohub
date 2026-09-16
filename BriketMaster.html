@@ -1291,7 +1291,7 @@
                 <div class="eco-field"><label>Цена лома, руб/кг</label><input type="number" id="p_scrap" value="85" class="eco-input"></div>
                 <div class="eco-field"><label>Клей, руб/кг</label><input type="number" id="p_glue" value="8776" class="eco-input"></div>
                 <div class="eco-field"><label>Этилацетат, руб/кг</label><input type="number" id="p_solv" value="150.5" class="eco-input"></div>
-                <div class="eco-field"><label>Разделительные материалы, руб/брикет</label><input type="number" id="p_aux" value="450" class="eco-input"></div>
+                <div class="eco-field"><label>Расходные материалы, руб/брикет</label><input type="number" id="p_aux" value="450" class="eco-input"></div>
             </div>
 
             <div class="econ-section-title">Технологические переделы</div>
@@ -2531,7 +2531,7 @@
                                 <tr><td>Возвратный лом (кредит)</td><td class="right">-${p.scrapTotal.toFixed(2)} кг</td><td class="right">${k.p_scrap}</td><td class="right">-${Math.round(k.creditScrap).toLocaleString()}</td></tr>
                                 <tr><td>Клей термореактивный</td><td class="right">${p.glueClean_kg.toFixed(2)} кг</td><td class="right">${k.p_glue}</td><td class="right">${Math.round(k.costGlue).toLocaleString()}</td></tr>
                                 <tr><td>Этилацетат (растворитель)</td><td class="right">${p.solvent_kg.toFixed(2)} кг</td><td class="right">${k.p_solv}</td><td class="right">${Math.round(k.costSolvent).toLocaleString()}</td></tr>
-                                <tr><td>Разделительные материалы</td><td class="right">1 компл.</td><td class="right">${k.p_aux}</td><td class="right">${Math.round(k.costAux).toLocaleString()}</td></tr>
+                                <tr><td>Расходные материалы</td><td class="right">1 компл.</td><td class="right">${k.p_aux}</td><td class="right">${Math.round(k.costAux).toLocaleString()}</td></tr>
                                 <tr class="total-row"><td><strong>Итого материалы:</strong></td><td colspan="3" class="right"><strong>${Math.round(k.totalMaterials).toLocaleString()} ₽</strong></td></tr>
                             </table>
 
