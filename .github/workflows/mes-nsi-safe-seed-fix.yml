@@ -1,0 +1,33 @@
+name: MES NSI safe seed fix
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/mes-nsi-safe-seed-fix.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Patch migration
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('mes/supabase/migrations/115_operation_catalog_and_reason_seed.sql')
+          s=p.read_text()
+          s=s.replace("on conflict(code) do update set name=excluded.name, description=excluded.description, active=excluded.active;", "on conflict(code) do nothing;")
+          p.write_text(s)
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add mes/supabase/migrations/115_operation_catalog_and_reason_seed.sql
+          git commit -m 'fix(mes): preserve seeded operation master data' || true
+          git push
+          rm -f .github/workflows/mes-nsi-safe-seed-fix.yml
+          git add -u .github/workflows/mes-nsi-safe-seed-fix.yml
+          git commit -m 'chore: remove one-off safe seed fix workflow' || true
+          git push
