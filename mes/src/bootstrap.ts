@@ -20,8 +20,8 @@ import { getMesSupabaseClient } from './services/supabase';
 import './ui/mesWorkspaceNav.css';
 
 const supabase=getMesSupabaseClient();
-const app=document.querySelector<HTMLDivElement>('#app');
-if(!app) throw new Error('Не найден контейнер приложения');
+function getAppElement():HTMLDivElement{const node=document.querySelector<HTMLDivElement>('#app');if(!node)throw new Error('Не найден контейнер приложения');return node;}
+const app=getAppElement();
 
 function esc(value:unknown):string{return String(value??'').replace(/[&<>\\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\\"':'&quot;',"'":'&#39;'}[c]??c));}
 function reportFailure(error:unknown):void{const message=error instanceof Error?error.message:String(error);app.innerHTML=`<div class="panel" style="max-width:900px;margin:48px auto;padding:28px"><h2>MES не удалось загрузить</h2><div class="detail-error">${esc(message)}</div></div>`;console.error('MES bootstrap failure',error);}
