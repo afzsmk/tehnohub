@@ -24,7 +24,7 @@ insert into employees(id, personnel_no, name, profession, qualification_level, a
 values ('REQ-E2E-EMP', 'REQ-E2E-001', 'Request E2E Operator', 'Оператор', 3, true);
 
 insert into shift_definitions(id, name, start_minute, duration_minutes, active)
-values ('REQ-E2E-SHIFT', 'Request E2E 24h Shift', 0, 1440, true);
+values ('REQ-E2E-SHIFT', 'REQ-E2E 24h Shift', 0, 1440, true);
 
 insert into calendar_days(date, is_working, shift_ids)
 values (current_date, true, '["REQ-E2E-SHIFT"]'::jsonb);
@@ -67,7 +67,7 @@ select is(
 
 select is(
   (mes_create_production_order_from_request_item(
-    'REQ-E2E-REQ',
+    (select id from production_request_items where request_id='REQ-E2E-REQ' order by line_no limit 1),
     'REQ-E2E-ORDER-ID',
     'REQ-E2E-ORDER',
     'REQ-E2E-PLAN',
@@ -80,7 +80,7 @@ select is(
 
 select is(
   (select source_request_item_id from production_orders where id='REQ-E2E-ORDER-ID'),
-  (select id from production_request_items where request_id='REQ-E2E-REQ' limit 1),
+  (select id from production_request_items where request_id='REQ-E2E-REQ' order by line_no limit 1),
   'production order keeps request item provenance'
 );
 
@@ -92,7 +92,7 @@ select is(
 
 select is(
   (mes_create_production_order_from_request_item(
-    (select id from production_request_items where request_id='REQ-E2E-REQ' limit 1),
+    (select id from production_request_items where request_id='REQ-E2E-REQ' order by line_no limit 1),
     'REQ-E2E-DUP-ID',
     'REQ-E2E-DUP',
     'REQ-E2E-PLAN',
@@ -186,6 +186,24 @@ select ok(
        and action='CREATED_FROM_PRODUCTION_REQUEST'
   ),
   'request-to-order conversion is audited'
+);
+
+select ok(
+  not has_function_privilege(
+    'anon',
+    'public.mes_create_production_order_from_request_item(text,text,text,text,timestamp with time zone,text)',
+    'execute'
+  ),
+  'anon cannot execute request-to-order RPC'
+);
+
+select ok(
+  has_function_privilege(
+    'authenticated',
+    'public.mes_create_production_order_from_request_item(text,text,text,text,timestamp with time zone,text)',
+    'execute'
+  ),
+  'authenticated can execute request-to-order RPC'
 );
 
 select * from finish();
