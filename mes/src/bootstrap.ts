@@ -17,6 +17,7 @@ import { mountMesWorkspaceNav } from './ui/mesWorkspaceNav';
 import { mountNsiAdminPage } from './ui/nsiAdminPage';
 import { mountProductionRequestsPage } from './ui/productionRequestsPage';
 import { getMesSupabaseClient } from './services/supabase';
+import './mesWorkspace.css';
 import './ui/mesWorkspaceNav.css';
 
 const supabase=getMesSupabaseClient();
