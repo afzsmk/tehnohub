@@ -10,6 +10,8 @@ export const MES_REALTIME_TABLES = [
   'employee_schedules',
   'route_operations',
   'production_orders',
+  'production_requests',
+  'production_request_items',
   'production_tasks',
   'task_assignments',
   'production_results',
