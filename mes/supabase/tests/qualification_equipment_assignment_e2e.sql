@@ -41,7 +41,7 @@ select is((select count(*) from task_assignments where task_id='QUAL-E2E-TASK-OK
 select is((select count(*) from task_assignments where task_id='QUAL-E2E-TASK-OK' and equipment_id='QUAL-E2E-LASER-1'),1::bigint,'operator can use explicitly permitted laser');
 
 insert into production_tasks(id,order_id,operation_id,operation_sequence,status,planned_start,planned_end,planned_quantity,actual_quantity,version)
-values('QUAL-E2E-TASK-WRONG-Q','QUAL-E2E-ORDER','QUAL-E2E-OP',20,'PLANNED','2026-09-18T09:00:00Z','2026-09-18T10:00:00Z',1,0,1);
+values('QUAL-E2E-TASK-WRONG-Q','QUAL-E2E-ORDER','QUAL-E2E-OP',10,'PLANNED','2026-09-18T09:00:00Z','2026-09-18T10:00:00Z',1,0,1);
 select throws_ok(
   $$select mes_assign_task('QUAL-E2E-TASK-WRONG-Q','["QUAL-E2E-BENDER-EMP"]'::jsonb,'["QUAL-E2E-LASER-1"]'::jsonb,1)$$,
   'Сотрудник QUAL-E2E-BENDER-EMP не имеет требуемой квалификации QUAL-E2E-LASER для операции CUT-LASER',
@@ -49,7 +49,7 @@ select throws_ok(
 );
 
 insert into production_tasks(id,order_id,operation_id,operation_sequence,status,planned_start,planned_end,planned_quantity,actual_quantity,version)
-values('QUAL-E2E-TASK-WRONG-EQ','QUAL-E2E-ORDER','QUAL-E2E-OP',30,'PLANNED','2026-09-18T10:00:00Z','2026-09-18T11:00:00Z',1,0,1);
+values('QUAL-E2E-TASK-WRONG-EQ','QUAL-E2E-ORDER','QUAL-E2E-OP',10,'PLANNED','2026-09-18T10:00:00Z','2026-09-18T11:00:00Z',1,0,1);
 select throws_ok(
   $$select mes_assign_task('QUAL-E2E-TASK-WRONG-EQ','["QUAL-E2E-LASER-EMP"]'::jsonb,'["QUAL-E2E-LASER-2"]'::jsonb,1)$$,
   'Квалификация QUAL-E2E-LASER сотрудника QUAL-E2E-LASER-EMP не допускает оборудование QUAL-E2E-LASER-2',
