@@ -18,7 +18,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Refactor equipment UI
-        shell: python
+        shell: python {0}
         run: |
           from pathlib import Path
 
