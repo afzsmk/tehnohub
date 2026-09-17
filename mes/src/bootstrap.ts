@@ -29,7 +29,7 @@ function reportFailure(error:unknown):void{const message=error instanceof Error?
 function renderLogin():void{
  app.innerHTML=`<div class="panel" style="max-width:720px;margin:64px auto;padding:28px"><div class="subtle" style="margin-bottom:8px">TEHNOHUB · MES</div><h1 style="margin-top:0">Вход в MES</h1><p class="subtle">Авторизованный интерфейс показывает только состояние реального MES.</p><form id="login-form" class="auth-inline"><input name="email" type="email" placeholder="Email" required><input name="password" type="password" placeholder="Пароль" required><button class="primary" type="submit">Войти</button></form></div>`;
  const form=app.querySelector<HTMLFormElement>('#login-form')!;
- form.addEventListener('submit',async event=>{event.preventDefault();if(!supabase)return;const fd=new FormData(form);const button=form.querySelector<HTMLButtonElement>('button[type="submit"]');if(button)button.disabled=true;try{await signInMes(supabase,String(fd.get('email')??''),String(fd.get('password')??''));}catch(error){window.alert(error instanceof Error?error.message:'Не удалось войти');if(button)button.disabled=false;}});
+ form.addEventListener('submit',async event=>{event.preventDefault();if(!supabase)return;const fd=new FormData(form);const button=form.querySelector<HTMLButtonElement>('button[type="submit"]');if(button)button.disabled=true;try{await signInMes(supabase,String(fd.get('email')??''),String(fd.get('password')??''));window.location.reload();}catch(error){window.alert(error instanceof Error?error.message:'Не удалось войти');if(button)button.disabled=false;}});
  if(supabase)mountMesRegistration(supabase);
 }
 
@@ -44,7 +44,7 @@ async function renderWorkspace():Promise<void>{
  const shell=document.createElement('div');shell.className='mes-workspace-shell';
  const content=document.createElement('main');content.className='mes-workspace-content';
  shell.appendChild(content);app.appendChild(shell);
- document.querySelector<HTMLButtonElement>('#signout')?.addEventListener('click',async()=>{try{await signOutMes(supabase);window.location.reload();}catch(error){window.alert(error instanceof Error?error.message:'Не удалось выйти');}});
+ document.querySelector<HTMLButtonElement>('#signout')?.addEventListener('click',async()=>{try{await signOutMes(supabase);}catch(error){window.alert(error instanceof Error?error.message:'Не удалось выйти');}});
 
  await safeMount('MES Dashboard',()=>mountMesDashboardPage(content,supabase));
  await safeMount('Operational Workflow',()=>mountOperationalWorkflowPage(content,supabase));
@@ -64,5 +64,4 @@ async function renderWorkspace():Promise<void>{
  await mountMesWorkspaceNav(shell,supabase);
 }
 
-if(supabase){supabase.auth.onAuthStateChange((event)=>{if(event==='SIGNED_IN'||event==='SIGNED_OUT')window.setTimeout(()=>window.location.reload(),0);});}
 void renderWorkspace().catch(reportFailure);
