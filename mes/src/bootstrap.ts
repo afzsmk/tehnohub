@@ -29,7 +29,7 @@ function reportFailure(error:unknown):void{const message=error instanceof Error?
 function renderLogin():void{
  app.innerHTML=`<div class="panel" style="max-width:720px;margin:64px auto;padding:28px"><div class="subtle" style="margin-bottom:8px">TEHNOHUB · MES</div><h1 style="margin-top:0">Вход в MES</h1><p class="subtle">Авторизованный интерфейс показывает только состояние реального MES.</p><form id="login-form" class="auth-inline"><input name="email" type="email" placeholder="Email" required><input name="password" type="password" placeholder="Пароль" required><button class="primary" type="submit">Войти</button></form></div>`;
  const form=app.querySelector<HTMLFormElement>('#login-form')!;
- form.addEventListener('submit',async event=>{event.preventDefault();if(!supabase)return;const fd=new FormData(form);const button=form.querySelector<HTMLButtonElement>('button[type="submit"]');if(button)button.disabled=true;try{await signInMes(supabase,String(fd.get('email')??''),String(fd.get('password')??''));window.location.reload();}catch(error){window.alert(error instanceof Error?error.message:'Не удалось войти');if(button)button.disabled=false;}});
+ form.addEventListener('submit',async event=>{event.preventDefault();if(!supabase)return;const fd=new FormData(form);const button=form.querySelector<HTMLButtonElement>('button[type="submit"]');if(button)button.disabled=true;try{await signInMes(supabase,String(fd.get('email')??''),String(fd.get('password')??''));}catch(error){window.alert(error instanceof Error?error.message:'Не удалось войти');if(button)button.disabled=false;}});
  if(supabase)mountMesRegistration(supabase);
 }
 
@@ -49,7 +49,7 @@ async function renderWorkspace():Promise<void>{
  await safeMount('MES Dashboard',()=>mountMesDashboardPage(content,supabase));
  await safeMount('Operational Workflow',()=>mountOperationalWorkflowPage(content,supabase));
  await safeMount('Production Entry',()=>mountProductionEntryPage(content,supabase));
- await safeMount('Operator Downtime',()=>mountOperatorDowntimePage(content,supabase));
+ if(['OPERATOR','MAINTENANCE'].includes(auth.identity.role)) await safeMount('Operator Downtime',()=>mountOperatorDowntimePage(content,supabase));
  await safeMount('Equipment Operations',()=>mountEquipmentOperationsPage(content,supabase));
  await safeMount('Dispatch Gantt',()=>mountDispatchGanttPage(content,supabase));
  await safeMount('Orders',()=>mountOrdersPage(content,supabase));
