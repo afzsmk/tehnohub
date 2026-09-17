@@ -22,18 +22,18 @@ const id=(prefix:string)=>`${prefix}-${crypto.randomUUID()}`;
 export async function mountProductionRequestsPage(root:HTMLElement,client:SupabaseClient):Promise<void>{
  const auth=await getMesAuthState(client,{hydrateSnapshot:false});
  if(!auth.identity || !ROLES.includes(auth.identity.role) || root.querySelector('.production-requests-page')) return;
- const rpc=new SupabaseMesProductionRequestRpc(client);const orderRpc=new SupabaseMesOrderRpc(client);
+ const rpc=new SupabaseMesProductionRequestRpc(client);const orderRpc=new SupabaseMesOrderRpc(client);const db=client as SupabaseClient<any>;
  const host=document.createElement('section');host.className='panel production-requests-page';
  host.innerHTML=`<div class="panel-head"><div><h2>Заявки на изготовление</h2><div class="subtle">Входной документ производства → производственный заказ → планирование</div></div><div style="display:flex;gap:8px"><button class="tiny" data-request-refresh>Обновить</button><button class="primary" data-new-request>Новая заявка</button></div></div><div class="orders-toolbar"><span data-request-summary>Загрузка…</span></div><div data-request-form hidden></div><div data-request-convert hidden></div><div data-request-list><div class="subtle">Загрузка…</div></div>`;
  root.appendChild(host);
  const listHost=host.querySelector<HTMLElement>('[data-request-list]')!;const formHost=host.querySelector<HTMLElement>('[data-request-form]')!;const convertHost=host.querySelector<HTMLElement>('[data-request-convert]')!;const summaryHost=host.querySelector<HTMLElement>('[data-request-summary]')!;
  let products:Product[]=[];let requests:RequestRow[]=[];let items:ItemRow[]=[];let orders:OrderRow[]=[];let plans:PlanRow[]=[];
  const load=async()=>{const [rq,iq,pq,oq,plq]=await Promise.all([
-   client.from('production_requests').select('id,request_number,object_name,desired_date,status').order('desired_date',{ascending:true}).order('request_number',{ascending:true}),
-   client.from('production_request_items').select('id,request_id,line_no,product_id,quantity').order('line_no',{ascending:true}),
-   client.from('products').select('id,code,name,unit').order('code',{ascending:true}),
-   client.from('production_orders').select('id,number,source_request_item_id,status,plan_id,due_at').order('due_at',{ascending:true}),
-   client.from('operational_plans').select('id,version,status,horizon_start,horizon_end').neq('status','ARCHIVED').order('created_at',{ascending:false})
+   db.from('production_requests').select('id,request_number,object_name,desired_date,status').order('desired_date',{ascending:true}).order('request_number',{ascending:true}),
+   db.from('production_request_items').select('id,request_id,line_no,product_id,quantity').order('line_no',{ascending:true}),
+   db.from('products').select('id,code,name,unit').order('code',{ascending:true}),
+   db.from('production_orders').select('id,number,source_request_item_id,status,plan_id,due_at').order('due_at',{ascending:true}),
+   db.from('operational_plans').select('id,version,status,horizon_start,horizon_end').neq('status','ARCHIVED').order('created_at',{ascending:false})
   ]);for(const q of [rq,iq,pq,oq,plq])if(q.error)throw q.error;requests=(rq.data??[]) as RequestRow[];items=(iq.data??[]) as ItemRow[];products=(pq.data??[]) as Product[];orders=(oq.data??[]) as OrderRow[];plans=(plq.data??[]) as PlanRow[];};
  const productMap=()=>new Map(products.map(p=>[p.id,p]));
  const orderByItem=()=>new Map(orders.filter(o=>o.source_request_item_id&&o.status!=='CANCELLED').map(o=>[o.source_request_item_id as string,o]));
