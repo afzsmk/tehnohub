@@ -1,4 +1,4 @@
-import { getMesAuthState } from './integration/auth';
+import { getMesAuthState, signInMes, signOutMes } from './integration/auth';
 import { mountMesRegistration } from './integration/mesRegistration';
 import { mountQualityPage } from './ui/qualityPage';
 import { mountMesDashboardPage } from './ui/mesDashboardPage';
@@ -17,66 +17,52 @@ import { mountMesWorkspaceNav } from './ui/mesWorkspaceNav';
 import { mountNsiAdminPage } from './ui/nsiAdminPage';
 import { mountProductionRequestsPage } from './ui/productionRequestsPage';
 import { getMesSupabaseClient } from './services/supabase';
+import './ui/mesWorkspaceNav.css';
 
-const supabase = getMesSupabaseClient();
+const supabase=getMesSupabaseClient();
+const app=document.querySelector<HTMLDivElement>('#app');
+if(!app) throw new Error('Не найден контейнер приложения');
 
-function formatError(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  try { return JSON.stringify(error); } catch { return String(error); }
+function esc(value:unknown):string{return String(value??'').replace(/[&<>\\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\\"':'&quot;',"'":'&#39;'}[c]??c));}
+function reportFailure(error:unknown):void{const message=error instanceof Error?error.message:String(error);app.innerHTML=`<div class="panel" style="max-width:900px;margin:48px auto;padding:28px"><h2>MES не удалось загрузить</h2><div class="detail-error">${esc(message)}</div></div>`;console.error('MES bootstrap failure',error);}
+
+function renderLogin():void{
+ app.innerHTML=`<div class="panel" style="max-width:720px;margin:64px auto;padding:28px"><div class="subtle" style="margin-bottom:8px">TEHNOHUB · MES</div><h1 style="margin-top:0">Вход в MES</h1><p class="subtle">Авторизованный интерфейс показывает только состояние реального MES.</p><form id="login-form" class="auth-inline"><input name="email" type="email" placeholder="Email" required><input name="password" type="password" placeholder="Пароль" required><button class="primary" type="submit">Войти</button></form></div>`;
+ const form=app.querySelector<HTMLFormElement>('#login-form')!;
+ form.addEventListener('submit',async event=>{event.preventDefault();if(!supabase)return;const fd=new FormData(form);const button=form.querySelector<HTMLButtonElement>('button[type="submit"]');if(button)button.disabled=true;try{await signInMes(supabase,String(fd.get('email')??''),String(fd.get('password')??''));window.location.reload();}catch(error){window.alert(error instanceof Error?error.message:'Не удалось войти');if(button)button.disabled=false;}});
+ if(supabase)mountMesRegistration(supabase);
 }
 
-function reportRemoteFailure(error: unknown): void {
-  const message = formatError(error);
-  const app = document.querySelector<HTMLDivElement>('#app') ?? document.body;
-  let box = document.getElementById('mes-bootstrap-error');
-  if (!box) {
-    box = document.createElement('div');
-    box.id = 'mes-bootstrap-error';
-    box.style.cssText = 'margin:24px auto;padding:20px;max-width:900px;border:1px solid #e5a6a6;border-radius:10px;background:#fff5f5;color:#7a1f1f;font-family:system-ui,sans-serif;';
-    app.prepend(box);
-  }
-  box.innerHTML = `<b>MES не удалось полностью загрузить.</b><div style="margin-top:8px;white-space:pre-wrap">${message.replace(/[&<>\"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c] ?? c))}</div><div style="margin-top:12px;color:#555">Остальные разделы не будут скрываться из-за ошибки одного модуля.</div>`;
-  console.error('MES bootstrap failure', error);
+async function safeMount(name:string,mount:()=>void|Promise<void>):Promise<void>{try{await mount();}catch(error){console.error(`MES module failed: ${name}`,error);const box=document.createElement('div');box.className='detail-error';box.style.margin='0 0 12px';box.textContent=`${name}: ${error instanceof Error?error.message:String(error)}`;app.prepend(box);}}
+
+async function renderWorkspace():Promise<void>{
+ if(!supabase){renderLogin();return;}
+ const auth=await getMesAuthState(supabase,{hydrateSnapshot:false});
+ if(!auth.identity){renderLogin();return;}
+
+ app.innerHTML=`<header class="mes-app-header"><div><h1>MES — оперативное управление производством</h1><div class="subtitle">1–30 дней · заявки · заказы · производство · ресурсы · ОТК</div></div><div class="auth-inline"><span>${esc(auth.identity.role)} · ${esc(auth.user?.email??auth.user?.id??'')}</span><button class="tiny" id="signout">Выйти</button></div></header>`;
+ const shell=document.createElement('div');shell.className='mes-workspace-shell';
+ const content=document.createElement('main');content.className='mes-workspace-content';
+ shell.appendChild(content);app.appendChild(shell);
+ document.querySelector<HTMLButtonElement>('#signout')?.addEventListener('click',async()=>{try{await signOutMes(supabase);window.location.reload();}catch(error){window.alert(error instanceof Error?error.message:'Не удалось выйти');}});
+
+ await safeMount('MES Dashboard',()=>mountMesDashboardPage(content,supabase));
+ await safeMount('Operational Workflow',()=>mountOperationalWorkflowPage(content,supabase));
+ await safeMount('Production Entry',()=>mountProductionEntryPage(content,supabase));
+ await safeMount('Operator Downtime',()=>mountOperatorDowntimePage(content,supabase));
+ await safeMount('Equipment Operations',()=>mountEquipmentOperationsPage(content,supabase));
+ await safeMount('Dispatch Gantt',()=>mountDispatchGanttPage(content,supabase));
+ await safeMount('Orders',()=>mountOrdersPage(content,supabase));
+ await safeMount('Production Requests',()=>mountProductionRequestsPage(content,supabase));
+ await safeMount('Quality',()=>mountQualityPage(content,supabase));
+ await safeMount('Event Journal',()=>mountEventJournalPage(content,supabase));
+ await safeMount('Integrity',()=>mountIntegrityPage(content,supabase));
+ await safeMount('Workflow Monitor',()=>mountWorkflowMonitorPage(content,supabase));
+ await safeMount('NSI',()=>mountNsiAdminPage(content,supabase));
+ await safeMount('Import Center',()=>mountImportCenterPage(content,supabase));
+ await safeMount('MES User Administration',()=>mountMesUserAdminPage(content,supabase));
+ await mountMesWorkspaceNav(shell,supabase);
 }
 
-async function safeMount(name: string, mount: () => void | Promise<void>): Promise<void> {
-  try {
-    await mount();
-  } catch (error) {
-    console.error(`MES module failed: ${name}`, error);
-    reportRemoteFailure(new Error(`${name}: ${formatError(error)}`));
-  }
-}
-
-void import('./main').then(async () => {
-  if (!supabase) return;
-  mountMesRegistration(supabase);
-  const auth = await getMesAuthState(supabase, { hydrateSnapshot: false });
-  if (!auth.identity) return;
-
-  const app = document.querySelector<HTMLDivElement>('#app') ?? document.body;
-  await safeMount('MES Dashboard', () => mountMesDashboardPage(app, supabase));
-
-  const workspace = document.createElement('div');
-  workspace.id = 'mes-persistent-workspaces';
-  workspace.style.maxWidth = '1440px';
-  workspace.style.margin = '0 auto';
-  workspace.style.padding = '0 16px 48px';
-  document.body.appendChild(workspace);
-
-  await safeMount('Operational Workflow', () => mountOperationalWorkflowPage(workspace, supabase));
-  await safeMount('Production Entry', () => mountProductionEntryPage(workspace, supabase));
-  await safeMount('Operator Downtime', () => mountOperatorDowntimePage(workspace, supabase));
-  await safeMount('Equipment Operations', () => mountEquipmentOperationsPage(workspace, supabase));
-  await safeMount('Dispatch Gantt', () => mountDispatchGanttPage(workspace, supabase));
-  await safeMount('Orders', () => mountOrdersPage(workspace, supabase));
-  await safeMount('Production Requests', () => mountProductionRequestsPage(workspace, supabase));
-  await safeMount('Quality', () => mountQualityPage(workspace, supabase));
-  await safeMount('Event Journal', () => mountEventJournalPage(workspace, supabase));
-  await safeMount('Integrity', () => mountIntegrityPage(workspace, supabase));
-  await safeMount('Workflow Monitor', () => mountWorkflowMonitorPage(workspace, supabase));
-  await safeMount('NSI', () => mountNsiAdminPage(workspace, supabase));
-  await safeMount('Import Center', () => mountImportCenterPage(workspace, supabase));
-  await safeMount('MES User Administration', () => mountMesUserAdminPage(workspace, supabase));
-  await safeMount('Workspace Navigation', () => mountMesWorkspaceNav(workspace, supabase));
-}).catch(reportRemoteFailure);
+if(supabase){supabase.auth.onAuthStateChange((event)=>{if(event==='SIGNED_IN'||event==='SIGNED_OUT')window.setTimeout(()=>window.location.reload(),0);});}
+void renderWorkspace().catch(reportFailure);
