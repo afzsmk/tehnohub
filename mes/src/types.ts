@@ -18,7 +18,7 @@ export interface ShiftDefinition { id:string; name:string; startMinute:number; d
 export interface CalendarDay { date:string; isWorking:boolean; shiftIds:string[]; }
 export interface EmployeeSchedule { employeeId:string; date:string; shiftIds:string[]; status:ScheduleStatus; }
 export interface EquipmentBlock { id:string; equipmentId:string; start:string; end:string; reason:EquipmentBlockReason; comment?:string; }
-export interface ProductionOrder { id:string; externalId?:string; number:string; productId:string; quantity:number; completedQuantity:number; dueAt:string; priority:Priority; status:OrderStatus; route:RouteOperation[]; }
+export interface ProductionOrder { id:string; externalId?:string; sourceRequestItemId?:string; number:string; productId:string; quantity:number; completedQuantity:number; dueAt:string; priority:Priority; status:OrderStatus; route:RouteOperation[]; }
 export interface ProductionTask { id:string; orderId:string; operationId:string; operationSequence:number; status:TaskStatus; plannedStart:string; plannedEnd:string; actualStart?:string; actualEnd?:string; plannedQuantity:number; actualQuantity:number; assignedEmployeeIds:string[]; assignedEquipmentIds:string[]; qualityRequired?:boolean; qualityStatus?:QualityStatus; version:number; }
 export interface DowntimeEvent { id:string; equipmentId:string; reasonCode:string; startedAt:string; endedAt?:string; comment?:string; }
 export interface MaintenanceOrder { id:string; equipmentId:string; type:'PM'|'REPAIR'|'INSPECTION'; plannedStart:string; plannedEnd:string; status:'PLANNED'|'IN_PROGRESS'|'DONE'|'CANCELLED'; comment?:string; }
