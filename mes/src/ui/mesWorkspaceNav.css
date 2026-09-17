@@ -1,7 +1,8 @@
+.mes-workspace-shell{display:grid;grid-template-columns:220px minmax(0,1fr);gap:18px;align-items:start;max-width:1440px;margin:0 auto;padding:0 16px 48px}
 .mes-workspace-nav{position:sticky;top:16px;align-self:start;display:flex;flex-direction:column;gap:18px;padding:18px 12px;background:rgba(255,255,255,.96);border:1px solid #e2e8f0;border-radius:14px;box-shadow:0 8px 24px rgba(15,23,42,.08);backdrop-filter:blur(8px)}
 .mes-workspace-brand{display:flex;align-items:baseline;justify-content:space-between;padding:2px 8px 8px;border-bottom:1px solid #e2e8f0}.mes-workspace-brand strong{font-size:18px;letter-spacing:.04em;color:#0f172a}.mes-workspace-brand span{font-size:10px;font-weight:800;color:#64748b}
 .mes-workspace-nav-groups{display:flex;flex-direction:column;gap:14px}.mes-nav-group-title{padding:0 8px 5px;color:#94a3b8;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em}.mes-nav-group{display:flex;flex-direction:column;gap:4px}
 .mes-nav-link{width:100%;border:1px solid transparent;background:transparent;color:#334155;border-radius:9px;padding:9px 10px;text-align:left;font-size:12px;font-weight:700;cursor:pointer;transition:background .15s,border-color .15s,color .15s}.mes-nav-link:hover{background:#f8fafc;border-color:#e2e8f0}.mes-nav-link.active{background:#eef2ff;border-color:#c7d2fe;color:#312e81}
-.mes-workspace-content>[data-mes-page]{scroll-margin-top:18px}.mes-workspace-content>[data-mes-page][hidden]{display:none!important}
+.mes-workspace-content{min-width:0}.mes-workspace-content>[data-mes-page]{scroll-margin-top:18px}.mes-workspace-content>[data-mes-page][hidden]{display:none!important}
 @media(max-width:980px){.mes-workspace-nav{position:static}.mes-workspace-shell{grid-template-columns:1fr!important}.mes-workspace-nav-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.mes-nav-group{min-width:0}}
-@media(max-width:640px){.mes-workspace-nav-groups{grid-template-columns:1fr}.mes-workspace-nav{padding:12px}}
+@media(max-width:640px){.mes-workspace-nav-groups{grid-template-columns:1fr}.mes-workspace-nav{padding:12px}.mes-workspace-shell{padding-left:10px;padding-right:10px}}
