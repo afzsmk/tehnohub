@@ -80,11 +80,21 @@ jobs:
 
           latest_local=$(find supabase/migrations -maxdepth 1 -type f -name '*.sql' -printf '%f\n' | sort | tail -n 1)
           test -n "${latest_local}"
-          latest_local_version="${latest_local%%_*}"
+          latest_local_stem="${latest_local%.sql}"
+          latest_local_name="${latest_local_stem#*_}"
 
           remote_version=$(psql "${db_url}" -Atqc \
             "select version from supabase_migrations.schema_migrations order by version desc limit 1;")
-          test "${remote_version}" = "${latest_local_version}"
+          remote_name=$(psql "${db_url}" -Atqc \
+            "select name from supabase_migrations.schema_migrations order by version desc limit 1;")
+
+          case "${remote_name}" in
+            "${latest_local_stem}"|"${latest_local_name}") ;;
+            *)
+              echo "Migration history mismatch: local=${latest_local_stem} normalized=${latest_local_name}, remote=${remote_name} (${remote_version})"
+              exit 1
+              ;;
+          esac
 
           required_tables=$(psql "${db_url}" -Atqc "\
             select count(*)\
@@ -116,7 +126,7 @@ jobs:
                 'production_tasks',\
                 'task_assignments',\
                 'production_results',\
-                'quality_inspections',
+                'quality_inspections',\
                 'downtime_events',\
                 'maintenance_orders',\
                 'equipment_blocks',\
@@ -159,4 +169,4 @@ jobs:
               and 'search_path=public' = any(coalesce(p.proconfig, array[]::text[]));")
           test "${snapshot_security}" = "1"
 
-          echo "Production MES verification passed: migration=${remote_version}, tables=${required_tables}, rls=${rls_enabled}, authenticated_direct_writes=${direct_authenticated_writes}"
+          echo "Production MES verification passed: migration=${remote_version} (${remote_name}), tables=${required_tables}, rls=${rls_enabled}, authenticated_direct_writes=${direct_authenticated_writes}"
