@@ -20,14 +20,21 @@ export async function mountWorkflowMonitorPage(root:HTMLElement, client:Supabase
   const refresh=async()=>{
     [k,t,o,i].forEach(x=>x.innerHTML='<div class="subtle">Загрузка…</div>');
     try {
-      const [ordersR,tasksR,outboxR,integrityR]=await Promise.all([
+      const [ordersR,tasksR,outboxR,integrityR]=await Promise.allSettled([
         client.from('production_orders').select('id,number,status,quantity,completed_quantity').limit(250),
         client.from('production_tasks').select('id,order_id,status,planned_quantity,actual_quantity,quality_required,quality_status,version').order('version',{ascending:false}).limit(250),
         client.from('integration_outbox').select('id,idempotency_key,status,attempts,last_error,created_at').order('created_at',{ascending:false}).limit(20),
         client.rpc('mes_check_operational_integrity')
       ]);
-      for(const r of [ordersR,tasksR,outboxR,integrityR]) if(r.error) throw r.error;
-      const orders=(ordersR.data??[]) as OrderRow[], tasks=(tasksR.data??[]) as TaskRow[], outbox=(outboxR.data??[]) as OutboxRow[], integrity=integrityR.data as unknown as IntegrityResult;
+      const unwrap=<T>(result:PromiseSettledResult<{data:T|null;error:any}>,label:string):T=>{
+        if(result.status==='rejected')throw new Error(label+': '+String(result.reason));
+        if(result.value.error)throw result.value.error;
+        return result.value.data as T;
+      };
+      const orders=(unwrap(ordersR,'Заказы')??[]) as OrderRow[];
+      const tasks=(unwrap(tasksR,'Задания')??[]) as TaskRow[];
+      const outbox=(unwrap(outboxR,'Outbox')??[]) as OutboxRow[];
+      const integrity=unwrap(integrityR,'Диагностика целостности') as unknown as IntegrityResult;
       const waitingQa=tasks.filter(x=>x.quality_required&&x.quality_status==='PENDING').length;
       const active=tasks.filter(x=>['RUNNING','PAUSED','PARTIALLY_COMPLETED'].includes(x.status)).length;
       const stuck=outbox.filter(x=>['PENDING','FAILED','SENDING'].includes(x.status)).length;
