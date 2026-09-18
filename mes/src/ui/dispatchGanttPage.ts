@@ -46,42 +46,58 @@ export async function mountDispatchGanttPage(root: HTMLElement, client: Supabase
       const rows = await planningRpc.recommendResources(taskId);
       const employees = rows.filter(r => r.resourceType === 'EMPLOYEE').slice(0, 5);
       const equipment = rows.filter(r => r.resourceType === 'EQUIPMENT').slice(0, 5);
-      const renderGroup = (title:string, type:'EMPLOYEE'|'EQUIPMENT', items:MesResourceRecommendation[]) => `<div class="recommend-group"><strong>${title}</strong>${items.length ? items.map(item => `<div class="recommend-item"><div><b>${esc(item.resourceName)}</b><small>score ${item.score.toFixed(1)} · ${esc(item.reasons.slice(0,2).join(' · '))}</small></div><button class="tiny primary" data-assign-recommend data-resource-type="${type}" data-resource-id="${esc(item.resourceId)}">Назначить</button></div>`).join('') : '<div class="subtle">Подходящих ресурсов не найдено</div>'}</div>`;
-      panel.innerHTML = `<div class="recommend-head"><strong>Рекомендации для ${esc(taskId)}</strong><button class="tiny" data-close-recommendations>Закрыть</button></div><div class="recommend-grid">${renderGroup('Сотрудники','EMPLOYEE',employees)}${renderGroup('Оборудование','EQUIPMENT',equipment)}</div>`;
-      attachRecommendationHandlers();
-    } catch (error) {
-      panel.innerHTML = `<div class="detail-error">${esc(error instanceof Error ? error.message : 'Не удалось получить рекомендации')}</div>`;
-    } finally { recommendationBusy = false; }
-  };
-
-  const attachRecommendationHandlers = () => {
-    host.querySelector<HTMLButtonElement>('[data-close-recommendations]')?.addEventListener('click', () => {
-      const panel = host.querySelector<HTMLElement>('[data-recommendations]');
-      if (panel) panel.hidden = true;
-    });
-    host.querySelectorAll<HTMLButtonElement>('[data-assign-recommend]').forEach(button => {
-      button.addEventListener('click', async () => {
-        if (!recommendationTaskId || recommendationTaskVersion <= 0) return;
-        const taskId = recommendationTaskId;
-        const expectedVersion = recommendationTaskVersion;
-        const type = button.dataset.resourceType;
-        const resourceId = button.dataset.resourceId;
-        if (!resourceId || (type !== 'EMPLOYEE' && type !== 'EQUIPMENT')) return;
-        button.disabled = true;
-        try {
-          await planningRpc.assignTask(taskId, type === 'EMPLOYEE' ? { employeeIds:[resourceId] } : { equipmentIds:[resourceId] }, expectedVersion);
-          recommendationTaskId = '';
-          recommendationTaskVersion = 0;
-          const panel = host.querySelector<HTMLElement>('[data-recommendations]');
-          if (panel) { panel.hidden = true; panel.innerHTML = ''; }
+      const renderGroup = (title:string, type:'EMPLOYEE'|'EQUIPMENT', items:MesResourceRecommendation[]) =>
+        '<div class="recommend-group"><strong>'+title+'</strong>'+
+        (items.length ? items.map(item => '<div class="recommend-item"><div><b>'+esc(item.resourceName)+'</b><small>score '+item.score.toFixed(1)+' · '+esc(item.reasons.slice(0,2).join(' · '))+'</small></div><button class="tiny" type="button" data-select-recommend data-resource-type="'+type+'" data-resource-id="'+esc(item.resourceId)+'">Выбрать</button></div>').join('') : '<div class="subtle">Подходящих ресурсов не найдено</div>')+
+        '</div>';
+      panel.innerHTML =
+        '<div class="recommend-head"><div><strong>Подбор ресурсов для '+esc(taskId)+'</strong><div class="subtle">Выберите сотрудника и оборудование, затем назначьте комплект.</div></div><button class="tiny" data-close-recommendations>Закрыть</button></div>'+
+        '<div class="recommend-grid">'+renderGroup('Сотрудники','EMPLOYEE',employees)+renderGroup('Оборудование','EQUIPMENT',equipment)+'</div>'+
+        '<div class="recommend-actions"><span class="subtle" data-recommend-selection>Ничего не выбрано</span><button class="primary" type="button" data-assign-recommend-set disabled>Назначить комплект</button></div>';
+      let selectedEmployee = '';
+      let selectedEquipment = '';
+      const selection = panel.querySelector<HTMLElement>('[data-recommend-selection]');
+      const action = panel.querySelector<HTMLButtonElement>('[data-assign-recommend-set]');
+      const refreshSelection = () => {
+        const parts = [(selectedEmployee?'сотрудник выбран':'сотрудник не выбран'),(selectedEquipment?'оборудование выбрано':'оборудование не выбрано')];
+        if(selection) selection.textContent=parts.join(' · ');
+        const canAssign=(employees.length===0||!!selectedEmployee)&&(equipment.length===0||!!selectedEquipment);
+        if(action) action.disabled=!canAssign;
+        panel.querySelectorAll<HTMLButtonElement>('[data-select-recommend]').forEach(button=>{
+          const type=button.dataset.resourceType;
+          const id=button.dataset.resourceId??'';
+          const active=(type==='EMPLOYEE'&&id===selectedEmployee)||(type==='EQUIPMENT'&&id===selectedEquipment);
+          button.textContent=active?'Выбрано':'Выбрать';
+          button.classList.toggle('primary',active);
+        });
+      };
+      panel.querySelectorAll<HTMLButtonElement>('[data-select-recommend]').forEach(button=>button.addEventListener('click',()=>{
+        const type=button.dataset.resourceType;
+        const id=button.dataset.resourceId??'';
+        if(type==='EMPLOYEE') selectedEmployee=id; else if(type==='EQUIPMENT') selectedEquipment=id;
+        refreshSelection();
+      }));
+      action?.addEventListener('click',async()=>{
+        if(!recommendationTaskId||recommendationTaskVersion<=0)return;
+        action.disabled=true;
+        const selectedTaskId=recommendationTaskId;
+        const expectedVersion=recommendationTaskVersion;
+        try{
+          await planningRpc.assignTask(selectedTaskId,{employeeIds:selectedEmployee?[selectedEmployee]:undefined,equipmentIds:selectedEquipment?[selectedEquipment]:undefined},expectedVersion);
+          recommendationTaskId=''; recommendationTaskVersion=0;
+          panel.hidden=true; panel.innerHTML='';
           await render();
-        } catch (error) {
-          button.disabled = false;
-          const panel = host.querySelector<HTMLElement>('[data-recommendations]');
-          if (panel) panel.insertAdjacentHTML('afterbegin', `<div class="detail-error">${esc(error instanceof Error ? error.message : 'Назначение не выполнено')}</div>`);
+        }catch(error){
+          action.disabled=false;
+          panel.insertAdjacentHTML('afterbegin','<div class="detail-error">'+esc(error instanceof Error?error.message:'Комплект не назначен')+'</div>');
         }
       });
-    });
+      refreshSelection();
+      const close=panel.querySelector<HTMLButtonElement>('[data-close-recommendations]');
+      close?.addEventListener('click',()=>{panel.hidden=true;});
+    } catch (error) {
+      panel.innerHTML = '<div class="detail-error">'+esc(error instanceof Error ? error.message : 'Не удалось получить рекомендации')+'</div>';
+    } finally { recommendationBusy = false; }
   };
 
   const applyMove = async (task: { id:string; start:number; end:number; version:number }, targetStart:number, planId:string, planVersion:number): Promise<void> => {
