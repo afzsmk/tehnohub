@@ -53,6 +53,30 @@ export class SupabaseMesOrderRpc {
     };
   }
 
+
+  async revise(orderId:string,input:{planId:string;dueAt:string;priority:ProductionOrder['priority']}):Promise<ProductionOrder>{
+    const {data,error}=await this.client.rpc('mes_revise_production_order',{
+      p_order_id:orderId,p_plan_id:input.planId,p_due_at:input.dueAt,p_priority:input.priority
+    });
+    if(error)throw error;
+    const row=requireOrder(data);
+    return {
+      id:row.id,externalId:row.external_id??undefined,number:row.number,productId:row.product_id,
+      quantity:Number(row.quantity),completedQuantity:Number(row.completed_quantity),dueAt:row.due_at,
+      priority:row.priority,status:row.status,route:[]
+    };
+  }
+
+  async split(orderId:string,parts:Array<{quantity:number;dueAt:string;planId:string;priority:ProductionOrder['priority'];orderNumber?:string}>):Promise<Record<string,unknown>>{
+    const {data,error}=await this.client.rpc('mes_split_production_order',{
+      p_order_id:orderId,
+      p_parts:parts.map(part=>({quantity:part.quantity,dueAt:part.dueAt,planId:part.planId,priority:part.priority,orderNumber:part.orderNumber??null}))
+    });
+    if(error)throw error;
+    if(!data||typeof data!=='object'||Array.isArray(data))throw new Error('MES RPC разбиения заказа вернул пустой результат');
+    return data as Record<string,unknown>;
+  }
+
   async planOrder(orderId: string): Promise<{ orderId: string; createdTasks: number; existingTasks: number; status: 'PLANNED' }> {
     const { data, error } = await this.client.rpc('mes_plan_order', { p_order_id: orderId });
     if (error) throw error;
