@@ -16,6 +16,8 @@ import { mountMesUserAdminPage } from './ui/mesUserAdminPage';
 import { mountMesWorkspaceNav } from './ui/mesWorkspaceNav';
 import { mountNsiAdminPage } from './ui/nsiAdminPage';
 import { mountProductionRequestsPage } from './ui/productionRequestsPage';
+import { mountProductionRequestFormation } from './ui/productionRequestFormationController';
+import { mountOperationalPlansPage } from './ui/operationalPlansPage';
 import { bindProductionRequestProductLoader } from './ui/productionRequestProductLoader';
 import { getMesSupabaseClient } from './services/supabase';
 import './mesWorkspace.css';
@@ -73,6 +75,8 @@ async function renderWorkspace():Promise<void>{
    ['Dispatch Gantt',()=>mountDispatchGanttPage(content,supabase)],
    ['Orders',()=>mountOrdersPage(content,supabase)],
    ['Production Requests',()=>mountProductionRequestsPage(content,supabase)],
+   ['Production Request Formation',()=>mountProductionRequestFormation(content,supabase)],
+   ['Operational Plans',()=>mountOperationalPlansPage(content,supabase)],
    ['Quality',()=>mountQualityPage(content,supabase)],
    ['Event Journal',()=>mountEventJournalPage(content,supabase)],
    ['Integrity',()=>mountIntegrityPage(content,supabase)],
