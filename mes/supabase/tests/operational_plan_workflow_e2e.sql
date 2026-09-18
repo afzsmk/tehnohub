@@ -36,6 +36,43 @@ select ok(
   'anon cannot form production from a request'
 );
 
+select ok(
+  has_function_privilege('authenticated','public.mes_check_operational_integrity()','execute'),
+  'authenticated can run operational integrity diagnostics'
+);
+select ok(
+  not has_function_privilege('anon','public.mes_check_operational_integrity()','execute'),
+  'anon cannot run operational integrity diagnostics'
+);
+select ok(
+  has_table_privilege('authenticated','public.integration_outbox','SELECT'),
+  'authenticated can read integration outbox'
+);
+select ok(
+  not has_table_privilege('anon','public.integration_outbox','SELECT'),
+  'anon cannot read integration outbox'
+);
+select ok(
+  has_function_privilege('authenticated','public.mes_check_production_request_feasibility(text,text,timestamp with time zone)','execute'),
+  'authenticated can check request feasibility'
+);
+select ok(
+  has_function_privilege('authenticated','public.mes_update_production_request(text,text,text,date,jsonb)','execute'),
+  'authenticated can update production requests'
+);
+select ok(
+  has_function_privilege('authenticated','public.mes_cancel_production_request(text)','execute'),
+  'authenticated can cancel production requests'
+);
+select ok(
+  has_function_privilege('authenticated','public.mes_revise_production_order(text,text,timestamp with time zone,text)','execute'),
+  'authenticated can revise blocked orders'
+);
+select ok(
+  has_function_privilege('authenticated','public.mes_split_production_order(text,jsonb)','execute'),
+  'authenticated can split blocked orders'
+);
+
 select set_config('request.jwt.claim.sub','22222222-2222-2222-2222-222222222222',false);
 select set_config('request.jwt.claims','{"sub":"22222222-2222-2222-2222-222222222222","app_metadata":{"mes_role":"ADMIN"}}',false);
 
@@ -77,6 +114,14 @@ select is(
   )->>'createdOrders')::integer,
   2,
   'two request lines produce two orders'
+);
+
+select is(
+  (mes_check_production_request_feasibility(
+    'PLAN-E2E-REQ','PLAN-E2E-001',now()+interval '14 days'
+  )->>'feasible')::boolean,
+  true,
+  'request feasibility preflight is positive for the E2E request'
 );
 
 select is(
