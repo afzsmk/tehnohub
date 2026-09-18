@@ -44,14 +44,14 @@
 
     <div class="panel">
       <div class="panel-head"><b>Листы / заготовки</b><button id="add-sheet" class="small-btn">+ Лист</button></div>
-      <div class="table-wrap sheet-editor"><table class="tbl sheet-table"><thead><tr><th>Имя</th><th>Ширина</th><th>Высота</th><th>Кол.</th><th>Приор.</th><th></th></tr></thead><tbody id="sheet-body"></tbody></table></div>
+      <div id="sheet-body" class="sheet-list"></div>
       <div class="hint" style="margin-top:8px">Приоритет 1 используется первым. Остатки можно возвращать в этот список после расчёта.</div>
     </div>
 
     <div class="panel">
       <div class="panel-head"><b>Детали</b><div class="preset-wrap"><button id="add-part" class="small-btn">+ Добавить</button><div id="preset-menu" class="preset-menu hidden"><button data-preset="rect">▭ Прямоугольник</button><button data-preset="square">□ Квадрат</button><button data-preset="circle">○ Круг</button><button data-preset="ellipse">◯ Эллипс</button><button data-preset="ring">◎ Кольцо</button><button data-preset="triangle">△ Треугольник</button><button data-preset="trapezoid">⏢ Трапеция</button><button data-preset="hex">⬡ Шестиугольник</button><button data-preset="l">⌞ Г-образная</button></div></div></div>
       <div class="dropzone" id="dropzone"><b>Перетащите DXF / SVG / CSV сюда</b><small>или выберите файлы <label class="small-btn" for="file">Открыть</label></small><input id="file" type="file" accept=".dxf,.svg,.csv,.txt" multiple hidden></div>
-      <div class="table-wrap" style="margin-top:10px"><table class="tbl parts-table"><thead><tr><th></th><th>Наименование</th><th>Габарит</th><th>Кол.</th><th>Источник</th><th></th></tr></thead><tbody id="parts-body"></tbody></table></div>
+      <div class="table-wrap" style="margin-top:10px"><table class="tbl parts-table"><thead><tr><th></th><th>Наименование</th><th>Габарит</th><th>Количество</th><th></th></tr></thead><tbody id="parts-body"></tbody></table></div>
     </div>
 
     <div class="panel">
@@ -88,7 +88,7 @@
   </section>
 
   <section class="center-col">
-    <div class="center-head"><div><b>КАРТА РАСКРОЯ</b><div class="sub">реальные контуры деталей · масштаб по листу</div></div><div class="zoom"><button id="zoom-out">−</button><button id="zoom-fit">100%</button><button id="zoom-in">+</button></div></div>
+    <div class="center-head"><div><b>КАРТА РАСКРОЯ</b><div class="sub">реальные контуры деталей · масштаб по листу</div></div><div class="zoom"><button id="zoom-out">−</button><button id="zoom-fit">Вписать</button><button id="zoom-in">+</button></div></div>
     <div id="result" class="hidden">
       <div id="variants-panel" class="panel hidden"><div class="panel-head"><b>Варианты алгоритма</b><span class="sub">можно переключать после расчёта</span></div><div id="variants" class="variants"></div></div>
       <div id="maps" class="maps"></div>

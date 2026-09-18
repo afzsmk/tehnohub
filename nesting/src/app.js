@@ -15,7 +15,16 @@ let currentPlan=null, running=false, mapZoom=1;
 
 function $(id){return document.getElementById(id)}
 function save(){localStorage.setItem(KEY,JSON.stringify(state))}
-function load(){try{const x=JSON.parse(localStorage.getItem(KEY)||"null");return x&&x.job?x:createDefaultState()}catch(e){return createDefaultState()}}
+function load(){
+  try{
+    const x=JSON.parse(localStorage.getItem(KEY)||"null");
+    if(x&&x.job){
+      if(x.nesting && Number(x.nesting.timeLimitMs)===1800) x.nesting.timeLimitMs=8000;
+      return x;
+    }
+    return createDefaultState();
+  }catch(e){return createDefaultState()}
+}
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
 function fmt(n,d){return Number(n||0).toLocaleString("ru-RU",{maximumFractionDigits:d==null?1:d,minimumFractionDigits:d==null?1:d})}
 function fmt0(n){return Number(n||0).toLocaleString("ru-RU",{maximumFractionDigits:0})}
@@ -36,18 +45,20 @@ function initControls(){
 }
 function renderSheets(){
   var html="";
-  state.sheets.forEach(function(s,i){html+='<tr><td><input data-s="'+i+'" data-k="name" value="'+esc(s.name||"Лист")+'" class="cell sheet-name"></td><td><input data-s="'+i+'" data-k="width" type="number" value="'+s.width+'" class="cell num sheet-dim"></td><td><input data-s="'+i+'" data-k="height" type="number" value="'+s.height+'" class="cell num sheet-dim"></td><td><input data-s="'+i+'" data-k="qty" type="number" min="0" value="'+s.qty+'" class="cell num sheet-qty"></td><td><input data-s="'+i+'" data-k="priority" type="number" min="1" value="'+s.priority+'" class="cell num sheet-priority"></td><td><button class="icon-btn" data-remove-sheet="'+i+'">×</button></td></tr>'});
-  $("sheet-body").innerHTML=html;
-  $("sheet-body").querySelectorAll("[data-s]").forEach(function(el){el.addEventListener("change",function(e){var i=+e.target.dataset.s,k=e.target.dataset.k;state.sheets[i][k]=e.target.type==="number"?Number(e.target.value):e.target.value;save()})});
+  state.sheets.forEach(function(s,i){
+    html+='<div class="sheet-item"><div class="sheet-top"><input data-s="'+i+'" data-k="name" value="'+esc(s.name||"Лист")+'" class="cell sheet-name" title="Наименование листа"><button class="icon-btn" data-remove-sheet="'+i+'">×</button></div><div class="sheet-fields"><label><span>Ширина, мм</span><input data-s="'+i+'" data-k="width" type="number" value="'+s.width+'" class="cell num"></label><label><span>Высота, мм</span><input data-s="'+i+'" data-k="height" type="number" value="'+s.height+'" class="cell num"></label><label><span>Количество</span><input data-s="'+i+'" data-k="qty" type="number" min="0" value="'+s.qty+'" class="cell num"></label><label><span>Приоритет</span><input data-s="'+i+'" data-k="priority" type="number" min="1" value="'+s.priority+'" class="cell num"></label></div></div>';
+  });
+  $("sheet-body").innerHTML=html||'<div class="empty-row">Добавьте хотя бы один формат листа.</div>';
+  $("sheet-body").querySelectorAll("[data-s]").forEach(function(el){el.addEventListener("change",function(e){var i=+e.target.dataset.s,k=e.target.dataset.k;state.sheets[i][k]=e.target.type==="number"?Number(e.target.value):e.target.value;save();renderSummary()})});
   $("sheet-body").querySelectorAll("[data-remove-sheet]").forEach(function(el){el.onclick=function(){state.sheets.splice(+el.dataset.removeSheet,1);save();renderSheets();renderSummary()}});
 }
 function preview(part){
   var inf=contourInfo(part);return '<div class="mini-preview"><svg viewBox="0 0 '+Math.max(inf.width,1)+" "+Math.max(inf.height,1)+'">'+(part.geometry.loops||[]).map(function(l,i){return '<path d="'+loopsToPathD([l])+'" class="'+(i%2?"hole":"")+'"/>'}).join("")+"</svg></div>";
 }
 function renderParts(){
-  if(!state.parts.length){$("parts-body").innerHTML='<tr><td colspan="6" class="empty-row">Добавьте DXF/SVG или прямоугольную деталь.</td></tr>';return}
-  $("parts-body").innerHTML=state.parts.map(function(p,i){var inf=contourInfo(p);return '<tr><td>'+preview(p)+'</td><td><input data-p="'+i+'" data-k="name" value="'+esc(p.name)+'" class="cell"></td><td class="dim">'+fmt0(inf.width)+"×"+fmt0(inf.height)+'</td><td><input data-p="'+i+'" data-k="quantity" type="number" min="1" value="'+p.quantity+'" class="cell num"></td><td><span class="source">'+esc(p.source||"manual")+'</span></td><td><button class="icon-btn" data-remove-part="'+i+'">×</button></td></tr>'}).join("");
-  $("parts-body").querySelectorAll("[data-p]").forEach(function(el){el.addEventListener("change",function(e){var p=state.parts[+e.target.dataset.p],k=e.target.dataset.k;p[k]=e.target.type==="number"?Math.max(1,Math.round(Number(e.target.value)||1)):e.target.value;save();renderParts()})});
+  if(!state.parts.length){$("parts-body").innerHTML='<tr><td colspan="5" class="empty-row">Добавьте DXF/SVG или стандартную фигуру.</td></tr>';return}
+  $("parts-body").innerHTML=state.parts.map(function(p,i){var inf=contourInfo(p);return '<tr><td>'+preview(p)+'</td><td><input data-p="'+i+'" data-k="name" value="'+esc(p.name)+'" class="cell part-name"></td><td class="dim">'+fmt0(inf.width)+"×"+fmt0(inf.height)+'</td><td><input data-p="'+i+'" data-k="quantity" type="number" min="1" value="'+p.quantity+'" class="cell num part-qty"></td><td><button class="icon-btn" data-remove-part="'+i+'">×</button></td></tr>'}).join("");
+  $("parts-body").querySelectorAll("[data-p]").forEach(function(el){el.addEventListener("change",function(e){var p=state.parts[+e.target.dataset.p],k=e.target.dataset.k;p[k]=e.target.type==="number"?Math.max(1,Math.round(Number(e.target.value)||1)):e.target.value;save();renderParts();renderSummary()})});
   $("parts-body").querySelectorAll("[data-remove-part]").forEach(function(el){el.onclick=function(){state.parts.splice(+el.dataset.removePart,1);save();renderParts();renderSummary()}});
 }
 function renderRemnants(){
