@@ -44,3 +44,36 @@ export function expandParts(parts){
 export function totalQuantity(parts){ return parts.reduce((a,p)=>a+Math.max(0,Math.round(Number(p.quantity)||0)),0); }
 
 export function clone(value){ return typeof structuredClone==="function" ? structuredClone(value) : JSON.parse(JSON.stringify(value)); }
+
+
+export function polygon(points, meta={}) {
+  return { id:crypto.randomUUID(), name:meta.name||"Деталь", quantity:Math.max(1,Math.round(meta.quantity||1)), source:meta.source||"preset",
+    geometry:{ loops:[points], loopDepths:[0] } };
+}
+export function circlePart(radius, meta={}) {
+  const pts=[]; const n=96; for(let i=0;i<n;i++){const t=i*2*Math.PI/n;pts.push({x:radius*Math.cos(t)+radius,y:radius*Math.sin(t)+radius})}
+  return polygon(pts,{...meta,name:meta.name||"Круг"});
+}
+export function ellipsePart(rx,ry,meta={}) {
+  const pts=[]; const n=96; for(let i=0;i<n;i++){const t=i*2*Math.PI/n;pts.push({x:rx*Math.cos(t)+rx,y:ry*Math.sin(t)+ry})}
+  return polygon(pts,{...meta,name:meta.name||"Эллипс"});
+}
+export function ringPart(outerR,innerR,meta={}) {
+  const outer=[],inner=[]; const n=96;
+  for(let i=0;i<n;i++){const t=i*2*Math.PI/n;outer.push({x:outerR*Math.cos(t)+outerR,y:outerR*Math.sin(t)+outerR});inner.push({x:innerR*Math.cos(2*Math.PI-t)+outerR,y:innerR*Math.sin(2*Math.PI-t)+outerR})}
+  return { id:crypto.randomUUID(), name:meta.name||"Кольцо", quantity:Math.max(1,Math.round(meta.quantity||1)), source:"preset", geometry:{loops:[outer,inner],loopDepths:[0,1]} };
+}
+export function trianglePart(width,height,meta={}) {
+  return polygon([{x:0,y:height},{x:width/2,y:0},{x:width,y:height}],{...meta,name:meta.name||"Треугольник"});
+}
+export function hexagonPart(radius,meta={}) {
+  const pts=[]; const n=6; for(let i=0;i<n;i++){const t=Math.PI/6+i*2*Math.PI/n;pts.push({x:radius*Math.cos(t)+radius,y:radius*Math.sin(t)+radius})}
+  return polygon(pts,{...meta,name:meta.name||"Шестиугольник"});
+}
+export function trapezoidPart(top,bottom,height,meta={}) {
+  const dx=(bottom-top)/2; return polygon([{x:dx,y:height},{x:dx+top,y:height},{x:bottom,y:0},{x:0,y:0}],{...meta,name:meta.name||"Трапеция"});
+}
+export function lPart(width,height,leg,meta={}) {
+  const a=Math.min(leg,width),b=Math.min(leg,height);
+  return polygon([{x:0,y:0},{x:width,y:0},{x:width,y:b},{x:a,y:b},{x:a,y:height},{x:0,y:height}],{...meta,name:meta.name||"Г-образная"});
+}

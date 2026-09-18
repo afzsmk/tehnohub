@@ -61,7 +61,7 @@ export async function runNest(parts, bin, config={}, opts={}){
               if(!child)continue;
               const id=child.getAttribute("data-part-id");
               const tr=parseTranslateRotate(g.getAttribute("transform"));
-              items.push({instanceId:id,x:tr.x+edge,y:tr.y+edge,rotation:tr.rotation});
+              items.push({instanceId:id,x:tr.x+edge,y:tr.y+edge,rotation:tr.rotation,svgGroup:g.outerHTML});
               placedIds.push(id);
             }
             if(items.length) sheets.push({width:bin.width,height:bin.height,items});

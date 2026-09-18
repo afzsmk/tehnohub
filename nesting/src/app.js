@@ -1,5 +1,5 @@
 
-import { createDefaultState, MATERIALS, TECHNOLOGIES, expandParts, clone, totalQuantity } from "./core/model.js";
+import { createDefaultState, MATERIALS, TECHNOLOGIES, expandParts, clone, totalQuantity, polygon, circlePart, ellipsePart, ringPart, trianglePart, hexagonPart, trapezoidPart, lPart } from "./core/model.js";
 import { contourInfo, loopsBounds, loopsToPathD, transformLoops } from "./geometry/geometry.js";
 import { validatePart } from "./geometry/validation.js";
 import { importSvg } from "./import/svg.js";
@@ -36,7 +36,7 @@ function initControls(){
 }
 function renderSheets(){
   var html="";
-  state.sheets.forEach(function(s,i){html+='<tr><td><input data-s="'+i+'" data-k="name" value="'+esc(s.name||"Лист")+'" class="cell"></td><td><input data-s="'+i+'" data-k="width" type="number" value="'+s.width+'" class="cell num"></td><td><input data-s="'+i+'" data-k="height" type="number" value="'+s.height+'" class="cell num"></td><td><input data-s="'+i+'" data-k="qty" type="number" min="0" value="'+s.qty+'" class="cell num"></td><td><input data-s="'+i+'" data-k="priority" type="number" min="1" value="'+s.priority+'" class="cell num"></td><td><button class="icon-btn" data-remove-sheet="'+i+'">×</button></td></tr>'});
+  state.sheets.forEach(function(s,i){html+='<tr><td><input data-s="'+i+'" data-k="name" value="'+esc(s.name||"Лист")+'" class="cell sheet-name"></td><td><input data-s="'+i+'" data-k="width" type="number" value="'+s.width+'" class="cell num sheet-dim"></td><td><input data-s="'+i+'" data-k="height" type="number" value="'+s.height+'" class="cell num sheet-dim"></td><td><input data-s="'+i+'" data-k="qty" type="number" min="0" value="'+s.qty+'" class="cell num sheet-qty"></td><td><input data-s="'+i+'" data-k="priority" type="number" min="1" value="'+s.priority+'" class="cell num sheet-priority"></td><td><button class="icon-btn" data-remove-sheet="'+i+'">×</button></td></tr>'});
   $("sheet-body").innerHTML=html;
   $("sheet-body").querySelectorAll("[data-s]").forEach(function(el){el.addEventListener("change",function(e){var i=+e.target.dataset.s,k=e.target.dataset.k;state.sheets[i][k]=e.target.type==="number"?Number(e.target.value):e.target.value;save()})});
   $("sheet-body").querySelectorAll("[data-remove-sheet]").forEach(function(el){el.onclick=function(){state.sheets.splice(+el.dataset.removeSheet,1);save();renderSheets();renderSummary()}});
@@ -56,11 +56,23 @@ function renderRemnants(){
   $("remnants").querySelectorAll("[data-use-rem]").forEach(function(b){b.onclick=function(){var r=a[+b.dataset.useRem];var bb=loopsBounds(r.loops);var nearlyRect=Math.abs((r.area||0)/(bb.width*bb.height)-1)<.015;if(!nearlyRect){toast("Нерегулярный остаток пока не добавляется как прямоугольный лист.","warn");return}state.sheets.push({id:crypto.randomUUID(),name:"Остаток "+fmt0(bb.width)+"×"+fmt0(bb.height),width:Math.round(bb.width),height:Math.round(bb.height),qty:1,priority:1,source:"remnant"});save();renderSheets();toast("Остаток добавлен в заготовки.")}});
 }
 function renderSummary(){$("part-count").textContent=fmt0(totalQuantity(state.parts));$("sheet-count").textContent=fmt0(state.sheets.reduce(function(a,s){return a+Math.max(0,Number(s.qty)||0)},0))}
-function addManual(){
-  var w=Math.max(1,Number(prompt("Ширина детали, мм","600"))||600),h=Math.max(1,Number(prompt("Высота детали, мм","400"))||400),name=prompt("Наименование","Новая деталь")||"Новая деталь";
-  state.parts.push({id:crypto.randomUUID(),name:name,quantity:1,source:"manual",geometry:{loops:[[{x:0,y:0},{x:w,y:0},{x:w,y:h},{x:0,y:h}]],loopDepths:[0]}});
-  save();renderParts();renderSummary();
+function addPartPreset(kind){
+  var p,name;
+  if(kind==="rect"){var w=Math.max(1,Number(prompt("Ширина, мм","600"))||600),h=Math.max(1,Number(prompt("Высота, мм","400"))||400);name=prompt("Наименование","Прямоугольник")||"Прямоугольник";p=polygon([{x:0,y:0},{x:w,y:0},{x:w,y:h},{x:0,y:h}],{name:name});}
+  else if(kind==="square"){var s=Math.max(1,Number(prompt("Сторона, мм","400"))||400);p=polygon([{x:0,y:0},{x:s,y:0},{x:s,y:s},{x:0,y:s}],{name:"Квадрат"});}
+  else if(kind==="circle"){p=circlePart(Math.max(1,Number(prompt("Радиус, мм","200"))||200));}
+  else if(kind==="ellipse"){var rx=Math.max(1,Number(prompt("Полуось X, мм","300"))||300),ry=Math.max(1,Number(prompt("Полуось Y, мм","150"))||150);p=ellipsePart(rx,ry);}
+  else if(kind==="ring"){var ro=Math.max(2,Number(prompt("Наружный радиус, мм","250"))||250),ri=Math.max(1,Number(prompt("Внутренний радиус, мм","100"))||100);if(ri>=ro){toast("Внутренний радиус должен быть меньше наружного.","error");return}p=ringPart(ro,ri);}
+  else if(kind==="triangle"){var tw=Math.max(1,Number(prompt("Основание, мм","500"))||500),th=Math.max(1,Number(prompt("Высота, мм","400"))||400);p=trianglePart(tw,th);}
+  else if(kind==="hex"){p=hexagonPart(Math.max(1,Number(prompt("Радиус описанной окружности, мм","250"))||250));}
+  else if(kind==="trapezoid"){var top=Math.max(1,Number(prompt("Верхнее основание, мм","300"))||300),bottom=Math.max(top,Number(prompt("Нижнее основание, мм","600"))||600),hh=Math.max(1,Number(prompt("Высота, мм","400"))||400);p=trapezoidPart(top,bottom,hh);}
+  else if(kind==="l"){var lw=Math.max(10,Number(prompt("Общая ширина, мм","600"))||600),lh=Math.max(10,Number(prompt("Общая высота, мм","600"))||600),leg=Math.max(5,Number(prompt("Ширина полки, мм","180"))||180);p=lPart(lw,lh,leg);}
+  if(!p)return;
+  p.id=crypto.randomUUID();p.quantity=1;p.source="preset";
+  state.parts.push(p);save();renderParts();renderSummary();closePresetMenu();
 }
+function closePresetMenu(){var m=$("preset-menu");if(m)m.classList.add("hidden")}
+function addManual(){addPartPreset("rect")}
 async function importFiles(files){
   for(const f of Array.from(files||[])){try{
     var text=await f.text(),ext=f.name.split(".").pop().toLowerCase(),r;
@@ -100,7 +112,8 @@ async function buildPlan(strategy){
   var map=buildInstanceMap(expanded),plan={job:clone(state.job),thickness:state.job.thickness,totalParts:expanded.length,sheets:sheets,remaining:remaining,partMap:map,originalParts:original,remnants:[],strategy:strategy};
   plan.metrics=calculateMetrics(plan,mat());plan.remnants=calculateRemnants(plan,state.options.minRemnant*state.options.minRemnant);return plan;
 }
-function sheetKim(sh){var used=sh.items.reduce(function(a,it){var p=currentPlan.partMap.get(it.instanceId);return a+(p?partArea(p):0)},0);return used/(sh.width*sh.height)*100}
+function resolvePart(it){if(!currentPlan)return null;return currentPlan.partMap.get(it.instanceId)||currentPlan.partMap.get(String(it.instanceId||"").split("#")[0])||null}
+function sheetKim(sh){var used=sh.items.reduce(function(a,it){var p=resolvePart(it);return a+(p?partArea(p):0)},0);return used/(sh.width*sh.height)*100}
 function renderPlan(){
   if(!currentPlan){$("result").classList.add("hidden");$("result-empty").classList.remove("hidden");return}
   $("result").classList.remove("hidden");$("result-empty").classList.add("hidden");var m=currentPlan.metrics;
@@ -108,8 +121,12 @@ function renderPlan(){
   $("result-status").className="status "+(m.notPlaced?"warn":"ok");$("result-status").textContent=m.notPlaced?"Не размещено: "+m.notPlaced:"Все детали размещены";renderMaps();renderBom();renderResultRemnants();
 }
 function svgForSheet(sh){
-  var parts=[];for(const it of sh.items){var p=currentPlan.partMap.get(it.instanceId);if(!p)continue;transformLoops(p.geometry.loops,it.rotation,it.x,it.y).forEach(function(loop){parts.push('<path class="part-path" data-id="'+esc(it.instanceId)+'" d="'+loopsToPathD([loop])+'"/>')})}
-  return '<svg viewBox="0 0 '+sh.width+" "+sh.height+'" class="map-svg" style="width:'+Math.max(420,Math.round(sh.width*mapZoom/1.2))+'px"><rect class="sheet-box" width="'+sh.width+'" height="'+sh.height+'"/>'+parts.join("")+"</svg>";
+  var parts=[];
+  for(const it of sh.items){
+    if(it.svgGroup) parts.push(it.svgGroup);
+    else {var p=currentPlan.partMap.get(it.instanceId);if(!p)continue;transformLoops(p.geometry.loops,it.rotation,it.x,it.y).forEach(function(loop){parts.push('<path class="part-path" data-id="'+esc(it.instanceId)+'" d="'+loopsToPathD([loop])+'"/>')})}
+  }
+  return '<svg viewBox="0 0 '+sh.width+" "+sh.height+'" class="map-svg" style="width:'+mapZoom*100+'%"><rect class="sheet-box" width="'+sh.width+'" height="'+sh.height+'"/>'+parts.join("")+"</svg>";
 }
 function renderMaps(){$("maps").innerHTML=currentPlan.sheets.map(function(s,i){return '<article class="map-card"><div class="map-head"><div><b>Лист '+(i+1)+'</b><span>'+fmt0(s.width)+"×"+fmt0(s.height)+" мм · "+esc(s.name||"Заготовка")+'</span></div><span class="map-kim">'+fmt(sheetKim(s),1)+'%</span></div><div class="map-viewport">'+svgForSheet(s)+"</div></article>"}).join("")||'<div class="empty-block">Нет готовых карт.</div>'}
 function renderBom(){$("bom").innerHTML=makeBom(currentPlan).map(function(r){return '<tr><td>'+esc(r.name)+'</td><td>'+fmt0(r.ordered)+'</td><td>'+fmt0(r.placed)+'</td><td>'+fmt0(r.width)+"×"+fmt0(r.height)+'</td><td>'+(r.placed<r.ordered?'<span class="bad">недостача</span>':'<span class="good">OK</span>')+'</td></tr>'}).join("")}
@@ -132,8 +149,9 @@ async function compare(){
 }
 function bind(){
   $("add-sheet").onclick=function(){state.sheets.push({id:crypto.randomUUID(),name:"Лист",width:2000,height:1250,qty:1,priority:1,source:"stock"});save();renderSheets();renderSummary()};
-  $("add-part").onclick=addManual;$("file").onchange=function(e){importFiles(e.target.files);e.target.value=""};
-  $("dropzone").ondragover=function(e){e.preventDefault();$("dropzone").classList.add("drag")};$("dropzone").ondragleave=function(){$("dropzone").classList.remove("drag")};$("dropzone").ondrop=function(e){e.preventDefault();$("dropzone").classList.remove("drag");importFiles(e.dataTransfer.files)};
+  $("add-part").onclick=function(e){e.stopPropagation();var m=$("preset-menu");m.classList.toggle("hidden")};
+  $("preset-menu").querySelectorAll("[data-preset]").forEach(function(b){b.onclick=function(e){e.stopPropagation();addPartPreset(b.dataset.preset)}});$("file").onchange=function(e){importFiles(e.target.files);e.target.value=""};
+  document.addEventListener("click",function(e){if(!e.target.closest("#add-part")&&!e.target.closest("#preset-menu"))closePresetMenu()});$("dropzone").ondragover=function(e){e.preventDefault();$("dropzone").classList.add("drag")};$("dropzone").ondragleave=function(){$("dropzone").classList.remove("drag")};$("dropzone").ondrop=function(e){e.preventDefault();$("dropzone").classList.remove("drag");importFiles(e.dataTransfer.files)};
   ["job-name","material","technology","thickness","spacing","edge","tolerance","rotations","population","mutation","timeLimit","holes","concave","mirror"].forEach(function(id){$(id).addEventListener("change",syncControls)});
   $("run").onclick=run;$("compare").onclick=compare;$("save-remnants").onclick=function(){if(currentPlan)saveResultRemnants()};
   $("export-svg").onclick=function(){if(currentPlan)download("nestcut-plan.svg",new Blob([planToSvg(currentPlan)],{type:"image/svg+xml"}))};
@@ -143,6 +161,6 @@ function bind(){
   $("export-json").onclick=function(){download("nestcut-job.json",new Blob([JSON.stringify({state:state,plan:currentPlan?Object.assign({},currentPlan,{partMap:undefined}):null},null,2)],{type:"application/json"}))};
   $("print").onclick=function(){window.print()};
   $("zoom-in").onclick=function(){mapZoom=Math.min(2.5,mapZoom*1.2);renderMaps()};$("zoom-out").onclick=function(){mapZoom=Math.max(.5,mapZoom/1.2);renderMaps()};$("zoom-fit").onclick=function(){mapZoom=1;renderMaps()};
-  $("clear").onclick=function(){state=createDefaultState();currentPlan=null;save();initControls();renderPlan()};
+  $("clear").onclick=function(){state=createDefaultState();currentPlan=null;save();initControls();renderPlan()};$("zoom-fit").onclick=function(){mapZoom=1;renderMaps()};
 }
 initControls();bind();
