@@ -18,6 +18,7 @@ import { mountNsiAdminPage } from './ui/nsiAdminPage';
 import { mountProductionRequestsPage } from './ui/productionRequestsPage';
 import { mountProductionRequestFormation } from './ui/productionRequestFormationController';
 import { mountOperationalPlansPage } from './ui/operationalPlansPage';
+import { bindMesModuleHelp } from './ui/mesModuleHelp';
 import { bindProductionRequestProductLoader } from './ui/productionRequestProductLoader';
 import { getMesSupabaseClient } from './services/supabase';
 import './mesWorkspace.css';
@@ -93,6 +94,7 @@ async function renderWorkspace():Promise<void>{
    if(loading.isConnected && content.querySelector('[class*="-page"]')) loading.remove();
  };
 
+ bindMesModuleHelp(content);
  void Promise.allSettled(mounts.map(runMount)).then(()=>loading.remove());
 }
 
