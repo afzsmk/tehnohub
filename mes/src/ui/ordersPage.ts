@@ -200,8 +200,8 @@ export async function mountOrdersPage(root: HTMLElement, client: SupabaseClient)
         const parts=Array.isArray(result.parts)?result.parts as Array<Record<string,unknown>>:[];
         let planned=0,blocked=0;
         for(const part of parts){try{await orderRpc.planOrder(String(part.id));planned++;}catch{blocked++;}}
+        window.alert('Разбиение выполнено. Частей: '+parts.length+'; спланировано: '+planned+'; требуют корректировки: '+blocked+'.');
         layer.remove();window.location.reload();
-        window.setTimeout(()=>window.alert('Разбиение выполнено. Частей: '+parts.length+'; спланировано: '+planned+'; требуют корректировки: '+blocked+'.'),250);
       }catch(error){window.alert(error instanceof Error?error.message:'Не удалось разбить заказ');}
     });
   };
