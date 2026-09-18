@@ -43,7 +43,12 @@ export async function runNest(parts, bin, config={}, opts={}){
 
   return await new Promise(resolve=>{
     let best=null, finished=false;
-    const finish=()=>{if(finished)return;finished=true;try{window.SvgNest.stop();}catch{}if(best&&best.sheets?.length){resolve(best)}else{resolve(fallbackPack(parts,bin,config))}};
+    const finish=()=>{if(finished)return;finished=true;try{window.SvgNest.stop();}catch{}if(best&&best.sheets?.length&&best.placedIds?.length===parts.length){resolve(best)}
+      else {
+        const fallback=fallbackPack(parts,bin,config);
+        if(fallback.placedIds?.length===parts.length || !best?.sheets?.length) resolve(fallback);
+        else resolve(best);
+      }};
     const timer=setTimeout(finish,timeout);
     try{
       window.SvgNest.start(
@@ -61,7 +66,8 @@ export async function runNest(parts, bin, config={}, opts={}){
               if(!child)continue;
               const id=child.getAttribute("data-part-id");
               const tr=parseTranslateRotate(g.getAttribute("transform"));
-              items.push({instanceId:id,x:tr.x+edge,y:tr.y+edge,rotation:tr.rotation,svgGroup:g.outerHTML});
+              const renderGroup='<g transform="translate('+((tr.x||0)+edge)+' '+((tr.y||0)+edge)+') rotate('+(tr.rotation||0)+')">'+Array.from(g.children||[]).map(function(el){return el.outerHTML}).join("")+'</g>';
+              items.push({instanceId:id,x:tr.x+edge,y:tr.y+edge,rotation:tr.rotation,svgGroup:renderGroup});
               placedIds.push(id);
             }
             if(items.length) sheets.push({width:bin.width,height:bin.height,items});
