@@ -1,11 +1,12 @@
 import { contourInfo, loopsBounds, transformLoops } from "../geometry/geometry.js";
+function resolvePart(plan,it){ return plan.partMap.get(it.instanceId) || plan.partMap.get(String(it.instanceId||"").split("#")[0]) || null; }
 
 export function calculateMetrics(plan, material){
   let placed=0, partArea=0, sheetArea=0;
   for(const sh of plan.sheets){
     sheetArea += sh.width*sh.height; placed += sh.items.length;
     for(const it of sh.items){
-      const p=plan.partMap.get(it.instanceId); if(!p)continue;
+      const p=resolvePart(plan,it); if(!p)continue;
       partArea += Math.max(0,contourInfo(p).area);
     }
   }
