@@ -11,29 +11,29 @@ const MAP:Record<string,NavItem[]>= {
     ['События','.event-journal-page','Контроль']
   ],
   MASTER:[
-    ['Обзор','.mes-dashboard-page','Обзор'],['Заявки','.production-requests-page','Планирование'],['Заказы','.orders-page','Планирование'],['Gantt','.dispatch-gantt-page','Планирование'],
+    ['Обзор','.mes-dashboard-page','Обзор'],['Заявки','.production-requests-page','Планирование'],['Планы','.operational-plans-page','Планирование'],['Заказы','.orders-page','Планирование'],['Gantt','.dispatch-gantt-page','Планирование'],
     ['Работа','.production-entry-page','Производство'],['Оборудование','.equipment-operations-page','Ресурсы'],
     ['Операционный контур','.operational-workflow-page','Контроль'],['ОТК','.quality-page','Контроль'],
     ['НСИ','.nsi-admin-page','Администрирование'],['Импорт','.import-center-page','Администрирование']
   ],
   DISPATCHER:[
-    ['Обзор','.mes-dashboard-page','Обзор'],['Заявки','.production-requests-page','Планирование'],['Заказы','.orders-page','Планирование'],['Gantt','.dispatch-gantt-page','Планирование'],
+    ['Обзор','.mes-dashboard-page','Обзор'],['Заявки','.production-requests-page','Планирование'],['Планы','.operational-plans-page','Планирование'],['Заказы','.orders-page','Планирование'],['Gantt','.dispatch-gantt-page','Планирование'],
     ['Работа','.production-entry-page','Производство'],['Оборудование','.equipment-operations-page','Ресурсы'],['ОТК','.quality-page','Контроль']
   ],
   PLANNER:[
-    ['Обзор','.mes-dashboard-page','Обзор'],['Заявки','.production-requests-page','Планирование'],['Заказы','.orders-page','Планирование'],['Gantt','.dispatch-gantt-page','Планирование'],
+    ['Обзор','.mes-dashboard-page','Обзор'],['Заявки','.production-requests-page','Планирование'],['Планы','.operational-plans-page','Планирование'],['Заказы','.orders-page','Планирование'],['Gantt','.dispatch-gantt-page','Планирование'],
     ['НСИ','.nsi-admin-page','Администрирование'],['Импорт','.import-center-page','Администрирование']
   ],
   QUALITY:[['ОТК','.quality-page','Контроль'],['Операционный контур','.operational-workflow-page','Контроль'],['События','.event-journal-page','Контроль']],
   MAINTENANCE:[['Оборудование','.equipment-operations-page','Ресурсы'],['Простой','.operator-downtime-page','Ресурсы'],['События','.event-journal-page','Контроль']],
   ANALYST:[['Обзор','.mes-dashboard-page','Обзор'],['События','.event-journal-page','Контроль']],
   PRODUCTION_MANAGER:[
-    ['Обзор','.mes-dashboard-page','Обзор'],['Заявки','.production-requests-page','Планирование'],['Заказы','.orders-page','Планирование'],['Gantt','.dispatch-gantt-page','Планирование'],
+    ['Обзор','.mes-dashboard-page','Обзор'],['Заявки','.production-requests-page','Планирование'],['Планы','.operational-plans-page','Планирование'],['Заказы','.orders-page','Планирование'],['Gantt','.dispatch-gantt-page','Планирование'],
     ['Работа','.production-entry-page','Производство'],['Оборудование','.equipment-operations-page','Ресурсы'],['Операционный контур','.operational-workflow-page','Контроль'],['ОТК','.quality-page','Контроль'],
     ['НСИ','.nsi-admin-page','Администрирование'],['Импорт','.import-center-page','Администрирование'],['События','.event-journal-page','Контроль']
   ],
   ADMIN:[
-    ['Обзор','.mes-dashboard-page','Обзор'],['Заявки','.production-requests-page','Планирование'],['Заказы','.orders-page','Планирование'],['Gantt','.dispatch-gantt-page','Планирование'],
+    ['Обзор','.mes-dashboard-page','Обзор'],['Заявки','.production-requests-page','Планирование'],['Планы','.operational-plans-page','Планирование'],['Заказы','.orders-page','Планирование'],['Gantt','.dispatch-gantt-page','Планирование'],
     ['Работа','.production-entry-page','Производство'],['Оборудование','.equipment-operations-page','Ресурсы'],['Операционный контур','.operational-workflow-page','Контроль'],['ОТК','.quality-page','Контроль'],['События','.event-journal-page','Контроль'],
     ['НСИ','.nsi-admin-page','Администрирование'],['Импорт','.import-center-page','Администрирование'],['Пользователи','.mes-user-admin-page','Администрирование'],['Контроль','.integrity-page','Администрирование']
   ]
