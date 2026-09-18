@@ -127,7 +127,7 @@ export async function mountDispatchGanttPage(root: HTMLElement, client: Supabase
         client.from('production_orders').select('id,number,priority,due_at').limit(500),
         client.from('task_assignments').select('task_id,equipment_id,employee_id').limit(1500),
         client.from('equipment').select('id,code,name,work_center').eq('active',true).order('name',{ascending:true}),
-        client.from('operational_plans').select('id,version,horizon_start,horizon_end,status').order('version',{ascending:false}).limit(1).maybeSingle()
+        client.from('operational_plans').select('id,version,horizon_start,horizon_end,status,created_at').neq('status','ARCHIVED').order('created_at',{ascending:false}).limit(1).maybeSingle()
       ]);
       if (tasksQ.error) throw tasksQ.error;
       if (ordersQ.error) throw ordersQ.error;
