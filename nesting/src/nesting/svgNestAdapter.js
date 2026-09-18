@@ -25,7 +25,9 @@ function parseTranslateRotate(t){
 export async function runNest(parts, bin, config={}, opts={}){
   if(!parts.length) return {sheets:[],placedIds:[],rendered:[]};
   const timeout=Math.max(400,Number(opts.timeLimitMs||config.timeLimitMs||1800));
-  const text=engineSvg(parts,bin);
+  const edge=Math.max(0,Number(config.edge||0));
+  const innerBin={width:Math.max(1,bin.width-2*edge),height:Math.max(1,bin.height-2*edge)};
+  const text=engineSvg(parts,innerBin);
   const root=window.SvgNest.parsesvg(text);
   const binEl=Array.from(root.childNodes).find(el=>el.tagName && el.tagName.toLowerCase()!=="style");
   window.SvgNest.setbin(binEl);
@@ -59,7 +61,7 @@ export async function runNest(parts, bin, config={}, opts={}){
               if(!child)continue;
               const id=child.getAttribute("data-part-id");
               const tr=parseTranslateRotate(g.getAttribute("transform"));
-              items.push({instanceId:id,x:tr.x,y:tr.y,rotation:tr.rotation});
+              items.push({instanceId:id,x:tr.x+edge,y:tr.y+edge,rotation:tr.rotation});
               placedIds.push(id);
             }
             if(items.length) sheets.push({width:bin.width,height:bin.height,items});
