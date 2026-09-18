@@ -160,7 +160,21 @@ export async function mountOrdersPage(root: HTMLElement, client: SupabaseClient)
   }));
 
   host.querySelector<HTMLButtonElement>('#orders-refresh')?.addEventListener('click', () => window.location.reload());
-  host.querySelectorAll<HTMLButtonElement>('[data-plan-order]').forEach(button => button.addEventListener('click', async () => { try { const result = await orderRpc.planOrder(button.dataset.planOrder ?? ''); window.alert(`Создано заданий: ${result.createdTasks}; существовало: ${result.existingTasks}`); window.location.reload(); } catch (error) { window.alert(error instanceof Error ? error.message : 'Не удалось спланировать заказ'); } }));
+  host.querySelectorAll<HTMLButtonElement>('[data-plan-order]').forEach(button => button.addEventListener('click', async () => {
+    try {
+      const result = await orderRpc.planOrder(button.dataset.planOrder ?? '');
+      window.alert(`Планирование выполнено. Создано заданий: ${result.createdTasks}; существовало: ${result.existingTasks}`);
+      window.location.reload();
+    } catch (error) {
+      const message=error instanceof Error ? error.message : 'Не удалось спланировать заказ';
+      const lower=message.toLowerCase();
+      if(lower.includes('не помещается')||lower.includes('не осталось времени')){
+        window.alert('Планирование не выполнено.\n\nПричина: '+message+'\n\nЧто проверить:\n• срок заказа;\n• горизонт операционного плана;\n• активный маршрут изделия;\n• трудовые нормы и количество работников в операциях.\n\nMES не сокращает технологическую длительность автоматически.');
+      }else{
+        window.alert(message);
+      }
+    }
+  }));
   const changeStatus = async (button: HTMLButtonElement, next: ProductionOrder['status']): Promise<void> => { try { await orderRpc.changeStatus(button.dataset.orderId ?? '', next); window.location.reload(); } catch (error) { window.alert(error instanceof Error ? error.message : 'Не удалось изменить статус заказа'); } };
   host.querySelectorAll<HTMLButtonElement>('[data-release-order]').forEach(button => { button.dataset.orderId = button.dataset.releaseOrder ?? ''; button.addEventListener('click', () => void changeStatus(button, 'RELEASED')); });
   host.querySelectorAll<HTMLButtonElement>('[data-block-order]').forEach(button => { button.dataset.orderId = button.dataset.blockOrder ?? ''; button.addEventListener('click', () => void changeStatus(button, 'BLOCKED')); });
