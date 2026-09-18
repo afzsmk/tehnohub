@@ -99,24 +99,59 @@ export function scoreNest(result, partMap, bin){
 function rotatedBounds(loops,deg){
   const r=deg*Math.PI/180,c=Math.cos(r),s=Math.sin(r);let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
   for(const loop of loops) for(const p of loop){const x=p.x*c-p.y*s,y=p.x*s+p.y*c;if(x<minX)minX=x;if(x>maxX)maxX=x;if(y<minY)minY=y;if(y>maxY)maxY=y;}
-  return {minX,minY,width:maxX-minX,height:maxY-minY};
+  return {minX,minY,maxX,maxY,width:maxX-minX,height:maxY-minY};
+}
+function intersectionExists(a,b){
+  if(!window.ClipperLib)return false;
+  const scale=1000,toClip=function(poly){return poly.map(function(p){return {X:Math.round(p.x*scale),Y:Math.round(p.y*scale)}})};
+  const c=new window.ClipperLib.Clipper(),out=new window.ClipperLib.Paths();
+  c.AddPath(toClip(a),window.ClipperLib.PolyType.ptSubject,true);
+  c.AddPath(toClip(b),window.ClipperLib.PolyType.ptClip,true);
+  if(!c.Execute(window.ClipperLib.ClipType.ctIntersection,out,window.ClipperLib.PolyFillType.pftNonZero,window.ClipperLib.PolyFillType.pftNonZero))return false;
+  return out.some(function(poly){return Math.abs(window.ClipperLib.Clipper.Area(poly))>1});
 }
 function fallbackPack(parts,bin,config){
-  const edge=Math.max(0,Number(config.edge)||0),gap=Math.max(0,Number(config.spacing)||0),availW=bin.width-2*edge,availH=bin.height-2*edge;
-  const rotations=Math.max(1,Math.round(config.rotations||4));
-  const used=[],out=[],step=360/rotations;
-  let x=0,y=0,rowH=0;
-  for(const part of parts){
+  const edge=Math.max(0,Number(config.edge)||0),gap=Math.max(0,Number(config.spacing)||0);
+  const availW=bin.width-2*edge,availH=bin.height-2*edge;
+  const rotations=Math.max(1,Math.round(config.rotations||4)),step=360/rotations;
+  const ordered=parts.slice().sort(function(a,b){
+    const aa=rotatedBounds(a.geometry.loops,0),bb=rotatedBounds(b.geometry.loops,0);
+    return bb.width*bb.height-aa.width*aa.height;
+  });
+  const placed=[],outerPlaced=[];
+  for(const part of ordered){
+    const rotationsForPart=[];
+    for(let i=0;i<rotations;i++) rotationsForPart.push(Math.round(i*step*1000)/1000);
     let best=null;
-    for(let i=0;i<rotations;i++){
-      const rot=Math.round(i*step*1000)/1000,b=rotatedBounds(part.geometry.loops,rot);
-      if(b.width<=availW && b.height<=availH && (!best||b.width<best.b.width||(Math.abs(b.width-best.b.width)<1e-6&&b.height<best.b.height)))best={rot,b};
+    for(const rot of rotationsForPart){
+      const rb=rotatedBounds(part.geometry.loops,rot);
+      if(rb.width>availW+1e-6||rb.height>availH+1e-6)continue;
+      const candidates=[{x:edge-rb.minX,y:edge-rb.minY}];
+      for(const q of outerPlaced){
+        const b=q.bounds;
+        candidates.push({x:edge+b.maxX+gap-rb.minX,y:edge+b.minY-rb.minY});
+        candidates.push({x:edge+b.minX-rb.minX,y:edge+b.maxY+gap-rb.minY});
+        candidates.push({x:edge+b.maxX+gap-rb.minX,y:edge+b.maxY+gap-rb.minY});
+      }
+      const seen=new Set();
+      for(const pos of candidates){
+        const key=pos.x.toFixed(3)+"|"+pos.y.toFixed(3)+"|"+rot;
+        if(seen.has(key))continue;seen.add(key);
+        const minX=rb.minX+pos.x,maxX=rb.maxX+pos.x,minY=rb.minY+pos.y,maxY=rb.maxY+pos.y;
+        if(minX<edge-1e-6||minY<edge-1e-6||maxX>bin.width-edge+1e-6||maxY>bin.height-edge+1e-6)continue;
+        const loops=transformLoops(part.geometry.loops,rot,pos.x,pos.y);
+        const outer=loops[0];
+        let clash=false;
+        for(const q of outerPlaced){if(intersectionExists(outer,q.outer)){clash=true;break}}
+        if(clash)continue;
+        const score=(maxY*100000)+maxX+(rb.width*0.1);
+        if(!best||score<best.score)best={rot,pos,rb,outer,score};
+      }
     }
     if(!best)return {sheets:[],placedIds:[],fallback:true};
-    if(x>0 && x+best.b.width>availW){x=0;y+=rowH+gap;rowH=0;}
-    if(y+best.b.height>availH)return {sheets:[],placedIds:[],fallback:true};
-    const item={instanceId:part.instanceId||part.id,x:edge+x-best.b.minX,y:edge+y-best.b.minY,rotation:best.rot};
-    used.push(item);x+=best.b.width+gap;rowH=Math.max(rowH,best.b.height);
+    const item={instanceId:part.instanceId||part.id,x:best.pos.x,y:best.pos.y,rotation:best.rot};
+    placed.push(item);
+    outerPlaced.push({outer:best.outer,bounds:{minX:best.rb.minX+best.pos.x,maxX:best.rb.maxX+best.pos.x,minY:best.rb.minY+best.pos.y,maxY:best.rb.maxY+best.pos.y}});
   }
-  return used.length?{sheets:[{width:bin.width,height:bin.height,items:used}],placedIds:used.map(i=>i.instanceId),fallback:true}:{sheets:[],placedIds:[],fallback:true};
+  return placed.length?{sheets:[{width:bin.width,height:bin.height,items:placed}],placedIds:placed.map(function(i){return i.instanceId}),fallback:true}:{sheets:[],placedIds:[],fallback:true};
 }
