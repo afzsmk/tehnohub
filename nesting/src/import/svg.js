@@ -1,4 +1,5 @@
 import { groupLoopsIntoParts, normalizeLoops } from "../geometry/geometry.js";
+function svgUnitMm(value){ const m=String(value||"").trim().match(/^([0-9.+-eE]+)\\s*(mm|cm|in|pt|px)?$/i); if(!m)return null; const n=Number(m[1]); if(!Number.isFinite(n))return null; const u=(m[2]||"").toLowerCase(); return n*(u==="in"?25.4:u==="cm"?10:u==="pt"?25.4/72:u==="px"?25.4/96:1); }
 
 export function importSvg(text, fileName="design.svg"){
   if(!window.SvgNest || !window.SvgParser) throw new Error("SVG engine не загружен");
