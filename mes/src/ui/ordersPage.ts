@@ -9,7 +9,7 @@ import { SupabaseMesPlanningRpc } from '../integration/mesPlanningRpc';
 const PLANNING_ROLES = ['ADMIN', 'PRODUCTION_MANAGER', 'PLANNER', 'DISPATCHER', 'MASTER'];
 const RELEASE_ROLES = ['ADMIN', 'PRODUCTION_MANAGER', 'DISPATCHER', 'MASTER'];
 
-interface OrderRow { id: string; external_id: string | null; number: string; product_id: string; quantity: number; completed_quantity: number; due_at: string; priority: ProductionOrder['priority']; status: ProductionOrder['status']; }
+interface OrderRow { id: string; external_id: string | null; number: string; product_id: string; plan_id: string; quantity: number; completed_quantity: number; due_at: string; priority: ProductionOrder['priority']; status: ProductionOrder['status']; }
 interface RouteRow { id: string; product_id: string; sequence: number; code: string; name: string; work_center: string; setup_minutes: number; run_minutes_per_unit: number; }
 interface TaskRow { id: string; order_id: string; operation_id: string; operation_sequence: number; status: string; planned_start: string; planned_end: string; actual_start: string | null; actual_end: string | null; planned_quantity: number; actual_quantity: number; quality_required: boolean; quality_status: string; version: number; }
 interface AssignmentRow { task_id: string; employee_id: string | null; equipment_id: string | null; }
@@ -23,7 +23,7 @@ function qualityLabel(value: string): string { return ({ NOT_REQUIRED: 'Не т�
 function statusClass(value: string): string { if (['COMPLETED', 'APPROVED'].includes(value)) return 'status-ok'; if (['BLOCKED', 'CANCELLED', 'REJECTED'].includes(value)) return 'status-danger'; if (['IN_EXECUTION', 'PARTIALLY_COMPLETED', 'PENDING', 'PAUSED'].includes(value)) return 'status-warning'; return 'status-neutral'; }
 function formatDateTime(value: string | null): string { return value ? new Date(value).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' }) : '—'; }
 
-function normalizeOrder(row: Record<string, unknown>): OrderRow { return { id: String(row.id), external_id: row.external_id == null ? null : String(row.external_id), number: String(row.number), product_id: String(row.product_id), quantity: Number(row.quantity), completed_quantity: Number(row.completed_quantity), due_at: String(row.due_at), priority: row.priority as ProductionOrder['priority'], status: row.status as ProductionOrder['status'] }; }
+function normalizeOrder(row: Record<string, unknown>): OrderRow { return { id: String(row.id), external_id: row.external_id == null ? null : String(row.external_id), number: String(row.number), product_id: String(row.product_id), plan_id: String(row.plan_id ?? ''), quantity: Number(row.quantity), completed_quantity: Number(row.completed_quantity), due_at: String(row.due_at), priority: row.priority as ProductionOrder['priority'], status: row.status as ProductionOrder['status'] }; }
 function normalizeRoute(row: Record<string, unknown>): RouteRow { return { id: String(row.id), product_id: String(row.product_id), sequence: Number(row.sequence), code: String(row.code), name: String(row.name), work_center: String(row.work_center), setup_minutes: Number(row.setup_minutes), run_minutes_per_unit: Number(row.run_minutes_per_unit) }; }
 function normalizeTask(row: Record<string, unknown>): TaskRow { return { id: String(row.id), order_id: String(row.order_id), operation_id: String(row.operation_id), operation_sequence: Number(row.operation_sequence), status: String(row.status), planned_start: String(row.planned_start), planned_end: String(row.planned_end), actual_start: row.actual_start == null ? null : String(row.actual_start), actual_end: row.actual_end == null ? null : String(row.actual_end), planned_quantity: Number(row.planned_quantity), actual_quantity: Number(row.actual_quantity), quality_required: Boolean(row.quality_required), quality_status: String(row.quality_status ?? 'NOT_REQUIRED'), version: Number(row.version ?? 1) }; }
 function normalizeAssignment(row: Record<string, unknown>): AssignmentRow { return { task_id: String(row.task_id), employee_id: row.employee_id == null ? null : String(row.employee_id), equipment_id: row.equipment_id == null ? null : String(row.equipment_id) }; }
@@ -58,7 +58,7 @@ export async function mountOrdersPage(root: HTMLElement, client: SupabaseClient)
   const canRelease = RELEASE_ROLES.includes(role);
   const canAssign = canPlan;
 
-  const { data, error } = await client.from('production_orders').select('id,external_id,number,product_id,quantity,completed_quantity,due_at,priority,status').order('due_at', { ascending: true });
+  const { data, error } = await client.from('production_orders').select('id,external_id,number,product_id,plan_id,quantity,completed_quantity,due_at,priority,status').order('due_at', { ascending: true });
   if (error) throw error;
   const orders: OrderRow[] = Array.isArray(data) ? data.map(row => normalizeOrder(row as Record<string, unknown>)) : [];
 
