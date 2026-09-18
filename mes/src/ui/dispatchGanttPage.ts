@@ -202,7 +202,6 @@ export async function mountDispatchGanttPage(root: HTMLElement, client: Supabase
       host.dataset.first = String(first);
       host.dataset.span = String(span);
       if (plan) attachDragHandlers(plan.id, Number(plan.version), first, span);
-      attachRecommendationHandlers();
       host.querySelectorAll<HTMLButtonElement>('[data-recommend-task]').forEach(button => button.addEventListener('click', () => {
         const id = button.dataset.recommendTask;
         const version = Number(button.dataset.recommendVersion);
