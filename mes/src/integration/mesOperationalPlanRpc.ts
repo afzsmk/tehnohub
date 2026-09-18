@@ -26,7 +26,17 @@ export class SupabaseMesOperationalPlanRpc {
   async create(id:string,horizonStart:string,horizonEnd:string):Promise<OperationalPlan>{
     const {data,error}=await this.client.rpc('mes_create_operational_plan',{p_id:id,p_horizon_start:horizonStart,p_horizon_end:horizonEnd});
     if(error) throw error;
-    return mapPlan(data);
+    try{
+      return mapPlan(data);
+    }catch(parseError){
+      const {data:row,error:readError}=await this.client
+        .from('operational_plans')
+        .select('id,version,horizon_start,horizon_end,status,source_plan_id,source_plan_version')
+        .eq('id',id)
+        .maybeSingle();
+      if(!readError&&row)return mapPlan(row);
+      throw parseError;
+    }
   }
   async changeStatus(planId:string,nextStatus:OperationalPlan['status'],expectedVersion?:number):Promise<OperationalPlan>{
     const {data,error}=await this.client.rpc('mes_change_operational_plan_status',{
