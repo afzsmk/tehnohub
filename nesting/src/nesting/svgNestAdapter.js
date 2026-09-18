@@ -51,7 +51,7 @@ export async function runNest(parts, bin, config={}, opts={}){
       }};
     const timer=setTimeout(finish,timeout);
     try{
-      window.SvgNest.start(
+      const started=window.SvgNest.start(
         ()=>{},
         (svglist)=>{
           if(finished||!svglist?.length)return;
@@ -75,6 +75,7 @@ export async function runNest(parts, bin, config={}, opts={}){
           if(sheets.length) best={sheets,placedIds:[...new Set(placedIds)],rendered:svglist};
         }
       );
+      if(started===false){clearTimeout(timer);finish();return;}
     }catch(e){clearTimeout(timer);finish();return;}
     setTimeout(()=>{clearTimeout(timer);finish();},Math.max(timeout,450));
   });
