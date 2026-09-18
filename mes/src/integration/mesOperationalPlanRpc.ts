@@ -7,7 +7,11 @@ interface DbPlan {
 }
 
 function mapPlan(value:unknown):OperationalPlan {
-  if(!value || typeof value!=='object' || Array.isArray(value)) throw new Error('MES RPC операционного плана вернул некорректный результат');
+  if(Array.isArray(value)) {
+    if(value.length!==1) throw new Error('MES RPC операционного плана вернул некорректный результат');
+    value=value[0];
+  }
+  if(!value || typeof value!=='object') throw new Error('MES RPC операционного плана вернул некорректный результат');
   const row=value as Record<string,unknown>;
   return {
     id:String(row.id), version:Number(row.version), horizonStart:String(row.horizon_start),
