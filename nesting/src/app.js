@@ -1,6 +1,7 @@
 
 import { createDefaultState, MATERIALS, TECHNOLOGIES, expandParts, clone, totalQuantity } from "./core/model.js";
 import { contourInfo, loopsBounds, loopsToPathD, transformLoops } from "./geometry/geometry.js";
+import { validatePart } from "./geometry/validation.js";
 import { importSvg } from "./import/svg.js";
 import { importDxf } from "./import/dxf.js";
 import { parsePartsCsv } from "./import/csv.js";
@@ -21,6 +22,7 @@ function fmt0(n){return Number(n||0).toLocaleString("ru-RU",{maximumFractionDigi
 function toast(msg,type){const t=$("toast");t.textContent=msg;t.className="toast "+(type||"ok");t.classList.add("show");clearTimeout(toast.t);toast.t=setTimeout(function(){t.classList.remove("show")},3500)}
 function setBusy(on,msg){running=on;$("busy").classList.toggle("hidden",!on);$("busy-text").textContent=msg||"Расчёт...";$("run").disabled=on;$("compare").disabled=on}
 function mat(){return MATERIALS.find(function(x){return x.id===state.job.materialId})||MATERIALS[0]}
+function tech(){return TECHNOLOGIES.find(function(x){return x.id===state.job.technologyId})||TECHNOLOGIES[0]}
 
 function initControls(){
   $("material").innerHTML=MATERIALS.map(function(m){return '<option value="'+m.id+'">'+esc(m.name)+" · "+m.density+" кг/м³</option>"}).join("");
@@ -63,7 +65,7 @@ async function importFiles(files){
   for(const f of Array.from(files||[])){try{
     var text=await f.text(),ext=f.name.split(".").pop().toLowerCase(),r;
     if(ext==="svg")r=importSvg(text,f.name);else if(ext==="dxf")r=importDxf(text,f.name);else if(ext==="csv"||ext==="txt")r={parts:parsePartsCsv(text),warnings:[]};else throw new Error("Поддерживаются SVG, DXF и CSV");
-    state.parts.push.apply(state.parts,r.parts);(r.warnings||[]).forEach(function(w){toast(f.name+": "+w,"warn")});toast(f.name+": импортировано деталей "+r.parts.length);
+    var accepted=[];r.parts.forEach(function(p){var v=validatePart(p,state.nesting.curveTolerance);if(v.errors.length){v.errors.forEach(function(w){toast(f.name+": "+w,"error")})}else{accepted.push(p);v.warnings.forEach(function(w){toast((p.name||f.name)+": "+w,"warn")})}});state.parts.push.apply(state.parts,accepted);(r.warnings||[]).forEach(function(w){toast(f.name+": "+w,"warn")});toast(f.name+": импортировано деталей "+accepted.length);
   }catch(e){toast(f.name+": "+e.message,"error")}}
   save();renderParts();renderSummary();
 }
@@ -80,7 +82,7 @@ async function buildPlan(strategy){
   var pools=state.sheets.filter(function(s){return Number(s.qty)>0}).map(function(s){return Object.assign({},s)}).sort(function(a,b){return a.priority-b.priority||(b.width*b.height-a.width*a.height)});if(!pools.length)throw new Error("Нет доступных листов");
   var remaining=expanded.slice(),sheets=[],steps=0;
   var vars={fast:{populationSize:8,mutationRate:8,rotations:state.nesting.rotations},balanced:{populationSize:state.nesting.populationSize,mutationRate:state.nesting.mutationRate,rotations:state.nesting.rotations},dense:{populationSize:20,mutationRate:16,rotations:Math.max(8,state.nesting.rotations)}};
-  var cfg=Object.assign({},state.nesting,vars[strategy||"balanced"]);
+  var cfg=Object.assign({},state.nesting,vars[strategy||"balanced"],{spacing:state.nesting.spacing+Math.max(0,Number(tech().kerf)||0)});
   while(remaining.length&&steps<50){
     var best=null;
     for(const pool of pools.filter(function(s){return s.qty>0})){
