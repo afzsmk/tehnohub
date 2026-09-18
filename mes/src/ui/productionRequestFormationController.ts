@@ -80,7 +80,7 @@ export async function mountProductionRequestFormation(root:HTMLElement,client:Su
   };
 
   const observer=new MutationObserver(()=>{
-    const page=root.querySelector('.production-requests-page');
+    const page=root.querySelector<HTMLElement>('.production-requests-page');
     if(!page)return;
     if(page.dataset.formationController==='1')return;
     page.dataset.formationController='1';
