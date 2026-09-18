@@ -15,7 +15,16 @@ let currentPlan=null, running=false, mapZoom=1;
 
 function $(id){return document.getElementById(id)}
 function save(){localStorage.setItem(KEY,JSON.stringify(state))}
-function load(){try{const x=JSON.parse(localStorage.getItem(KEY)||"null");return x&&x.job?x:createDefaultState()}catch(e){return createDefaultState()}}
+function load(){
+  try{
+    const x=JSON.parse(localStorage.getItem(KEY)||"null");
+    if(x&&x.job){
+      if(x.nesting && Number(x.nesting.timeLimitMs)===1800) x.nesting.timeLimitMs=8000;
+      return x;
+    }
+    return createDefaultState();
+  }catch(e){return createDefaultState()}
+}
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
 function fmt(n,d){return Number(n||0).toLocaleString("ru-RU",{maximumFractionDigits:d==null?1:d,minimumFractionDigits:d==null?1:d})}
 function fmt0(n){return Number(n||0).toLocaleString("ru-RU",{maximumFractionDigits:0})}
