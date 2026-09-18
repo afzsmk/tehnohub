@@ -1,5 +1,25 @@
 select no_plan();
 
+select ok(
+  has_table_privilege('authenticated', 'public.production_requests', 'select'),
+  'authenticated can select production requests'
+);
+
+select ok(
+  has_table_privilege('authenticated', 'public.production_request_items', 'select'),
+  'authenticated can select production request items'
+);
+
+select ok(
+  not has_table_privilege('anon', 'public.production_requests', 'select'),
+  'anon cannot select production requests'
+);
+
+select ok(
+  not has_table_privilege('anon', 'public.production_request_items', 'select'),
+  'anon cannot select production request items'
+);
+
 -- Request -> production order -> planning -> execution.
 select set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222222', false);
 select set_config(
