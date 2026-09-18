@@ -4,12 +4,23 @@ function engineSvg(parts, bin){
   const maxSize=Math.max(bin.width||0,bin.height||0,1000);
   const spread=maxSize*3+10000;
   const all=[];
+  const hashLoop = function(loop){
+    let h=2166136261;
+    for(const p of loop){
+      const x=Math.round(p.x*100),y=Math.round(p.y*100);
+      h^=x;h=Math.imul(h,16777619);h^=y;h=Math.imul(h,16777619);
+    }
+    return "g"+(h>>>0).toString(16);
+  };
+  const partTypeKey = function(part){
+    return (part.geometry.loops||[]).map(hashLoop).join(";");
+  };
   parts.forEach((part,idx)=>{
     const dx=idx*spread+100000;
     const loops=part.geometry.loops;
     loops.forEach((loop,li)=>{
       const moved=loop.map(p=>({x:p.x+dx,y:p.y}));
-      all.push('<path d="'+escapeAttr("M "+moved.map(p=>p.x+" "+p.y).join(" L ")+" Z")+'" data-part-id="'+escapeAttr(part.instanceId||part.id)+'" data-loop-index="'+li+'" data-source-name="'+escapeAttr(part.name||"Деталь")+'"/>');
+      all.push('<path d="'+escapeAttr("M "+moved.map(p=>p.x+" "+p.y).join(" L ")+" Z")+'" data-part-id="'+escapeAttr(part.instanceId||part.id)+'" data-loop-index="'+li+'" data-source-name="'+escapeAttr(part.name||"Деталь")+'" data-nest-key="'+escapeAttr(hashLoop(loop))+'" data-part-nest-key="'+escapeAttr(partTypeKey(part))+'"/>');
     });
   });
   const bp=[{x:0,y:0},{x:bin.width,y:0},{x:bin.width,y:bin.height},{x:0,y:bin.height}];
