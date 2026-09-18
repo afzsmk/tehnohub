@@ -77,7 +77,7 @@ function partArea(part){return Math.max(0,contourInfo(part).area)}
 
 async function buildPlan(strategy){
   syncControls();var original=state.parts,expanded=expandParts(original);if(!expanded.length)throw new Error("Нет деталей для раскроя");
-  var pools=state.sheets.filter(function(s){return Number(s.qty)>0}).slice().sort(function(a,b){return a.priority-b.priority||(b.width*b.height-a.width*a.height)});if(!pools.length)throw new Error("Нет доступных листов");
+  var pools=state.sheets.filter(function(s){return Number(s.qty)>0}).map(function(s){return Object.assign({},s)}).sort(function(a,b){return a.priority-b.priority||(b.width*b.height-a.width*a.height)});if(!pools.length)throw new Error("Нет доступных листов");
   var remaining=expanded.slice(),sheets=[],steps=0;
   var vars={fast:{populationSize:8,mutationRate:8,rotations:state.nesting.rotations},balanced:{populationSize:state.nesting.populationSize,mutationRate:state.nesting.mutationRate,rotations:state.nesting.rotations},dense:{populationSize:20,mutationRate:16,rotations:Math.max(8,state.nesting.rotations)}};
   var cfg=Object.assign({},state.nesting,vars[strategy||"balanced"]);
@@ -100,8 +100,8 @@ async function buildPlan(strategy){
 }
 function sheetKim(sh){var used=sh.items.reduce(function(a,it){var p=currentPlan.partMap.get(it.instanceId);return a+(p?partArea(p):0)},0);return used/(sh.width*sh.height)*100}
 function renderPlan(){
-  if(!currentPlan){$("result").classList.add("hidden");return}
-  $("result").classList.remove("hidden");var m=currentPlan.metrics;
+  if(!currentPlan){$("result").classList.add("hidden");$("result-empty").classList.remove("hidden");return}
+  $("result").classList.remove("hidden");$("result-empty").classList.add("hidden");var m=currentPlan.metrics;
   $("metric-sheets").textContent=fmt0(m.sheets);$("metric-util").textContent=fmt(m.utilization,1)+"%";$("metric-placed").textContent=fmt0(m.placed)+" / "+fmt0(m.total);$("metric-waste").textContent=fmt(m.wasteM2,3)+" м²";$("metric-weight").textContent=fmt(m.partWeight,1)+" кг";$("metric-unplaced").textContent=fmt0(m.notPlaced);
   $("result-status").className="status "+(m.notPlaced?"warn":"ok");$("result-status").textContent=m.notPlaced?"Не размещено: "+m.notPlaced:"Все детали размещены";renderMaps();renderBom();renderResultRemnants();
 }
@@ -123,7 +123,7 @@ async function compare(){
   try{
     setBusy(true,"Сравнение алгоритмов...");var out=[],strategies=[["Быстрый","fast"],["Сбалансированный","balanced"],["Плотный","dense"]];
     for(const s of strategies)out.push({label:s[0],key:s[1],plan:await buildPlan(s[1])});
-    var best=out.slice().sort(function(a,b){return b.plan.metrics.utilization-a.plan.metrics.utilization||a.plan.metrics.notPlaced-b.plan.metrics.notPlaced})[0];
+    var best=out.slice().sort(function(a,b){return a.plan.metrics.notPlaced-b.plan.metrics.notPlaced||a.plan.metrics.sheets-b.plan.metrics.sheets||b.plan.metrics.utilization-a.plan.metrics.utilization})[0];
     currentPlan=best.plan;renderPlan();$("variants").innerHTML=out.map(function(x){return '<button class="variant '+(x.key===best.key?"active":"")+'" data-variant="'+x.key+'"><b>'+x.label+'</b><span>'+fmt(x.plan.metrics.utilization,1)+"% · "+x.plan.metrics.sheets+" листов · "+(x.plan.metrics.notPlaced?"не размещено "+x.plan.metrics.notPlaced:"все детали")+"</span></button>"}).join("");$("variants-panel").classList.remove("hidden");
     $("variants").querySelectorAll("[data-variant]").forEach(function(b){b.onclick=function(){var x=out.find(function(v){return v.key===b.dataset.variant});currentPlan=x.plan;renderPlan();$("variants").querySelectorAll(".variant").forEach(function(v){v.classList.toggle("active",v===b)})}});
   }catch(e){toast(e.message,"error")}finally{setBusy(false)}
