@@ -120,6 +120,7 @@ function findTarget(root:HTMLElement,definition:HelpDefinition):HTMLElement|null
   }
   const titles:Record<string,string[]>={
     nsi:['нси mes','технологическая нси'],
+    import:['центр импорта нси'],
     'production-entry':['рабочее место оператора'],
     gantt:['диспетчеризация · gantt'],
     events:['журнал производственных событий'],
