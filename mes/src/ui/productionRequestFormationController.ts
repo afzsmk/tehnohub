@@ -55,12 +55,40 @@ export async function mountProductionRequestFormation(root:HTMLElement,client:Su
       '</select></label><label>Срок всех заказов<input name="due" type="datetime-local" value="'+localDateTime(request.desired_date)+'" required></label><label>Приоритет<select name="priority"><option value="LOW">Низкий</option><option value="NORMAL" selected>Обычный</option><option value="HIGH">Высокий</option><option value="URGENT">Срочный</option></select></label></div>'+
       '<div class="production-formation-items"><div class="production-formation-item" style="font-size:11px;color:var(--muted,#667085);font-weight:600"><span>№</span><span>Номенклатура</span><span>Количество</span></div>'+
       items.map(item=>{const p=productMap.get(item.product_id);return '<div class="production-formation-item"><strong>'+item.line_no+'</strong><div><b>'+esc(p?.code??item.product_id)+'</b><div class="subtle">'+esc(p?.name??'Номенклатура')+'</div></div><span>'+item.quantity+' '+esc(p?.unit??'')+'</span></div>';}).join('')+
-      '</div><div class="production-formation-note">После подтверждения MES создаст по одной производственной единице на каждую строку заявки, построит задания по активному маршруту и оставит отдельные позиции в статусе «Заблокирован», если нормативы не помещаются в выбранный срок.</div><div class="production-formation-actions"><button type="button" class="tiny" data-close>Отмена</button><button class="primary" type="submit">Создать заказы и задания</button></div></form></div>';
+      '</div><div class="production-formation-note">Сначала MES выполнит предварительную проверку маршрута и срока. Если хотя бы одна позиция не помещается, сначала исправьте срок/план или разбейте заказ на части.</div><div data-feasibility style="margin-top:14px"><div class="subtle">Проверка выполнимости…</div></div><div class="production-formation-actions"><button type="button" class="tiny" data-close>Отмена</button><button class="primary" type="submit" data-submit-formation disabled>Создать заказы и задания</button></div></form></div>';
     document.body.appendChild(dialog);
     const close=()=>dialog.remove();
     dialog.querySelectorAll<HTMLButtonElement>('[data-close]').forEach(b=>b.addEventListener('click',close));
     dialog.addEventListener('click',event=>{if(event.target===dialog)close();});
-    dialog.querySelector('form')?.addEventListener('submit',async event=>{
+    const formElement=dialog.querySelector<HTMLFormElement>('form');
+    const feasibilityHost=dialog.querySelector<HTMLElement>('[data-feasibility]');
+    const submitButton=dialog.querySelector<HTMLButtonElement>('[data-submit-formation]');
+    const runFeasibility=async():Promise<boolean>=>{
+      const data=formElement?new FormData(formElement):null;
+      const selectedPlan=String(data?.get('plan')??'');
+      const dueLocal=String(data?.get('due')??'');
+      if(!selectedPlan||!dueLocal)return false;
+      if(feasibilityHost)feasibilityHost.innerHTML='<div class="subtle">Проверяем маршрут и срок…</div>';
+      if(submitButton)submitButton.disabled=true;
+      try{
+        const result=await rpc.checkFeasibility({requestId,planId:selectedPlan,dueAt:new Date(dueLocal).toISOString()});
+        const feasible=result.feasible===true;
+        const rows=Array.isArray(result.items)?result.items as Array<Record<string,unknown>>:[];
+        if(feasibilityHost)feasibilityHost.innerHTML='<div class="'+(feasible?'production-formation-feasible':'production-formation-blocked')+'"><strong>'+(feasible?'✓ Предварительно выполнимо':'⚠ Требует корректировки')+'</strong><div class="subtle" style="margin-top:6px">'+rows.map(row=>{
+          const ok=row.feasible===true;
+          return '<div style="margin-top:6px"><b>Позиция '+esc(row.lineNo)+'</b>: '+(ok?'OK':'Не помещается')+' · требуется '+esc(row.requiredHours)+' ч, доступно '+esc(row.availableHours)+' ч'+(row.reason?' · '+esc(row.reason):'');
+        }).join('')+'</div>'+(result.note?'<div class="subtle" style="margin-top:8px">'+esc(result.note)+'</div>':'')+'</div>';
+        if(submitButton)submitButton.disabled=!feasible;
+        return feasible;
+      }catch(error){
+        if(feasibilityHost)feasibilityHost.innerHTML='<div class="detail-error">'+esc(error instanceof Error?error.message:'Не удалось проверить выполнимость')+'</div>';
+        if(submitButton)submitButton.disabled=true;
+        return false;
+      }
+    };
+    formElement?.querySelectorAll<HTMLInputElement|HTMLSelectElement>('[name="plan"],[name="due"]').forEach(field=>field.addEventListener('change',()=>void runFeasibility()));
+    void runFeasibility();
+    formElement?.addEventListener('submit',async event=>{
       event.preventDefault();
       const form=event.currentTarget as HTMLFormElement;const data=new FormData(form);
       const planId=String(data.get('plan')??'');const dueLocal=String(data.get('due')??'');
