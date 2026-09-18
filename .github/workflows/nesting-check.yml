@@ -1,0 +1,42 @@
+name: NESTCUT validation
+on:
+  pull_request:
+    paths:
+      - 'nesting/**'
+  push:
+    paths:
+      - 'nesting/**'
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: JavaScript syntax
+        run: |
+          set -e
+          node --check nesting/src/app.js
+          node --check nesting/src/core/model.js
+          node --check nesting/src/geometry/geometry.js
+          node --check nesting/src/geometry/validation.js
+          node --check nesting/src/import/svg.js
+          node --check nesting/src/import/dxf.js
+          node --check nesting/src/import/csv.js
+          node --check nesting/src/nesting/svgNestAdapter.js
+          node --check nesting/src/production/production.js
+          node --check nesting/src/export/export.js
+          node --check nesting/svgnest.js
+          node --check nesting/svgparser.js
+      - name: Static structure
+        run: |
+          set -e
+          test -f nesting/index.html
+          test -f nesting/styles.css
+          test -f nesting/util/clipper.js
+          test -f nesting/util/geometryutil.js
+          test -f nesting/util/parallel.js
+          test -f nesting/util/placementworker.js
+          test -f nesting/util/eval.js
+          test -f nesting/util/json.js
