@@ -105,11 +105,12 @@ async function buildPlan(strategy){
   var pools=state.sheets.filter(function(s){return Number(s.qty)>0}).map(function(s){return Object.assign({},s)}).sort(function(a,b){return a.priority-b.priority||(b.width*b.height-a.width*a.height)});if(!pools.length)throw new Error("Нет доступных листов");
   var remaining=expanded.slice(),sheets=[],steps=0;
   var vars={fast:{populationSize:8,mutationRate:8,rotations:state.nesting.rotations},balanced:{populationSize:state.nesting.populationSize,mutationRate:state.nesting.mutationRate,rotations:state.nesting.rotations},dense:{populationSize:20,mutationRate:16,rotations:Math.max(8,state.nesting.rotations)}};
-  var cfg=Object.assign({},state.nesting,vars[strategy||"balanced"],{spacing:state.nesting.spacing+Math.max(0,Number(tech().kerf)||0)});
+  var uniqueTypes=new Set(expanded.map(function(p){return JSON.stringify((p.geometry?.loops||[]).map(function(loop){return loop.map(function(q){return [Math.round(q.x*100),Math.round(q.y*100)]})}))})).size;
+  var cfg=Object.assign({},state.nesting,vars[strategy||"balanced"],{spacing:state.nesting.spacing+Math.max(0,Number(tech().kerf)||0),populationSize:Math.max(6,Math.min(Number(state.nesting.populationSize||14),uniqueTypes<=3?8:uniqueTypes<=8?10:14)),stopOnFull:strategy!=="dense"});
   while(remaining.length&&steps<50){
     var best=null;
     for(const pool of pools.filter(function(s){return s.qty>0})){
-      var r=await runNest(remaining,{width:pool.width,height:pool.height},cfg,{timeLimitMs:cfg.timeLimitMs});
+      var r=await runNest(remaining,{width:pool.width,height:pool.height},cfg,{timeLimitMs:cfg.timeLimitMs,stopOnFull:cfg.stopOnFull});
       var capped=r.sheets.slice(0,Math.max(1,Math.round(pool.qty))),ids=new Set(capped.flatMap(function(s){return s.items.map(function(x){return x.instanceId})})),placed=ids.size;
       if(!placed)continue;
       var used=capped.length*pool.width*pool.height,score=placed*1000000-capped.length*20000+(placed/Math.max(1,used))*100000;
