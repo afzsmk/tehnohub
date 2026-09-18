@@ -179,6 +179,8 @@
 			}
 						
 			binPolygon.id = -1;
+			binPolygon.nestKey = '__BIN__';
+			binPolygon.partNestKey = '__BIN__';
 			
 			// put bin on origin
 			var xbinmax = binPolygon[0].x;
@@ -305,7 +307,7 @@
 			
 			for(i=0; i<placelist.length; i++){
 				var part = placelist[i];
-				key = {A: binPolygon.id, B: part.id, inside: true, Arotation: 0, Brotation: rotations[i]};
+				key = {A: binPolygon.nestKey || binPolygon.id, B: part.partNestKey || part.nestKey || part.id, inside: true, Arotation: 0, Brotation: rotations[i]};
 				if(!nfpCache[JSON.stringify(key)]){
 					nfpPairs.push({A: binPolygon, B: part, key: key});
 				}
@@ -314,7 +316,7 @@
 				}
 				for(j=0; j<i; j++){
 					var placed = placelist[j];
-					key = {A: placed.id, B: part.id, inside: false, Arotation: rotations[j], Brotation: rotations[i]};
+					key = {A: placed.partNestKey || placed.nestKey || placed.id, B: part.partNestKey || part.nestKey || part.id, inside: false, Arotation: rotations[j], Brotation: rotations[i]};
 					if(!nfpCache[JSON.stringify(key)]){
 						nfpPairs.push({A: placed, B: part, key: key});
 					}
@@ -325,7 +327,8 @@
 			}
 			
 			// only keep cache for one cycle
-			nfpCache = newCache;
+			// Keep the cache across generations: NFP depends on geometry/type/rotation, not GA generation.
+			for(var cacheKey in newCache){ nfpCache[cacheKey] = newCache[cacheKey]; }
 			
 			var worker = new PlacementWorker(binPolygon, placelist.slice(0), ids, rotations, config, nfpCache);
 			
@@ -604,7 +607,9 @@
 				
 				// todo: warn user if poly could not be processed and is excluded from the nest
 				if(poly && poly.length > 2 && Math.abs(GeometryUtil.polygonArea(poly)) > config.curveTolerance*config.curveTolerance){
-					poly.source = i;					
+					poly.source = i;
+					poly.nestKey = paths[i].getAttribute('data-nest-key') || ('poly:'+i);
+					poly.partNestKey = paths[i].getAttribute('data-part-nest-key') || poly.nestKey;					
 					polygons.push(poly);
 				}
 			}
