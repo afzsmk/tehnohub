@@ -52,8 +52,8 @@ export async function mountDispatchGanttPage(root: HTMLElement, client: Supabase
       const rows = await planningRpc.recommendResources(taskId);
       const employees = rows.filter(r => r.resourceType === 'EMPLOYEE').slice(0, 20);
       const equipment = rows.filter(r => r.resourceType === 'EQUIPMENT').slice(0, 5);
-      const selectedEmployees = new Set<string>();
-      let selectedEquipment = '';
+      const selectedEmployees = new Set<string>(employees.slice(0,workersRequired).map(item=>item.resourceId));
+      let selectedEquipment = requiredEquipment.length ? (equipment[0]?.resourceId ?? '') : '';
       const renderGroup = (title:string, type:'EMPLOYEE'|'EQUIPMENT', items:MesResourceRecommendation[]) =>
         '<div class="recommend-group"><strong>'+title+'</strong>'+
         (items.length ? items.map(item => '<div class="recommend-item"><div><b>'+esc(item.resourceName)+'</b><small>score '+item.score.toFixed(1)+' · '+esc(item.reasons.slice(0,3).join(' · '))+'</small></div><button class="tiny" type="button" data-select-recommend data-resource-type="'+type+'" data-resource-id="'+esc(item.resourceId)+'">Выбрать</button></div>').join('') : '<div class="subtle">Подходящих ресурсов не найдено</div>')+
