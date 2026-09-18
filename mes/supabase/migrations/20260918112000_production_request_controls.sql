@@ -87,8 +87,8 @@ begin
       v_available_hours := greatest(extract(epoch from (v_due_at-v_start))/3600,0);
       if v_end > v_due_at or v_end > v_plan.horizon_end then
         v_blocking_reason := format(
-          'Маршрут не помещается в срок: требуется %.2f ч, доступно %.2f ч',
-          v_required_hours,v_available_hours
+          'Маршрут не помещается в срок: требуется %s ч, доступно %s ч',
+          round(v_required_hours,2),round(v_available_hours,2)
         );
       end if;
     else
