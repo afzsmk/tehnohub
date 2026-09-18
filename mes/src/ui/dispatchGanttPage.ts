@@ -5,7 +5,7 @@ import { MesReplanChange, SupabaseMesReplanRpc } from '../integration/mesReplanR
 import { subscribeMesRealtime } from '../integration/mesRealtime';
 
 type TaskRow = { id:string; order_id:string; operation_sequence:number; status:string; planned_quantity:number; actual_quantity:number; planned_start:string; planned_end:string; version:number; };
-type OrderRow = { id:string; number:string; priority:string; due_at:string; };
+type OrderRow = { id:string; plan_id:string; number:string; priority:string; due_at:string; };
 type AssignmentRow = { task_id:string; equipment_id:string|null; employee_id:string|null };
 type EquipmentRow = { id:string; code:string; name:string; work_center:string; };
 
@@ -124,7 +124,7 @@ export async function mountDispatchGanttPage(root: HTMLElement, client: Supabase
     try {
       const [tasksQ, ordersQ, assignmentsQ, equipmentQ, planQ] = await Promise.all([
         client.from('production_tasks').select('id,order_id,operation_sequence,status,planned_quantity,actual_quantity,planned_start,planned_end,version').neq('status','CANCELLED').order('planned_start',{ascending:true}).limit(500),
-        client.from('production_orders').select('id,number,priority,due_at').limit(500),
+        client.from('production_orders').select('id,plan_id,number,priority,due_at').limit(500),
         client.from('task_assignments').select('task_id,equipment_id,employee_id').limit(1500),
         client.from('equipment').select('id,code,name,work_center').eq('active',true).order('name',{ascending:true}),
         client.from('operational_plans').select('id,version,horizon_start,horizon_end,status,created_at').neq('status','ARCHIVED').order('created_at',{ascending:false}).limit(1).maybeSingle()
@@ -139,15 +139,17 @@ export async function mountDispatchGanttPage(root: HTMLElement, client: Supabase
       const assignments = (assignmentsQ.data ?? []) as AssignmentRow[];
       const equipment = (equipmentQ.data ?? []) as EquipmentRow[];
       const plan = planQ.data as {id:string; version:number; horizon_start:string; horizon_end:string; status:string}|null;
+      const planOrderIds = new Set(orders.filter(o=>!plan || o.plan_id===plan.id).map(o=>o.id));
+      const activeTasks = tasks.filter(t=>planOrderIds.has(t.order_id));
       const assignmentByTask = new Map<string,AssignmentRow>();
       for (const a of assignments) if (!assignmentByTask.has(a.task_id)) assignmentByTask.set(a.task_id, a);
       const now = Date.now();
-      const first = tasks.length ? Math.min(now, ...tasks.map(t=>new Date(t.planned_start).getTime())) : now;
-      const horizonEnd = tasks.length ? Math.max(now + 24*60*MINUTE_MS, ...tasks.map(t=>new Date(t.planned_end).getTime())) : now + 24*60*MINUTE_MS;
+      const first = activeTasks.length ? Math.min(now, ...activeTasks.map(t=>new Date(t.planned_start).getTime())) : (plan ? new Date(plan.horizon_start).getTime() : now);
+      const horizonEnd = activeTasks.length ? Math.max(now + 24*60*MINUTE_MS, ...activeTasks.map(t=>new Date(t.planned_end).getTime())) : (plan ? new Date(plan.horizon_end).getTime() : now + 24*60*MINUTE_MS);
       const span = Math.max(60*MINUTE_MS, horizonEnd - first);
       const mid = first + span / 2;
       const rows = equipment.map(eq => {
-        const eqTasks = tasks.filter(t => assignmentByTask.get(t.id)?.equipment_id === eq.id);
+        const eqTasks = activeTasks.filter(t => assignmentByTask.get(t.id)?.equipment_id === eq.id);
         const bars = eqTasks.map(t => {
           const start = new Date(t.planned_start).getTime();
           const end = new Date(t.planned_end).getTime();
@@ -159,7 +161,7 @@ export async function mountDispatchGanttPage(root: HTMLElement, client: Supabase
         }).join('');
         return `<div class="gantt-row"><div class="gantt-resource"><strong>${esc(eq.name)}</strong><span>${esc(eq.code)} · ${esc(eq.work_center)}</span></div><div class="gantt-track"><div class="gantt-grid-lines"></div><div class="gantt-now-line" style="left:${Math.max(0,Math.min(100,((now-first)/span)*100))}%"></div>${bars||'<span class="subtle gantt-empty">Нет заданий</span>'}</div></div>`;
       }).join('');
-      const unassignedTasks = tasks.filter(t=>!assignmentByTask.get(t.id)?.equipment_id).slice(0,30);
+      const unassignedTasks = activeTasks.filter(t=>!assignmentByTask.get(t.id)?.equipment_id).slice(0,30);
       const unassigned = unassignedTasks.map(t=>`<div class="gantt-unassigned-item"><span class="status-pill ${statusClass(t.status)}">${esc(t.id)} · v${t.version}</span><button class="tiny" data-recommend-task="${esc(t.id)}" data-recommend-version="${t.version}">Подобрать ресурсы</button></div>`).join('');
       const panel = host.querySelector<HTMLElement>('[data-recommendations]');
       const panelState = panel?.hidden === false ? 'visible' : 'hidden';
