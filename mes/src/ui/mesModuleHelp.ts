@@ -156,7 +156,7 @@ function render(definition:HelpDefinition):string {
 }
 
 function bindOne(host:HTMLElement,definition:HelpDefinition):void {
-  if(host.dataset.mesHelpBound==='1')return;
+  if(host.querySelector('[data-mes-help="1"]'))return;
   host.dataset.mesHelpBound='1';
   host.insertAdjacentHTML('afterbegin',render(definition));
   const help=host.querySelector<HTMLElement>('[data-mes-help="1"]');
