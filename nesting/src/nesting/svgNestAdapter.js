@@ -24,7 +24,7 @@ function parseTranslateRotate(t){
 
 export async function runNest(parts, bin, config={}, opts={}){
   if(!parts.length) return {sheets:[],placedIds:[],rendered:[]};
-  const timeout=Math.max(400,Number(opts.timeLimitMs||config.timeLimitMs||1800));
+  const timeout=Math.max(2500,Number(opts.timeLimitMs||config.timeLimitMs||8000));
   const edge=Math.max(0,Number(config.edge||0));
   const innerBin={width:Math.max(1,bin.width-2*edge),height:Math.max(1,bin.height-2*edge)};
   const text=engineSvg(parts,innerBin);
@@ -43,7 +43,7 @@ export async function runNest(parts, bin, config={}, opts={}){
 
   return await new Promise(resolve=>{
     let best=null, finished=false;
-    const finish=()=>{if(finished)return;finished=true;try{window.SvgNest.stop();}catch{}resolve(best||{sheets:[],placedIds:[],rendered:[]});};
+    const finish=()=>{if(finished)return;finished=true;try{window.SvgNest.stop();}catch{}if(best&&best.sheets?.length){resolve(best)}else{resolve(fallbackPack(parts,bin,config))}};
     const timer=setTimeout(finish,timeout);
     try{
       window.SvgNest.start(
@@ -86,4 +86,30 @@ export function scoreNest(result, partMap, bin){
   }
   const util=used/area;
   return placed*1000000 + util*10000 - result.sheets.length*1000;
+}
+
+
+function rotatedBounds(loops,deg){
+  const r=deg*Math.PI/180,c=Math.cos(r),s=Math.sin(r);let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  for(const loop of loops) for(const p of loop){const x=p.x*c-p.y*s,y=p.x*s+p.y*c;if(x<minX)minX=x;if(x>maxX)maxX=x;if(y<minY)minY=y;if(y>maxY)maxY=y;}
+  return {minX,minY,width:maxX-minX,height:maxY-minY};
+}
+function fallbackPack(parts,bin,config){
+  const edge=Math.max(0,Number(config.edge)||0),gap=Math.max(0,Number(config.spacing)||0),availW=bin.width-2*edge,availH=bin.height-2*edge;
+  const rotations=Math.max(1,Math.round(config.rotations||4));
+  const used=[],out=[],step=360/rotations;
+  let x=0,y=0,rowH=0;
+  for(const part of parts){
+    let best=null;
+    for(let i=0;i<rotations;i++){
+      const rot=Math.round(i*step*1000)/1000,b=rotatedBounds(part.geometry.loops,rot);
+      if(b.width<=availW && b.height<=availH && (!best||b.width<best.b.width||(Math.abs(b.width-best.b.width)<1e-6&&b.height<best.b.height)))best={rot,b};
+    }
+    if(!best)return {sheets:[],placedIds:[],fallback:true};
+    if(x>0 && x+best.b.width>availW){x=0;y+=rowH+gap;rowH=0;}
+    if(y+best.b.height>availH)return {sheets:[],placedIds:[],fallback:true};
+    const item={instanceId:part.instanceId||part.id,x:edge+x-best.b.minX,y:edge+y-best.b.minY,rotation:best.rot};
+    used.push(item);x+=best.b.width+gap;rowH=Math.max(rowH,best.b.height);
+  }
+  return used.length?{sheets:[{width:bin.width,height:bin.height,items:used}],placedIds:used.map(i=>i.instanceId),fallback:true}:{sheets:[],placedIds:[],fallback:true};
 }
