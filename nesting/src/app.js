@@ -112,7 +112,8 @@ async function buildPlan(strategy){
   var map=buildInstanceMap(expanded),plan={job:clone(state.job),thickness:state.job.thickness,totalParts:expanded.length,sheets:sheets,remaining:remaining,partMap:map,originalParts:original,remnants:[],strategy:strategy};
   plan.metrics=calculateMetrics(plan,mat());plan.remnants=calculateRemnants(plan,state.options.minRemnant*state.options.minRemnant);return plan;
 }
-function sheetKim(sh){var used=sh.items.reduce(function(a,it){var p=currentPlan.partMap.get(it.instanceId);return a+(p?partArea(p):0)},0);return used/(sh.width*sh.height)*100}
+function resolvePart(it){if(!currentPlan)return null;return currentPlan.partMap.get(it.instanceId)||currentPlan.partMap.get(String(it.instanceId||"").split("#")[0])||null}
+function sheetKim(sh){var used=sh.items.reduce(function(a,it){var p=resolvePart(it);return a+(p?partArea(p):0)},0);return used/(sh.width*sh.height)*100}
 function renderPlan(){
   if(!currentPlan){$("result").classList.add("hidden");$("result-empty").classList.remove("hidden");return}
   $("result").classList.remove("hidden");$("result-empty").classList.add("hidden");var m=currentPlan.metrics;
@@ -148,7 +149,8 @@ async function compare(){
 }
 function bind(){
   $("add-sheet").onclick=function(){state.sheets.push({id:crypto.randomUUID(),name:"Лист",width:2000,height:1250,qty:1,priority:1,source:"stock"});save();renderSheets();renderSummary()};
-  $("add-part").onclick=function(){var m=$("preset-menu");m.classList.toggle("hidden")};$("file").onchange=function(e){importFiles(e.target.files);e.target.value=""};
+  $("add-part").onclick=function(e){e.stopPropagation();var m=$("preset-menu");m.classList.toggle("hidden")};
+  $("preset-menu").querySelectorAll("[data-preset]").forEach(function(b){b.onclick=function(e){e.stopPropagation();addPartPreset(b.dataset.preset)}});$("file").onchange=function(e){importFiles(e.target.files);e.target.value=""};
   document.addEventListener("click",function(e){if(!e.target.closest("#add-part")&&!e.target.closest("#preset-menu"))closePresetMenu()});$("dropzone").ondragover=function(e){e.preventDefault();$("dropzone").classList.add("drag")};$("dropzone").ondragleave=function(){$("dropzone").classList.remove("drag")};$("dropzone").ondrop=function(e){e.preventDefault();$("dropzone").classList.remove("drag");importFiles(e.dataTransfer.files)};
   ["job-name","material","technology","thickness","spacing","edge","tolerance","rotations","population","mutation","timeLimit","holes","concave","mirror"].forEach(function(id){$(id).addEventListener("change",syncControls)});
   $("run").onclick=run;$("compare").onclick=compare;$("save-remnants").onclick=function(){if(currentPlan)saveResultRemnants()};
