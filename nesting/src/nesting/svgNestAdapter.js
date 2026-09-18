@@ -83,7 +83,10 @@ export async function runNest(parts, bin, config={}, opts={}){
             }
             if(items.length) sheets.push({width:bin.width,height:bin.height,items});
           }
-          if(sheets.length) best={sheets,placedIds:[...new Set(placedIds)],rendered:svglist};
+          if(sheets.length){
+            best={sheets,placedIds:[...new Set(placedIds)],rendered:svglist};
+            if(opts.stopOnFull!==false && best.placedIds.length===parts.length){ clearTimeout(timer); finish(); }
+          }
         }
       );
       if(started===false){clearTimeout(timer);finish();return;}
