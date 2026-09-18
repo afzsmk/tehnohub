@@ -39,28 +39,52 @@ const MAP:Record<string,NavItem[]>= {
   ]
 };
 
+function readSavedPage(role:string, items:NavItem[]):string {
+  try {
+    const saved=sessionStorage.getItem(`mes-active-page-${role}`);
+    return saved&&items.some(([,selector])=>selector===saved)?saved:items[0][1];
+  } catch {
+    return items[0][1];
+  }
+}
+
 export async function mountMesWorkspaceNav(root:HTMLElement,client:SupabaseClient):Promise<void>{
   const auth=await getMesAuthState(client,{hydrateSnapshot:false});
   const role=auth.identity?.role;if(!role)return;
-  const items=(MAP[role]??MAP.PRODUCTION_MANAGER).filter(([,selector])=>root.querySelector(selector));
+  const items=MAP[role]??MAP.PRODUCTION_MANAGER;
   if(!items.length)return;
+
   const nav=document.createElement('nav');
   nav.className='mes-workspace-nav';
   nav.setAttribute('aria-label','Рабочие места MES');
   nav.innerHTML=`<div class="mes-workspace-brand"><strong>MES</strong><span>${role}</span></div><div class="mes-workspace-nav-groups">${[...new Set(items.map(([, ,group])=>group))].map(group=>`<section class="mes-nav-group"><div class="mes-nav-group-title">${group}</div>${items.filter(([, ,itemGroup])=>itemGroup===group).map(([label,selector])=>`<button class="mes-nav-link" data-target="${selector}">${label}</button>`).join('')}</section>`).join('')}</div>`;
   root.prepend(nav);
 
-  const targets=items.map(([,selector])=>root.querySelector<HTMLElement>(selector)).filter((element):element is HTMLElement=>Boolean(element));
-  for(const element of targets){element.setAttribute('data-mes-page','');element.hidden=true;}
-
   const buttons=[...nav.querySelectorAll<HTMLButtonElement>('[data-target]')];
-  const activate=(selector:string)=>{
-    for(const element of targets) element.hidden=!element.matches(selector);
-    for(const button of buttons){const active=button.dataset.target===selector;button.classList.toggle('active',active);button.setAttribute('aria-current',active?'page':'false');}
-    sessionStorage.setItem(`mes-active-page-${role}`,selector);
+  let activeSelector=readSavedPage(role,items);
+
+  const syncTargets=()=>{
+    const targets=items.map(([,selector])=>root.querySelector<HTMLElement>(selector)).filter((element):element is HTMLElement=>Boolean(element));
+    for(const element of targets){
+      element.setAttribute('data-mes-page','');
+      element.hidden=!element.matches(activeSelector);
+    }
+    for(const button of buttons){
+      const active=button.dataset.target===activeSelector;
+      button.classList.toggle('active',active);
+      button.setAttribute('aria-current',active?'page':'false');
+    }
   };
-  const saved=sessionStorage.getItem(`mes-active-page-${role}`);
-  const initial=(saved&&items.some(([,selector])=>selector===saved)?saved:items[0][1]);
+
+  const activate=(selector:string)=>{
+    if(!items.some(([,itemSelector])=>itemSelector===selector)) return;
+    activeSelector=selector;
+    try { sessionStorage.setItem(`mes-active-page-${role}`,selector); } catch {}
+    syncTargets();
+  };
+
   buttons.forEach(button=>button.addEventListener('click',()=>activate(button.dataset.target??items[0][1])));
-  activate(initial);
+  const observer=new MutationObserver(syncTargets);
+  observer.observe(root,{childList:true,subtree:true});
+  syncTargets();
 }
