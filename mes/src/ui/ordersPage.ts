@@ -64,7 +64,7 @@ export async function mountOrdersPage(root: HTMLElement, client: SupabaseClient)
 
   const host = document.createElement('section');
   host.className = 'panel orders-page';
-  host.innerHTML = `<div class="panel-head"><div><h2>Производственные заказы</h2><div class="subtle">Оперативное управление статусом, маршрутом, заданиями и ресурсами · роль ${esc(role)}</div></div><button class="primary" id="orders-refresh">Обновить</button></div><div class="orders-toolbar"><span>${orders.length} заказов</span><span>Запланированных: ${orders.filter(o => o.status === 'PLANNED').length}</span><span>В работе: ${orders.filter(o => ['IN_EXECUTION', 'PARTIALLY_COMPLETED'].includes(o.status)).length}</span><span>Завершённых: ${orders.filter(o => o.status === 'COMPLETED').length}</span></div><div class="orders-table-wrap"><table><thead><tr><th>Заказ</th><th>Количество</th><th>Выполнено</th><th>Срок</th><th>Приоритет</th><th>Статус</th><th>Действия</th></tr></thead><tbody>${orders.map(order => { const actions: string[] = [`<button class="tiny" data-order-detail="${esc(order.id)}">Детали</button>`]; if (canPlan && ['IMPORTED', 'BLOCKED'].includes(order.status)) actions.push(`<button class="tiny" data-plan-order="${esc(order.id)}">Спланировать</button>`); if (canRelease && order.status === 'PLANNED') actions.push(`<button class="tiny" data-release-order="${esc(order.id)}">Выпустить</button>`); if (canRelease && ['RELEASED', 'IN_EXECUTION'].includes(order.status)) actions.push(`<button class="tiny" data-block-order="${esc(order.id)}">Заблокировать</button>`); const pct = order.quantity > 0 ? ((order.completed_quantity / order.quantity) * 100).toFixed(1) : '0.0'; return `<tr data-order-row="${esc(order.id)}"><td><strong>${esc(order.number)}</strong><div class="subtle">${esc(order.external_id ?? '')} · ${esc(order.id)}</div></td><td>${order.quantity}</td><td>${order.completed_quantity} <span class="subtle">(${pct}%)</span></td><td>${new Date(order.due_at).toLocaleDateString('ru-RU')}</td><td>${esc(order.priority)}</td><td><span class="status-pill ${statusClass(order.status)}">${statusLabel(order.status)}</span></td><td class="orders-actions">${actions.join(' ')}</td></tr><tr data-order-detail-row="${esc(order.id)}" class="order-detail-row" hidden><td colspan="7"><div class="order-detail" data-detail-host="${esc(order.id)}"></div></td></tr>`; }).join('') || '<tr><td colspan="7">Заказов нет</td></tr>'}</tbody></table></div>`;
+  host.innerHTML = `<div class="panel-head"><div><h2>Производственные заказы</h2><div class="subtle">Оперативное управление статусом, маршрутом, заданиями и ресурсами · роль ${esc(role)}</div></div><button class="primary" id="orders-refresh">Обновить</button></div><div class="orders-toolbar"><span>${orders.length} заказов</span><span>Запланированных: ${orders.filter(o => o.status === 'PLANNED').length}</span><span>В работе: ${orders.filter(o => ['IN_EXECUTION', 'PARTIALLY_COMPLETED'].includes(o.status)).length}</span><span>Завершённых: ${orders.filter(o => o.status === 'COMPLETED').length}</span></div><div class="orders-table-wrap"><table><thead><tr><th>Заказ</th><th>Количество</th><th>Выполнено</th><th>Срок</th><th>Приоритет</th><th>Статус</th><th>Действия</th></tr></thead><tbody>${orders.map(order => { const actions: string[] = [`<button class="tiny" data-order-detail="${esc(order.id)}">Детали</button>`]; if (canPlan && ['IMPORTED', 'BLOCKED'].includes(order.status)) { actions.push(`<button class="tiny" data-plan-order="${esc(order.id)}">Спланировать</button>`); actions.push(`<button class="tiny" data-revise-order="${esc(order.id)}">Исправить</button>`); actions.push(`<button class="tiny" data-split-order="${esc(order.id)}">Разбить</button>`); } if (canRelease && order.status === 'PLANNED') actions.push(`<button class="tiny" data-release-order="${esc(order.id)}">Выпустить</button>`); if (canRelease && ['RELEASED', 'IN_EXECUTION'].includes(order.status)) actions.push(`<button class="tiny" data-block-order="${esc(order.id)}">Заблокировать</button>`); const pct = order.quantity > 0 ? ((order.completed_quantity / order.quantity) * 100).toFixed(1) : '0.0'; return `<tr data-order-row="${esc(order.id)}"><td><strong>${esc(order.number)}</strong><div class="subtle">${esc(order.external_id ?? '')} · ${esc(order.id)}</div></td><td>${order.quantity}</td><td>${order.completed_quantity} <span class="subtle">(${pct}%)</span></td><td>${new Date(order.due_at).toLocaleDateString('ru-RU')}</td><td>${esc(order.priority)}</td><td><span class="status-pill ${statusClass(order.status)}">${statusLabel(order.status)}</span></td><td class="orders-actions">${actions.join(' ')}</td></tr><tr data-order-detail-row="${esc(order.id)}" class="order-detail-row" hidden><td colspan="7"><div class="order-detail" data-detail-host="${esc(order.id)}"></div></td></tr>`; }).join('') || '<tr><td colspan="7">Заказов нет</td></tr>'}</tbody></table></div>`;
   root.appendChild(host);
 
   const orderRpc = new SupabaseMesOrderRpc(client);
@@ -146,6 +146,66 @@ export async function mountOrdersPage(root: HTMLElement, client: SupabaseClient)
     })();
   });
 
+  const showModal=(html:string):HTMLElement=>{
+    const layer=document.createElement('div');
+    layer.className='production-formation-dialog';
+    layer.innerHTML='<div class="production-formation-card">'+html+'</div>';
+    document.body.appendChild(layer);
+    layer.addEventListener('click',event=>{if(event.target===layer)layer.remove();});
+    layer.querySelectorAll<HTMLButtonElement>('[data-close-modal]').forEach(button=>button.addEventListener('click',()=>layer.remove()));
+    return layer;
+  };
+
+  const openRevision=async(orderId:string)=>{
+    const order=orders.find(item=>item.id===orderId);if(!order)return;
+    const plansResult=await client.from('operational_plans').select('id,version,status,horizon_start,horizon_end').neq('status','ARCHIVED').order('created_at',{ascending:false});
+    if(plansResult.error){window.alert(plansResult.error.message);return;}
+    const plans=(plansResult.data??[]) as Array<{id:string;version:number;status:string;horizon_start:string;horizon_end:string}>;
+    if(!plans.length){window.alert('Нет доступного операционного плана.');return;}
+    const preferred=plans.find(p=>p.id===order.plan_id)??plans.find(p=>p.status==='RELEASED')??plans[0];
+    const localDue=(()=>{const d=new Date(order.due_at);const local=new Date(d.getTime()-d.getTimezoneOffset()*60000);return local.toISOString().slice(0,16);})();
+    const layer=showModal('<div class="production-formation-head"><div><div class="subtle">Корректировка заказа</div><h2 style="margin:4px 0">'+esc(order.number)+'</h2><div class="subtle">Только план, срок и приоритет; количество меняется через разбиение.</div></div><button class="tiny" data-close-modal>Закрыть</button></div><form><div class="form-grid"><label>Операционный план<select name="plan">'+plans.map(p=>'<option value="'+esc(p.id)+'" '+(p.id===preferred.id?'selected':'')+'>'+esc(p.id)+' · v'+p.version+' · '+esc(p.status)+'</option>').join('')+'</select></label><label>Срок<input name="due" type="datetime-local" value="'+esc(localDue)+'" required></label><label>Приоритет<select name="priority"><option value="LOW">Низкий</option><option value="NORMAL">Обычный</option><option value="HIGH">Высокий</option><option value="URGENT">Срочный</option></select></label></div><div class="production-formation-actions"><button type="button" class="tiny" data-close-modal>Отмена</button><button class="primary" type="submit">Сохранить и перепланировать</button></div></form>');
+    (layer.querySelector('[name="priority"]') as HTMLSelectElement).value=order.priority;
+    layer.querySelector('form')?.addEventListener('submit',async event=>{
+      event.preventDefault();
+      const form=event.currentTarget as HTMLFormElement;const fd=new FormData(form);
+      try{
+        await orderRpc.revise(order.id,{planId:String(fd.get('plan')??''),dueAt:new Date(String(fd.get('due')??'')).toISOString(),priority:String(fd.get('priority')??'NORMAL') as ProductionOrder['priority']});
+        await orderRpc.planOrder(order.id);
+        layer.remove();window.location.reload();
+      }catch(error){window.alert(error instanceof Error?error.message:'Не удалось откорректировать заказ');}
+    });
+  };
+
+  const openSplit=async(orderId:string)=>{
+    const order=orders.find(item=>item.id===orderId);if(!order)return;
+    const plansResult=await client.from('operational_plans').select('id,version,status,horizon_start,horizon_end').neq('status','ARCHIVED').order('created_at',{ascending:false});
+    if(plansResult.error){window.alert(plansResult.error.message);return;}
+    const plans=(plansResult.data??[]) as Array<{id:string;version:number;status:string;horizon_start:string;horizon_end:string}>;
+    if(!plans.length){window.alert('Нет доступного операционного плана.');return;}
+    const preferred=plans.find(p=>p.id===order.plan_id)??plans.find(p=>p.status==='RELEASED')??plans[0];
+    const half=Math.floor(Number(order.quantity)/2*1000)/1000;const q2=Number((Number(order.quantity)-half).toFixed(3));
+    const date1=new Date(order.due_at);const date2=new Date(date1.getTime()+3*24*60*60*1000);
+    const local=(d:Date)=>{const x=new Date(d.getTime()-d.getTimezoneOffset()*60000);return x.toISOString().slice(0,16);};
+    const layer=showModal('<div class="production-formation-head"><div><div class="subtle">Разбиение заказа</div><h2 style="margin:4px 0">'+esc(order.number)+'</h2><div class="subtle">Исходное количество: '+order.quantity+'. Сумма двух частей должна совпасть.</div></div><button class="tiny" data-close-modal>Закрыть</button></div><form><div class="form-grid"><label>План<select name="plan">'+plans.map(p=>'<option value="'+esc(p.id)+'" '+(p.id===preferred.id?'selected':'')+'>'+esc(p.id)+' · v'+p.version+' · '+esc(p.status)+'</option>').join('')+'</select></label></div><div class="grid-2"><div class="panel" style="margin:0"><div class="detail-title">Часть 1</div><label>Количество<input name="q1" type="number" min="0.001" step="0.001" value="'+half+'" required></label><label style="display:block;margin-top:8px">Срок<input name="d1" type="datetime-local" value="'+local(date1)+'" required></label></div><div class="panel" style="margin:0"><div class="detail-title">Часть 2</div><label>Количество<input name="q2" type="number" min="0.001" step="0.001" value="'+q2+'" required></label><label style="display:block;margin-top:8px">Срок<input name="d2" type="datetime-local" value="'+local(date2)+'" required></label></div></div><div class="production-formation-note">Исходный BLOCKED/IMPORTED заказ будет отменён, а вместо него появятся две независимые части. После создания MES автоматически попробует спланировать каждую часть.</div><div class="production-formation-actions"><button type="button" class="tiny" data-close-modal>Отмена</button><button class="primary" type="submit">Разбить и спланировать</button></div></form>');
+    layer.querySelector('form')?.addEventListener('submit',async event=>{
+      event.preventDefault();
+      const form=event.currentTarget as HTMLFormElement;const fd=new FormData(form);
+      const q1=Number(fd.get('q1')??0),q2v=Number(fd.get('q2')??0);if(q1<=0||q2v<=0||Math.abs((q1+q2v)-Number(order.quantity))>0.000001){window.alert('Сумма частей должна точно равняться исходному количеству '+order.quantity);return;}
+      try{
+        const result=await orderRpc.split(order.id,[
+          {quantity:q1,dueAt:new Date(String(fd.get('d1')??'')).toISOString(),planId:String(fd.get('plan')??''),priority:order.priority,orderNumber:order.number+'/P1'},
+          {quantity:q2v,dueAt:new Date(String(fd.get('d2')??'')).toISOString(),planId:String(fd.get('plan')??''),priority:order.priority,orderNumber:order.number+'/P2'}
+        ]);
+        const parts=Array.isArray(result.parts)?result.parts as Array<Record<string,unknown>>:[];
+        let planned=0,blocked=0;
+        for(const part of parts){try{await orderRpc.planOrder(String(part.id));planned++;}catch{blocked++;}}
+        layer.remove();window.location.reload();
+        window.setTimeout(()=>window.alert('Разбиение выполнено. Частей: '+parts.length+'; спланировано: '+planned+'; требуют корректировки: '+blocked+'.'),250);
+      }catch(error){window.alert(error instanceof Error?error.message:'Не удалось разбить заказ');}
+    });
+  };
+
   host.querySelectorAll<HTMLButtonElement>('[data-order-detail]').forEach(button => button.addEventListener('click', () => {
     const orderId = button.dataset.orderDetail ?? '';
     const order = orders.find(item => item.id === orderId);
@@ -160,6 +220,8 @@ export async function mountOrdersPage(root: HTMLElement, client: SupabaseClient)
   }));
 
   host.querySelector<HTMLButtonElement>('#orders-refresh')?.addEventListener('click', () => window.location.reload());
+  host.querySelectorAll<HTMLButtonElement>('[data-revise-order]').forEach(button => button.addEventListener('click', () => { void openRevision(button.dataset.reviseOrder ?? ''); }));
+  host.querySelectorAll<HTMLButtonElement>('[data-split-order]').forEach(button => button.addEventListener('click', () => { void openSplit(button.dataset.splitOrder ?? ''); }));
   host.querySelectorAll<HTMLButtonElement>('[data-plan-order]').forEach(button => button.addEventListener('click', async () => {
     try {
       const result = await orderRpc.planOrder(button.dataset.planOrder ?? '');
