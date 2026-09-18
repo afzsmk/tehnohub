@@ -93,7 +93,7 @@ export async function mountProductionRequestFormation(root:HTMLElement,client:Su
     });
   });
   observer.observe(root,{childList:true,subtree:true});
-  const page=root.querySelector('.production-requests-page');
+  const page=root.querySelector<HTMLElement>('.production-requests-page');
   if(page){
     page.dataset.formationController='1';
     page.addEventListener('click',event=>{
