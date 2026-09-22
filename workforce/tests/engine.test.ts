@@ -35,4 +35,42 @@ describe('Главный расчетный двигатель (engine.ts)', () 
     const calc = calculateProgram(scenario);
     expect(['green', 'yellow', 'red']).toContain(calc.overallZone);
   });
+
+  it('Считает реальную потребность выделенного поста выше минимального состава', () => {
+    const dedicatedScenario = {
+      professions: [
+        { id: 'pX', name: 'Пост', pool: 'dedicated' as const, machines: 1, crew: 1, minCrew: 1, availabilityHours: 24, type: 'manual' as const }
+      ],
+      products: [
+        { id: 'prX', name: 'Изделие', unit: 'шт', scrap: 0, norms: { pX: 1 } }
+      ],
+      months: ['09/26'],
+      plan: { prX: [200] },
+      settings: {
+        companyName: 'Тест',
+        fNom: 168,
+        fEff: 144,
+        reserveOffPercent: 14.3,
+        kVn: 1.05,
+        brigadesCount: 3,
+        brigadeSize: 6,
+        maxOvertimePercent: 15,
+        auxOtkPercent: 0,
+        auxSetupPercent: 0,
+        auxFixedPosts: 0,
+        workDaysPerMonth: 21,
+        shiftHoursStandard: 8,
+        extendedShiftHours: 12,
+        fNomExtended: 252,
+        fEffExtended: 216
+      },
+      normConfigs: {}
+    };
+
+    const calc = calculateProgram(dedicatedScenario);
+
+    expect(calc.workforceViews['8h'].dedicatedDetails.pX[0].minimumStaff).toBe(1);
+    expect(calc.workforceViews['8h'].staffByProfSp.pX[0]).toBe(2);
+    expect(calc.workforceViews['12h'].staffByProfSp.pX[0]).toBe(1);
+  });
 });
