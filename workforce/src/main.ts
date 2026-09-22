@@ -141,11 +141,11 @@ function renderAll() {
     } else {
       applyFn();
     }
-  });
+  }, analysisDisplayMode);
 
   renderSmartAdvisor(displayCalc, data, (headcount: number) => {
     executeLevelLoading(headcount);
-  });
+  }, analysisDisplayMode);
 
   renderDynamicGuides(displayCalc, data, analysisDisplayMode);
   renderSavedNormsRegistry(data, (key) => {
@@ -164,9 +164,10 @@ function renderAll() {
       data.plan[prodId][mIdx] = val;
       storageService.saveState(state);
       const freshCalc = calculateProgram(data);
-      renderKPIs(freshCalc, data);
-      renderExecutiveSummary(freshCalc, data);
-      renderDynamicGuides(freshCalc, data);
+      const freshDisplayCalc = getDisplayCalc(freshCalc);
+      renderKPIs(freshDisplayCalc, data, analysisDisplayMode);
+      renderExecutiveSummary(freshDisplayCalc, data, analysisDisplayMode);
+      renderDynamicGuides(freshDisplayCalc, data, analysisDisplayMode);
       const tfootTds = document.querySelectorAll('#planTableFooter td');
       if (tfootTds && tfootTds[mIdx + 1]) {
         tfootTds[mIdx + 1].textContent = Math.round(freshCalc.totalHoursByMonth[mIdx]).toLocaleString();
