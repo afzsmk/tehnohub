@@ -236,7 +236,7 @@ function renderKPIs(calc: any, data: ScenarioData, mode: AnalysisDisplayMode = '
   const view12 = calc.workforceViews?.['12h'];
   const selected = mode === '8h' ? view8 : mode === '12h' ? view12 : null;
   const source = selected || calc;
-  const totalHours = source.totalHoursByMonth.reduce((a: number, b: number) => a + b, 0);
+  const totalHours = calc.totalHoursByMonth.reduce((a: number, b: number) => a + b, 0);
   const peakStaff = Math.max(...source.grandTotalStaff);
   const staffSum = source.grandTotalStaff.reduce((a: number, b: number) => a + b, 0);
   const avgStaff = source.grandTotalStaff.length > 0 ? (staffSum / source.grandTotalStaff.length) : 0;
