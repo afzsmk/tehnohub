@@ -1,5 +1,5 @@
 // src/ui/advisor.ts
-import { ScenarioData, CalculationResult } from '../types';
+import { ScenarioData, CalculationResult, AnalysisDisplayMode } from '../types';
 import { modalSystem } from './modal';
 
 function escapeHtml(val: unknown): string {
@@ -12,7 +12,7 @@ function escapeHtml(val: unknown): string {
     .replace(/'/g, "&#039;");
 }
 
-export function renderExecutiveSummary(calc: CalculationResult, data: ScenarioData): void {
+export function renderExecutiveSummary(calc: CalculationResult, data: ScenarioData, mode: AnalysisDisplayMode = 'auto'): void {
   const pillEl = document.getElementById("execStatusPill");
   if (pillEl) {
     const zoneLabels: Record<string, { text: string; cls: string; icon: string }> = {
@@ -26,12 +26,23 @@ export function renderExecutiveSummary(calc: CalculationResult, data: ScenarioDa
     pillEl.textContent = `${z.icon} ${z.text}`;
   }
 
-  const peakStaff = calc.grandTotalStaff.length ? Math.max(...calc.grandTotalStaff) : 0;
+  const compare8 = mode === 'compare' ? calc.workforceViews['8h'] : null;
+  const compare12 = mode === 'compare' ? calc.workforceViews['12h'] : null;
+  const peakStaff = compare8 && compare12
+    ? Math.max(...compare8.grandTotalStaff, ...compare12.grandTotalStaff)
+    : (calc.grandTotalStaff.length ? Math.max(...calc.grandTotalStaff) : 0);
   const peakIdx = calc.grandTotalStaff.indexOf(peakStaff);
   const peakValEl = document.getElementById("execPeakValue");
   const peakDescEl = document.getElementById("execPeakDesc");
-  if (peakValEl) peakValEl.textContent = `${peakStaff} чел.`;
-  if (peakDescEl) peakDescEl.textContent = peakIdx >= 0 ? `Пиковый штат (${data.months[peakIdx]})` : "Пиковая потребность";
+  if (compare8 && compare12) {
+    const peak8 = Math.max(...compare8.grandTotalStaff);
+    const peak12 = Math.max(...compare12.grandTotalStaff);
+    if (peakValEl) peakValEl.textContent = `${peak8} / ${peak12} чел.`;
+    if (peakDescEl) peakDescEl.textContent = 'Пиковый штат: 8 ч / 12 ч';
+  } else {
+    if (peakValEl) peakValEl.textContent = `${peakStaff} чел.`;
+    if (peakDescEl) peakDescEl.textContent = peakIdx >= 0 ? `Пиковый штат (${data.months[peakIdx]})` : "Пиковая потребность";
+  }
 
   let bottleneckName = "—";
   let bottleneckHours = -1;
@@ -45,34 +56,54 @@ export function renderExecutiveSummary(calc: CalculationResult, data: ScenarioDa
 
   const recEl = document.getElementById("execRecommendationValue");
   if (recEl) {
-    recEl.textContent = calc.overallZone === 'red'
-      ? "Критический дефицит мощности: используйте «Выровнять план под штат» или увеличьте сменность."
-      : calc.overallZone === 'yellow'
-      ? "Отдельные периоды загружены сверх номинала и закрываются сверхурочными/2-сменным режимом."
-      : "Программа укладывается в номинальную мощность бригад и оборудования без сверхурочных.";
+    if (mode === 'compare') {
+      recEl.textContent = "Сравнительный режим: ниже в таблицах видна потребность при фиксированных 8 ч и 12 ч; исходный план не меняется.";
+    } else {
+      recEl.textContent = calc.overallZone === 'red'
+        ? "Критический дефицит мощности: используйте «Выровнять план под штат» или увеличьте сменность."
+        : calc.overallZone === 'yellow'
+        ? "Отдельные периоды загружены сверх номинала и закрываются сверхурочными/2-сменным режимом."
+        : "Программа укладывается в номинальную мощность бригад и оборудования без сверхурочных.";
+    }
   }
 }
 
-export function renderSummaryBullets(calc: CalculationResult, data: ScenarioData): void {
-  const summaryList = document.getElementById("summaryBulletPoints");
+export function renderSummaryBullets(calc: CalculationResult, data: ScenarioData, mode: AnalysisDisplayMode = 'auto'): void {
+  const summaryList = document.getElementById('summaryBulletPoints');
   if (!summaryList) return;
 
+  if (mode === 'compare') {
+    const v8 = calc.workforceViews['8h'];
+    const v12 = calc.workforceViews['12h'];
+    const peak8 = Math.max(...v8.grandTotalStaff);
+    const peak12 = Math.max(...v12.grandTotalStaff);
+    const min8 = Math.min(...v8.grandTotalStaff);
+    const min12 = Math.min(...v12.grandTotalStaff);
+    const bullets = [
+      `<strong>Пиковая потребность:</strong> <strong>${peak8} чел.</strong> при 8 ч и <strong>${peak12} чел.</strong> при 12 ч.`,
+      `<strong>Диапазон за горизонт:</strong> ${min8}–${peak8} чел. при 8 ч и ${min12}–${peak12} чел. при 12 ч.`,
+      `<strong>Разница пикового штата:</strong> ${peak8 - peak12} чел. между фиксированными режимами 8 ч и 12 ч; производственный план при этом одинаковый.`
+    ];
+    summaryList.innerHTML = bullets.map(b => `<li>${b}</li>`).join('');
+    return;
+  }
+
   let maxStaff = -1, minStaff = Infinity;
-  let maxMonth = "", minMonth = "";
+  let maxMonth = '', minMonth = '';
   calc.grandTotalStaff.forEach((st, idx) => {
     if (st > maxStaff) { maxStaff = st; maxMonth = data.months[idx]; }
     if (st < minStaff) { minStaff = st; minMonth = data.months[idx]; }
   });
 
-  let maxProfName = "", maxProfHours = -1;
+  let maxProfName = '', maxProfHours = -1;
   data.professions.forEach(prof => {
     const sumH = calc.hoursByProf[prof.id].reduce((a, b) => a + b, 0);
     if (sumH > maxProfHours) { maxProfHours = sumH; maxProfName = prof.name; }
   });
 
   const totalPlanHours = calc.totalHoursByMonth.reduce((a, b) => a + b, 0);
-  const bottleneckShare = totalPlanHours > 0 ? ((maxProfHours / totalPlanHours) * 100).toFixed(1) : "0";
-  const universalShare = totalPlanHours > 0 ? ((calc.universalHoursTotal.reduce((a, b) => a + b, 0) / totalPlanHours) * 100).toFixed(1) : "0";
+  const bottleneckShare = totalPlanHours > 0 ? ((maxProfHours / totalPlanHours) * 100).toFixed(1) : '0';
+  const universalShare = totalPlanHours > 0 ? ((calc.universalHoursTotal.reduce((a, b) => a + b, 0) / totalPlanHours) * 100).toFixed(1) : '0';
 
   const bullets = [
     `<strong>Диапазон потребности в штате:</strong> от <strong>${minStaff} чел.</strong> (${escapeHtml(minMonth)}) до <strong>${maxStaff} чел.</strong> (${escapeHtml(maxMonth)}) — колебание ${maxStaff - minStaff} чел. из-за неравномерности плана.`,
@@ -80,10 +111,10 @@ export function renderSummaryBullets(calc: CalculationResult, data: ScenarioData
     `<strong>Лимитирующий технологический участок:</strong> «<strong>${escapeHtml(maxProfName) || '—'}</strong>» забирает <strong>${bottleneckShare}%</strong> всей трудоёмкости (${Math.round(maxProfHours).toLocaleString()} н-ч).`
   ];
 
-  summaryList.innerHTML = bullets.map(b => `<li>${b}</li>`).join("");
+  summaryList.innerHTML = bullets.map(b => `<li>${b}</li>`).join('');
 }
 
-export function renderBrigadeSchedule(calc: CalculationResult, data: ScenarioData, onApplyShift: (shiftHours: number) => void): void {
+export function renderBrigadeSchedule(calc: CalculationResult, data: ScenarioData, onApplyShift: (shiftHours: number) => void, mode: AnalysisDisplayMode = 'auto'): void {
   const txtCount = document.getElementById("txtBrigadesCount");
   const txtSize = document.getElementById("txtBrigadeSize");
   if (txtCount) txtCount.textContent = String(calc.brigadesCount);
@@ -118,7 +149,7 @@ export function renderBrigadeSchedule(calc: CalculationResult, data: ScenarioDat
   container.innerHTML = html;
 }
 
-export function renderSmartAdvisor(calc: CalculationResult, data: ScenarioData, onLevelClick: (headcount: number) => void): void {
+export function renderSmartAdvisor(calc: CalculationResult, data: ScenarioData, onLevelClick: (headcount: number) => void, mode: AnalysisDisplayMode = 'auto'): void {
   const listEl = document.getElementById("advisorList");
   const badgeEl = document.getElementById("advisorStatusBadge");
   if (!listEl || !badgeEl) return;
@@ -174,8 +205,9 @@ export function renderSmartAdvisor(calc: CalculationResult, data: ScenarioData, 
   }
 }
 
-export function renderDynamicGuides(calc: CalculationResult, data: ScenarioData): void {
+export function renderDynamicGuides(calc: CalculationResult, data: ScenarioData, mode: AnalysisDisplayMode = 'auto'): void {
   const totalHours = calc.totalHoursByMonth.reduce((a, b) => a + b, 0);
+  const guideView = mode === '8h' ? calc.workforceViews['8h'] : mode === '12h' ? calc.workforceViews['12h'] : calc.workforceViews.auto;
 
   const g1 = document.getElementById("guideTab1Dynamic");
   if (g1) {
@@ -186,7 +218,7 @@ export function renderDynamicGuides(calc: CalculationResult, data: ScenarioData)
       </div>
       <div class="method-item">
         <div class="method-item-title">2. Как сроки влияют на штат</div>
-        <div class="method-item-desc">При неравномерном распределении заказов возникают пики потребности (пик: <strong>${Math.max(...calc.grandTotalStaff)} чел.</strong> при среднем <strong>${(calc.grandTotalStaff.reduce((a,b)=>a+b,0)/calc.grandTotalStaff.length).toFixed(1)} чел.</strong>). Сгладить перепады позволяет кнопка «Выровнять план под штат».</div>
+        <div class="method-item-desc">При неравномерном распределении заказов возникают пики потребности (пик: <strong>${Math.max(...guideView.grandTotalStaff)} чел.</strong> при среднем <strong>${(guideView.grandTotalStaff.reduce((a,b)=>a+b,0)/guideView.grandTotalStaff.length).toFixed(1)} чел.</strong>). Сгладить перепады позволяет кнопка «Выровнять план под штат».</div>
       </div>
     `;
   }
