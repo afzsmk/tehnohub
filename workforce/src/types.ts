@@ -3,6 +3,33 @@
 export type PoolType = 'universal' | 'dedicated';
 export type StatusZone = 'green' | 'yellow' | 'red' | 'none';
 export type NormMethod = 'stat' | 'chrono';
+export type AnalysisDisplayMode = 'auto' | '8h' | '12h' | 'compare';
+export type WorkforceMode = 'auto' | '8h' | '12h';
+
+export interface DedicatedStaffDetail {
+  minimumStaff: number;
+  requiredStaff: number;
+  requiredTeams: number;
+  shiftHours: number;
+  fundPerWorker: number;
+  hoursPerMachineDay: number;
+  statusZone: StatusZone;
+  equipmentOverload: boolean;
+  note: string;
+}
+
+export interface WorkforceView {
+  mode: WorkforceMode;
+  modeLabel: string;
+  universalStaffSpTotal: number[];
+  staffByProfSp: Record<string, number[]>;
+  staffByProfYav: Record<string, number[]>;
+  auxStaffSpTotal: number[];
+  mainStaffSpTotal: number[];
+  grandTotalStaff: number[];
+  universalSchedules: UniversalScheduleResult[];
+  dedicatedDetails: Record<string, DedicatedStaffDetail[]>;
+}
 export type MesPublicationStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
 
 export interface Profession {
@@ -163,4 +190,5 @@ export interface CalculationResult {
   mainStaffSpTotal: number[];
   auxStaffSpTotal: number[];
   grandTotalStaff: number[];
+  workforceViews: Record<WorkforceMode, WorkforceView>;
 }
