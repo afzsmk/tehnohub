@@ -378,8 +378,6 @@ export function calculateProgram(data: ScenarioData): CalculationResult {
   const grandTotalStaff = workforceViews.auto.grandTotalStaff;
 
   let overallZone: CalculationResult['overallZone'] = 'green';
-
-  let overallZone: CalculationResult['overallZone'] = 'green';
   for (let m = 0; m < numMonths; m++) {
     if (universalSchedules[m].statusZone === 'red') overallZone = 'red';
     else if (universalSchedules[m].statusZone === 'yellow' && overallZone !== 'red') overallZone = 'yellow';
