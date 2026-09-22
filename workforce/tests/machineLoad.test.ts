@@ -36,6 +36,13 @@ describe('Классификация загрузки оборудования (
     expect(res2.recommendedShift).toBe(9.5);
   });
 
+  it('Учитывает доступность оборудования ниже обычной смены', () => {
+    const limitedCaps = { ...caps, availabilityHours: 6 };
+    const res = classifyMachineLoad(126, limitedCaps); // 6 ч/сут
+    expect(res.statusZone).toBe('green');
+    const overloaded = classifyMachineLoad(147, limitedCaps); // 7 ч/сут > доступности 6ч
+    expect(overloaded.statusZone).toBe('red');
+  });
   it('Различает несколько смен и физический перегруз оборудования', () => {
     // 300 часов / 21 день = 14.28 ч/сут: при доступности 24ч это две смены, а не физический перегруз станка.
     const res = classifyMachineLoad(300, caps);
