@@ -13,7 +13,9 @@ export function classifyMachineLoad(hoursPerMachine: number, caps: MachineCaps):
   const HARD_SHIFT_CEILING = 12;
   const hoursPerDay = hoursPerMachine / workDaysPerMonth;
   const pct24 = Math.round((hoursPerDay / 24) * 100);
-  const ceilingShift = Math.max(shiftHoursStandard, Math.min(HARD_SHIFT_CEILING, availabilityHours));
+  const physicalAvailability = Math.max(1, Math.min(24, availabilityHours));
+  const standardShiftCapacity = Math.min(shiftHoursStandard, physicalAvailability);
+  const ceilingShift = Math.min(HARD_SHIFT_CEILING, physicalAvailability);
 
   if (hoursPerMachine <= 0) {
     return {
@@ -34,9 +36,7 @@ export function classifyMachineLoad(hoursPerMachine: number, caps: MachineCaps):
   let isExtendedShift = false;
   let recommendedShift = shiftHoursStandard;
 
-  const physicalAvailability = Math.max(1, Math.min(24, availabilityHours));
-
-  if (hoursPerDay <= shiftHoursStandard) {
+  if (hoursPerDay <= standardShiftCapacity) {
     statusZone = 'green';
     tierLabel = `${shiftHoursStandard}ч (норма)`;
     isExtendedShift = false;
