@@ -231,15 +231,19 @@ function renderAll() {
   renderDictionariesInputs();
 }
 
-function renderKPIs(calc: any, data: ScenarioData, mode: AnalysisDisplayMode = 'auto') {
-  const view8 = calc.workforceViews?.['8h'];
-  const view12 = calc.workforceViews?.['12h'];
-  const selected = mode === '8h' ? view8 : mode === '12h' ? view12 : null;
-  const source = selected || calc;
+function renderKPIs(calc: CalculationResult, data: ScenarioData, mode: AnalysisDisplayMode = 'auto'): void {
+  const view8 = calc.workforceViews['8h'];
+  const view12 = calc.workforceViews['12h'];
+  const selectedStaff = mode === '8h'
+    ? view8.grandTotalStaff
+    : mode === '12h'
+    ? view12.grandTotalStaff
+    : calc.grandTotalStaff;
+
   const totalHours = calc.totalHoursByMonth.reduce((a: number, b: number) => a + b, 0);
-  const peakStaff = Math.max(...source.grandTotalStaff);
-  const staffSum = source.grandTotalStaff.reduce((a: number, b: number) => a + b, 0);
-  const avgStaff = source.grandTotalStaff.length > 0 ? (staffSum / source.grandTotalStaff.length) : 0;
+  const peakStaff = selectedStaff.length ? Math.max(...selectedStaff) : 0;
+  const staffSum = selectedStaff.reduce((a: number, b: number) => a + b, 0);
+  const avgStaff = selectedStaff.length > 0 ? (staffSum / selectedStaff.length) : 0;
   const volatility = avgStaff > 0 ? (peakStaff / avgStaff) : 1;
 
   const pEl = document.getElementById('kpiTotalProducts');
@@ -249,15 +253,14 @@ function renderKPIs(calc: any, data: ScenarioData, mode: AnalysisDisplayMode = '
 
   if (pEl) pEl.textContent = `${data.products.length} поз.`;
   if (hEl) hEl.textContent = `${Math.round(totalHours).toLocaleString()} н-ч`;
-  if (mode === 'compare' && view8 && view12) {
-    const peak8 = Math.max(...view8.grandTotalStaff);
-    const peak12 = Math.max(...view12.grandTotalStaff);
-    const avg8 = view8.grandTotalStaff.reduce((a: number, b: number) => a + b, 0) / view8.grandTotalStaff.length;
-    const avg12 = view12.grandTotalStaff.reduce((a: number, b: number) => a + b, 0) / view12.grandTotalStaff.length;
+
+  if (mode === 'compare') {
+    const peak8 = view8.grandTotalStaff.length ? Math.max(...view8.grandTotalStaff) : 0;
+    const peak12 = view12.grandTotalStaff.length ? Math.max(...view12.grandTotalStaff) : 0;
+    const avg8 = view8.grandTotalStaff.length ? view8.grandTotalStaff.reduce((a: number, b: number) => a + b, 0) / view8.grandTotalStaff.length : 0;
+    const avg12 = view12.grandTotalStaff.length ? view12.grandTotalStaff.reduce((a: number, b: number) => a + b, 0) / view12.grandTotalStaff.length : 0;
     if (aEl) aEl.textContent = `${avg8.toFixed(1)} / ${avg12.toFixed(1)} чел.`;
-    if (vEl) vEl.textContent = `×${(peak8/avg8).toFixed(2)} / ×${(peak12/avg12).toFixed(2)}`;
-    if (hEl) hEl.textContent = '8 ч / 12 ч';
-    if (pEl) pEl.textContent = `${data.products.length} поз.`;
+    if (vEl) vEl.textContent = `${avg8 > 0 ? '×' + (peak8 / avg8).toFixed(2) : '—'} / ${avg12 > 0 ? '×' + (peak12 / avg12).toFixed(2) : '—'}`;
     const peakLabel = document.getElementById('execPeakValue');
     const peakDesc = document.getElementById('execPeakDesc');
     if (peakLabel) peakLabel.textContent = `${peak8} / ${peak12} чел.`;
