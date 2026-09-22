@@ -18,6 +18,9 @@ export function renderExecutiveSummary(calc: CalculationResult, data: ScenarioDa
     if (mode === 'compare') {
       pillEl.className = 'status-pill status-zone-yellow';
       pillEl.textContent = '↔ Сравнение 8 ч / 12 ч';
+    } else if (mode === '8h' || mode === '12h') {
+      pillEl.className = 'status-pill status-zone-yellow';
+      pillEl.textContent = mode === '8h' ? '8 ч · расчёт потребности' : '12 ч · расчёт потребности';
     } else {
       const zoneLabels: Record<string, { text: string; cls: string; icon: string }> = {
         green: { text: 'Программа выполнима', cls: 'status-zone-green', icon: '✓' },
