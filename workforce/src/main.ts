@@ -252,8 +252,8 @@ function renderKPIs(calc: any, data: ScenarioData, mode: AnalysisDisplayMode = '
   if (mode === 'compare' && view8 && view12) {
     const peak8 = Math.max(...view8.grandTotalStaff);
     const peak12 = Math.max(...view12.grandTotalStaff);
-    const avg8 = view8.grandTotalStaff.reduce((a,b)=>a+b,0) / view8.grandTotalStaff.length;
-    const avg12 = view12.grandTotalStaff.reduce((a,b)=>a+b,0) / view12.grandTotalStaff.length;
+    const avg8 = view8.grandTotalStaff.reduce((a: number, b: number) => a + b, 0) / view8.grandTotalStaff.length;
+    const avg12 = view12.grandTotalStaff.reduce((a: number, b: number) => a + b, 0) / view12.grandTotalStaff.length;
     if (aEl) aEl.textContent = `${avg8.toFixed(1)} / ${avg12.toFixed(1)} чел.`;
     if (vEl) vEl.textContent = `×${(peak8/avg8).toFixed(2)} / ×${(peak12/avg12).toFixed(2)}`;
     if (hEl) hEl.textContent = '8 ч / 12 ч';
@@ -662,7 +662,7 @@ function attachGlobalEvents() {
 
   document.getElementById('btnExportXlsx')?.addEventListener('click', () => {
     const data = getActiveData();
-    exportToExcel(state.currentScenario, data, calculateProgram(data));
+    exportToExcel(state.currentScenario, data, calculateProgram(data), analysisDisplayMode);
   });
 
   document.getElementById('btnDownloadPlanTemplate')?.addEventListener('click', () => {
@@ -690,7 +690,7 @@ function attachGlobalEvents() {
   document.getElementById('btnPrintPdf')?.addEventListener('click', () => {
     const data = getActiveData();
     const root = document.getElementById('printReportRoot')!;
-    root.innerHTML = buildPrintReportHtml(state.currentScenario, data, calculateProgram(data));
+    root.innerHTML = buildPrintReportHtml(state.currentScenario, data, calculateProgram(data), analysisDisplayMode);
     document.body.classList.add('report-mode');
     window.print();
     document.body.classList.remove('report-mode');
@@ -707,20 +707,7 @@ function attachGlobalEvents() {
     });
   });
 
-  document.getElementById('btnExportCSV')?.addEventListener('click', () => {
-    const data = getActiveData();
-    const calc = calculateProgram(data);
-    let csv = '\uFEFF"Показатель";' + data.months.map(m => `"${m}"`).join(';') + ';"Итого"\n';
-    data.professions.forEach(prof => {
-      csv += `"${prof.name} (н-ч)";` + calc.hoursByProf[prof.id].map(h => Math.round(h)).join(';') + `;${Math.round(calc.hoursByProf[prof.id].reduce((a,b)=>a+b,0))}\n`;
-    });
-    csv += '"ИТОГО ОБЩИЙ ШТАТ (чел)";' + calc.grandTotalStaff.join(';') + `;${Math.max(...calc.grandTotalStaff)}\n`;
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `Ведомость_персонала_${state.currentScenario}.csv`;
-    link.click();
-  });
+
 
   document.getElementById('btnAddMonth')?.addEventListener('click', () => {
     const data = getActiveData();
