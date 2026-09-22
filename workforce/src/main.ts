@@ -828,9 +828,10 @@ function attachGlobalEvents() {
       (data.settings as any)[prop] = isNum ? parseNum(target.value) : target.value;
       storageService.saveState(state);
       const freshCalc = calculateProgram(data);
-      renderKPIs(freshCalc, data);
-      renderExecutiveSummary(freshCalc, data);
-      renderDynamicGuides(freshCalc, data);
+      const freshDisplayCalc = getDisplayCalc(freshCalc);
+      renderKPIs(freshDisplayCalc, data, analysisDisplayMode);
+      renderExecutiveSummary(freshDisplayCalc, data, analysisDisplayMode);
+      renderDynamicGuides(freshDisplayCalc, data, analysisDisplayMode);
       renderDictionariesInputs();
     });
   };
