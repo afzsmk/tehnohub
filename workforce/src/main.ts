@@ -1,7 +1,7 @@
 // src/main.ts
 import './styles/main.css';
 import html2canvas from 'html2canvas';
-import { AppState, ScenarioData, Settings } from './types';
+import { AppState, ScenarioData, Settings, AnalysisDisplayMode, CalculationResult } from './types';
 import { calculateProgram } from './core/engine';
 import { parseNum, calcFNom, calcFEff, calcExtendedFNom } from './core/funds';
 import { levelLoadPlan } from './core/levelLoading';
@@ -31,9 +31,52 @@ import {
 } from './ui/normingTab';
 
 let state: AppState;
+let analysisDisplayMode: AnalysisDisplayMode = 'auto';
 
 function getActiveData(): ScenarioData {
   return state.scenarios[state.currentScenario];
+}
+
+function getDisplayCalc(calc: CalculationResult): CalculationResult {
+  if (analysisDisplayMode === 'auto' || analysisDisplayMode === 'compare') return calc;
+  const view = calc.workforceViews[analysisDisplayMode];
+  return {
+    ...calc,
+    universalStaffSpTotal: view.universalStaffSpTotal,
+    staffByProfSp: view.staffByProfSp,
+    staffByProfYav: view.staffByProfYav,
+    auxStaffSpTotal: view.auxStaffSpTotal,
+    mainStaffSpTotal: view.mainStaffSpTotal,
+    grandTotalStaff: view.grandTotalStaff,
+    universalSchedules: view.universalSchedules
+  };
+}
+
+function updateAnalysisModeUI(): void {
+  const descriptions: Record<AnalysisDisplayMode, string> = {
+    auto: 'Автоматический подбор режима по каждому месяцу и участку',
+    '8h': 'Вся потребность считается на обычном фонде 8 ч без автоматического перехода на усиленную смену',
+    '12h': 'Вся потребность считается на усиленном фонде 12 ч; доступность конкретного поста ограничивает его смену',
+    compare: 'Рядом показываются потребности на 8 ч и 12 ч — без изменения исходного плана'
+  };
+  document.querySelectorAll<HTMLElement>('[data-analysis-mode]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.analysisMode === analysisDisplayMode);
+  });
+  const desc = document.getElementById('analysisModeDescription');
+  if (desc) desc.textContent = descriptions[analysisDisplayMode];
+}
+
+function setupAnalysisModeSelector(): void {
+  document.querySelectorAll<HTMLElement>('[data-analysis-mode]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const mode = btn.dataset.analysisMode as AnalysisDisplayMode | undefined;
+      if (!mode) return;
+      analysisDisplayMode = mode;
+      updateAnalysisModeUI();
+      renderAll();
+    });
+  });
+  updateAnalysisModeUI();
 }
 
 async function init() {
@@ -44,6 +87,7 @@ async function init() {
   setupCollapsibles();
   setupAuthAndStorageToggle();
   attachGlobalEvents();
+  setupAnalysisModeSelector();
 
   const data = getActiveData();
   attachPlanPasteHandler(data, () => {
@@ -63,12 +107,13 @@ async function init() {
 function renderAll() {
   const data = getActiveData();
   const calc = calculateProgram(data);
+  const displayCalc = getDisplayCalc(calc);
 
   updateLevelToggleButton();
-  renderExecutiveSummary(calc, data);
-  renderKPIs(calc, data);
-  renderSummaryBullets(calc, data);
-  renderBrigadeSchedule(calc, data, (newShift: number) => {
+  renderExecutiveSummary(displayCalc, data, analysisDisplayMode);
+  renderKPIs(displayCalc, data, analysisDisplayMode);
+  renderSummaryBullets(displayCalc, data, analysisDisplayMode);
+  renderBrigadeSchedule(displayCalc, data, (newShift: number) => {
     const conflicts: string[] = [];
     data.months.forEach((m, idx) => {
       const sched = calc.universalSchedules[idx];
@@ -98,11 +143,11 @@ function renderAll() {
     }
   });
 
-  renderSmartAdvisor(calc, data, (headcount: number) => {
+  renderSmartAdvisor(displayCalc, data, (headcount: number) => {
     executeLevelLoading(headcount);
   });
 
-  renderDynamicGuides(calc, data);
+  renderDynamicGuides(displayCalc, data, analysisDisplayMode);
   renderSavedNormsRegistry(data, (key) => {
     if (data.normConfigs) {
       delete data.normConfigs[key];
@@ -177,17 +222,21 @@ function renderAll() {
     (pId, prId) => openNormingFor(pId, prId, data)
   );
 
-  renderShiftScheduleTable(calc, data);
-  renderResultsTable(calc, data);
-  renderCharts(calc, data);
+  renderShiftScheduleTable(displayCalc, data, analysisDisplayMode);
+  renderResultsTable(displayCalc, data, analysisDisplayMode);
+  renderCharts(displayCalc, data, analysisDisplayMode);
   renderDictionariesInputs();
 }
 
-function renderKPIs(calc: any, data: ScenarioData) {
-  const totalHours = calc.totalHoursByMonth.reduce((a: number, b: number) => a + b, 0);
-  const peakStaff = Math.max(...calc.grandTotalStaff);
-  const staffSum = calc.grandTotalStaff.reduce((a: number, b: number) => a + b, 0);
-  const avgStaff = calc.grandTotalStaff.length > 0 ? (staffSum / calc.grandTotalStaff.length) : 0;
+function renderKPIs(calc: any, data: ScenarioData, mode: AnalysisDisplayMode = 'auto') {
+  const view8 = calc.workforceViews?.['8h'];
+  const view12 = calc.workforceViews?.['12h'];
+  const selected = mode === '8h' ? view8 : mode === '12h' ? view12 : null;
+  const source = selected || calc;
+  const totalHours = source.totalHoursByMonth.reduce((a: number, b: number) => a + b, 0);
+  const peakStaff = Math.max(...source.grandTotalStaff);
+  const staffSum = source.grandTotalStaff.reduce((a: number, b: number) => a + b, 0);
+  const avgStaff = source.grandTotalStaff.length > 0 ? (staffSum / source.grandTotalStaff.length) : 0;
   const volatility = avgStaff > 0 ? (peakStaff / avgStaff) : 1;
 
   const pEl = document.getElementById('kpiTotalProducts');
@@ -197,8 +246,23 @@ function renderKPIs(calc: any, data: ScenarioData) {
 
   if (pEl) pEl.textContent = `${data.products.length} поз.`;
   if (hEl) hEl.textContent = `${Math.round(totalHours).toLocaleString()} н-ч`;
-  if (aEl) aEl.textContent = `${avgStaff.toFixed(1)} чел.`;
-  if (vEl) vEl.textContent = `×${volatility.toFixed(2)}`;
+  if (mode === 'compare' && view8 && view12) {
+    const peak8 = Math.max(...view8.grandTotalStaff);
+    const peak12 = Math.max(...view12.grandTotalStaff);
+    const avg8 = view8.grandTotalStaff.reduce((a,b)=>a+b,0) / view8.grandTotalStaff.length;
+    const avg12 = view12.grandTotalStaff.reduce((a,b)=>a+b,0) / view12.grandTotalStaff.length;
+    if (aEl) aEl.textContent = `${avg8.toFixed(1)} / ${avg12.toFixed(1)} чел.`;
+    if (vEl) vEl.textContent = `×${(peak8/avg8).toFixed(2)} / ×${(peak12/avg12).toFixed(2)}`;
+    if (hEl) hEl.textContent = '8 ч / 12 ч';
+    if (pEl) pEl.textContent = `${data.products.length} поз.`;
+    const peakLabel = document.getElementById('execPeakValue');
+    const peakDesc = document.getElementById('execPeakDesc');
+    if (peakLabel) peakLabel.textContent = `${peak8} / ${peak12} чел.`;
+    if (peakDesc) peakDesc.textContent = 'Пиковый штат: 8 ч / 12 ч';
+  } else {
+    if (aEl) aEl.textContent = `${avgStaff.toFixed(1)} чел.`;
+    if (vEl) vEl.textContent = `×${volatility.toFixed(2)}`;
+  }
 }
 
 function renderDictionariesInputs() {
