@@ -10,7 +10,14 @@ function modeChip(mode: AnalysisDisplayMode, calc: CalculationResult, idx: numbe
   if (mode === '12h') return '<span class="mode-chip mode-extended">12 ч · фикс.</span>';
   const sched = calc.workforceViews.auto.universalSchedules[idx];
   const cls = sched.statusZone === 'red' ? 'mode-alert' : sched.isExtendedShift ? 'mode-extended' : 'mode-ok';
-  return `<span class="mode-chip ${cls}">${sched.mode}</span>`;
+  const label = sched.statusZone === 'red'
+    ? 'ДЕФИЦИТ'
+    : sched.overtimeHours > 0
+    ? '8 ч + СУР'
+    : sched.isExtendedShift
+    ? `${sched.recommendedShift}ч усил.`
+    : '8 ч норма';
+  return `<span class="mode-chip ${cls}">${label}</span>`;
 }
 
 function dedicatedCell(calc: CalculationResult, data: ScenarioData, profId: string, mIdx: number, mode: AnalysisDisplayMode): string {
@@ -39,7 +46,7 @@ export function renderShiftScheduleTable(calc: CalculationResult, data: Scenario
     <th style="width: 65px; text-align: center;">Станков</th>
     <th style="width: 75px; text-align: center;">Звено</th>
     <th style="width: 90px; text-align: center;">Доступность</th>
-    ${data.months.map((m,idx) => `<th style="text-align:center; min-width:110px;">${m}<div style="margin-top:2px;">${modeChip(mode, calc, idx)}</div></th>`).join('')}
+    ${data.months.map((m) => `<th style="text-align:center; min-width:110px;">${m}<div style="margin-top:2px;"><span class="mode-chip mode-normal">физ. загрузка</span></div></th>`).join('')}
   `;
 
   tbody.innerHTML = data.professions.map(prof => {
