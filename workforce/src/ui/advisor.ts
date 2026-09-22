@@ -15,15 +15,20 @@ function escapeHtml(val: unknown): string {
 export function renderExecutiveSummary(calc: CalculationResult, data: ScenarioData, mode: AnalysisDisplayMode = 'auto'): void {
   const pillEl = document.getElementById("execStatusPill");
   if (pillEl) {
-    const zoneLabels: Record<string, { text: string; cls: string; icon: string }> = {
-      green: { text: "Программа выполнима", cls: "status-zone-green", icon: "✓" },
-      yellow: { text: "Выполнима с оговорками", cls: "status-zone-yellow", icon: "!" },
-      red: { text: "Требует пересмотра", cls: "status-zone-red", icon: "✕" },
-      none: { text: "Не определено", cls: "", icon: "—" }
-    };
-    const z = zoneLabels[calc.overallZone] || zoneLabels.green;
-    pillEl.className = `status-pill ${z.cls}`;
-    pillEl.textContent = `${z.icon} ${z.text}`;
+    if (mode === 'compare') {
+      pillEl.className = 'status-pill status-zone-yellow';
+      pillEl.textContent = '↔ Сравнение 8 ч / 12 ч';
+    } else {
+      const zoneLabels: Record<string, { text: string; cls: string; icon: string }> = {
+        green: { text: 'Программа выполнима', cls: 'status-zone-green', icon: '✓' },
+        yellow: { text: 'Выполнима с оговорками', cls: 'status-zone-yellow', icon: '!' },
+        red: { text: 'Требует пересмотра', cls: 'status-zone-red', icon: '✕' },
+        none: { text: 'Не определено', cls: '', icon: '—' }
+      };
+      const z = zoneLabels[calc.overallZone] || zoneLabels.green;
+      pillEl.className = `status-pill ${z.cls}`;
+      pillEl.textContent = `${z.icon} ${z.text}`;
+    }
   }
 
   const compare8 = mode === 'compare' ? calc.workforceViews['8h'] : null;
@@ -115,34 +120,35 @@ export function renderSummaryBullets(calc: CalculationResult, data: ScenarioData
 }
 
 export function renderBrigadeSchedule(calc: CalculationResult, data: ScenarioData, onApplyShift: (shiftHours: number) => void, mode: AnalysisDisplayMode = 'auto'): void {
-  const txtCount = document.getElementById("txtBrigadesCount");
-  const txtSize = document.getElementById("txtBrigadeSize");
+  const txtCount = document.getElementById('txtBrigadesCount');
+  const txtSize = document.getElementById('txtBrigadeSize');
   if (txtCount) txtCount.textContent = String(calc.brigadesCount);
   if (txtSize) txtSize.textContent = String(calc.brigadeSize);
-
-  const container = document.getElementById("brigadeScheduleDetails");
+  const container = document.getElementById('brigadeScheduleDetails');
   if (!container) return;
-
   (window as any)._applyShiftFromBrigade = onApplyShift;
 
-  let html = '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:10px;">';
-  data.months.forEach((m: string, idx: number) => {
+  let html = '<div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:10px;">';
+  data.months.forEach((m, idx) => {
+    if (mode === 'compare') {
+      const v8 = calc.workforceViews['8h'];
+      const v12 = calc.workforceViews['12h'];
+      html += '<div style="background:#f8fafc;border:1px solid var(--border-color);border-radius:6px;padding:8px 12px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;"><strong>Период: ' + escapeHtml(m) + '</strong><span class="mode-chip mode-compare">8 ч / 12 ч</span></div>' +
+        '<div>Универсальный пул: <strong>' + v8.universalStaffSpTotal[idx].toFixed(1) + ' / ' + v12.universalStaffSpTotal[idx].toFixed(1) + ' чел.</strong> <span style="color:var(--text-muted);">(8 ч / 12 ч)</span></div>' +
+      '</div>';
+      return;
+    }
     const sched = calc.universalSchedules[idx];
     const uHrs = Math.round(calc.universalHoursTotal[idx]);
     const loadPct = Math.round((calc.universalHoursTotal[idx] / calc.poolCapacityNormal) * 100);
-
     const btnHtml = sched.canApplyShift !== null
       ? '<button type="button" class="btn btn-secondary btn-sm" onclick="window._applyShiftFromBrigade(' + sched.canApplyShift + ')" style="margin-top:8px;">Применить ' + sched.canApplyShift + 'ч как усиленный режим</button>'
       : '';
-
-    html += '<div style="background:#f8fafc; border:1px solid var(--border-color); border-radius:6px; padding:8px 12px;">' +
-      '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">' +
-        '<strong>Период: ' + escapeHtml(m) + '</strong>' +
-        '<span class="' + sched.badgeClass + '">' + sched.mode + '</span>' +
-      '</div>' +
+    html += '<div style="background:#f8fafc;border:1px solid var(--border-color);border-radius:6px;padding:8px 12px;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;"><strong>Период: ' + escapeHtml(m) + '</strong><span class="' + sched.badgeClass + '">' + sched.mode + '</span></div>' +
       '<div>Трудоёмкость универсалов: <strong>' + uHrs + ' н-ч</strong> (' + loadPct + '% от нормы ' + calc.shiftHoursStandard + 'ч/5-2)</div>' +
-      '<div style="font-size:11.5px; color:var(--text-muted); margin-top:2px;">' + sched.note + '</div>' +
-      btnHtml +
+      '<div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">' + sched.note + '</div>' + btnHtml +
     '</div>';
   });
   html += '</div>';
@@ -155,6 +161,15 @@ export function renderSmartAdvisor(calc: CalculationResult, data: ScenarioData, 
   if (!listEl || !badgeEl) return;
 
   const items: string[] = [];
+  if (mode === 'compare') {
+    const v8 = calc.workforceViews['8h'];
+    const v12 = calc.workforceViews['12h'];
+    data.months.forEach((m, idx) => {
+      if (v8.grandTotalStaff[idx] !== v12.grandTotalStaff[idx]) {
+        items.push('<div class="advisor-item" style="background:#ede9fe;border:1px solid #ddd6fe;color:#5b21b6;">Период <strong>' + escapeHtml(m) + '</strong>: ' + v8.grandTotalStaff[idx] + ' чел. при 8 ч против ' + v12.grandTotalStaff[idx] + ' чел. при 12 ч.</div>');
+      }
+    });
+  } else {
   data.months.forEach((m: string, idx: number) => {
     const uHrs = calc.universalHoursTotal[idx];
     const sched = calc.universalSchedules[idx];
@@ -183,6 +198,7 @@ export function renderSmartAdvisor(calc: CalculationResult, data: ScenarioData, 
       );
     }
   });
+  }
 
   (window as any)._advisorLevel = onLevelClick;
 
@@ -194,7 +210,11 @@ export function renderSmartAdvisor(calc: CalculationResult, data: ScenarioData, 
     }
   };
 
-  if (items.length === 0) {
+  if (mode === 'compare') {
+    badgeEl.textContent = 'Сравнение 8 ч / 12 ч';
+    badgeEl.style.color = 'var(--accent)';
+    listEl.innerHTML = items.length ? items.join('') : '<div class="advisor-item alert-optimal">Потребность в обоих режимах совпадает.</div>';
+  } else if (items.length === 0) {
     badgeEl.textContent = "Баланс оптимален";
     badgeEl.style.color = "var(--success)";
     listEl.innerHTML = '<div class="advisor-item alert-optimal" style="background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46; padding:8px 12px; border-radius:6px;">✅ Все периоды производственной программы сбалансированы и укладываются в ёмкость персонала (' + calc.totalUniversalHeadcount + ' чел.) без критических перегрузок.</div>';
