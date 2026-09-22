@@ -206,8 +206,9 @@ function renderAll() {
     () => {
       storageService.saveState(state);
       const freshCalc = calculateProgram(data);
-      renderKPIs(freshCalc, data);
-      renderExecutiveSummary(freshCalc, data);
+      const freshDisplayCalc = getDisplayCalc(freshCalc);
+      renderKPIs(freshDisplayCalc, data, analysisDisplayMode);
+      renderExecutiveSummary(freshDisplayCalc, data, analysisDisplayMode);
     }
   );
 
@@ -217,8 +218,9 @@ function renderAll() {
     () => {
       storageService.saveState(state);
       const freshCalc = calculateProgram(data);
-      renderKPIs(freshCalc, data);
-      renderExecutiveSummary(freshCalc, data);
+      const freshDisplayCalc = getDisplayCalc(freshCalc);
+      renderKPIs(freshDisplayCalc, data, analysisDisplayMode);
+      renderExecutiveSummary(freshDisplayCalc, data, analysisDisplayMode);
     },
     (pId, prId) => openNormingFor(pId, prId, data)
   );
