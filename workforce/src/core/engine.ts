@@ -1,6 +1,6 @@
 // src/core/engine.ts
 import { ScenarioData, CalculationResult, UniversalScheduleResult, MachineZoneResult, WorkforceMode, WorkforceView, DedicatedStaffDetail } from '../types';
-import { parseNum, ceilToHalfClamped } from './funds';
+import { parseNum } from './funds';
 import { classifyMachineLoad } from './machineLoad';
 
 function effectiveFundForShift(data: ScenarioData, shiftHours: number): number {
