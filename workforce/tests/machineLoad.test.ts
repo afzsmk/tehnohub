@@ -36,10 +36,14 @@ describe('Классификация загрузки оборудования (
     expect(res2.recommendedShift).toBe(9.5);
   });
 
-  it('Определяет красный статус при перегрузе выше потолка 12ч', () => {
-    // 300 часов / 21 день = 14.28 ч/сут -> выше предела 12ч
+  it('Различает несколько смен и физический перегруз оборудования', () => {
+    // 300 часов / 21 день = 14.28 ч/сут: при доступности 24ч это две смены, а не физический перегруз станка.
     const res = classifyMachineLoad(300, caps);
-    expect(res.statusZone).toBe('red');
-    expect(res.recommendedShift).toBe(12);
+    expect(res.statusZone).toBe('yellow');
+    expect(res.tierLabel).toContain('смены');
+
+    // 525 часов / 21 день = 25ч/сут > физической доступности 24ч.
+    const res2 = classifyMachineLoad(525, caps);
+    expect(res2.statusZone).toBe('red');
   });
 });
