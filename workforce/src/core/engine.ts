@@ -378,26 +378,6 @@ export function calculateProgram(data: ScenarioData): CalculationResult {
   const grandTotalStaff = workforceViews.auto.grandTotalStaff;
 
   let overallZone: CalculationResult['overallZone'] = 'green';
-  for (let m = 0; m < numMonths; m++) {
-    let dedicatedSum = 0;
-    dedicatedProfs.forEach(p => {
-      dedicatedSum += staffByProfSp[p.id][m];
-    });
-    mainStaffSpTotal[m] = universalStaffSpTotal[m] + dedicatedSum;
-  }
-
-  const auxPercent = parseNum(data.settings.auxOtkPercent) + parseNum(data.settings.auxSetupPercent);
-  const auxFixed = parseNum(data.settings.auxFixedPosts);
-  const auxStaffSpTotal = mainStaffSpTotal.map(mStaff => (mStaff * (auxPercent / 100)) + auxFixed);
-
-  const grandTotalStaff = mainStaffSpTotal.map((_, idx) => {
-    const uniCeil = Math.ceil(universalStaffSpTotal[idx]);
-    let dedCeilSum = 0;
-    dedicatedProfs.forEach(p => {
-      dedCeilSum += Math.ceil(staffByProfSp[p.id][idx]);
-    });
-    return uniCeil + dedCeilSum + Math.ceil(auxStaffSpTotal[idx]);
-  });
 
   let overallZone: CalculationResult['overallZone'] = 'green';
   for (let m = 0; m < numMonths; m++) {
