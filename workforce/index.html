@@ -513,6 +513,24 @@
         <button class="btn btn-secondary" id="btnExportCSV"><svg class="icon"><use href="#icon-download"></use></svg> CSV (для интеграции)</button>
       </div>
 
+      <div class="analysis-mode-bar" id="analysisModeBar">
+        <div class="analysis-mode-title">
+          <div><strong>Режим аналитического расчёта</strong><span id="analysisModeDescription">Автоматический подбор режима по каждому месяцу</span></div>
+        </div>
+        <div class="analysis-mode-controls" role="group" aria-label="Режим аналитического расчёта">
+          <button type="button" class="analysis-mode-btn active" data-analysis-mode="auto">Авто</button>
+          <button type="button" class="analysis-mode-btn" data-analysis-mode="8h">8 ч</button>
+          <button type="button" class="analysis-mode-btn" data-analysis-mode="12h">12 ч</button>
+          <button type="button" class="analysis-mode-btn" data-analysis-mode="compare">Сравнение</button>
+        </div>
+      </div>
+      <div class="analysis-mode-legend" id="analysisModeLegend">
+        <span><strong>Авто:</strong> 8 ч → СУР → усиленная смена до 12 ч → дефицит</span>
+        <span><strong>8 ч:</strong> весь штат считается на обычном фонде 8 ч</span>
+        <span><strong>12 ч:</strong> весь штат считается на усиленном фонде 12 ч</span>
+        <span><strong>Сравнение:</strong> рядом показываются потребности 8 ч и 12 ч</span>
+      </div>
+
       <div id="analyticsCaptureArea">
         <div class="summary-card">
           <div class="summary-title"><svg class="icon"><use href="#icon-analytics"></use></svg> Аналитическое резюме производственной программы</div>
@@ -543,7 +561,7 @@
           </div>
           <div class="panel-body">
             <p style="font-size:12.5px; color:var(--text-secondary); margin-bottom:8px;">
-              Полоса и процент — фактическая занятость станка/поста от суток (24ч), независимо от того, каким графиком это закрывается. Режим смены под полосой — рекомендация, производная от того же процента, а не наоборот.
+              Полоса и процент — фактическая занятость станка/поста от суток (24ч). Это физическая загрузка оборудования и она не зависит от выбранного режима 8/12 ч; выбранный режим влияет прежде всего на расчёт численности персонала.
             </p>
             <!-- ВОССТАНОВЛЕНА ЛЕГЕНДА С ЦВЕТНЫМИ КВАДРАТАМИ -->
             <div style="display:flex; gap:16px; margin-bottom:12px; font-size:11.5px; color:var(--text-secondary); flex-wrap:wrap;">
