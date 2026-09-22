@@ -34,6 +34,8 @@ export function classifyMachineLoad(hoursPerMachine: number, caps: MachineCaps):
   let isExtendedShift = false;
   let recommendedShift = shiftHoursStandard;
 
+  const physicalAvailability = Math.max(1, Math.min(24, availabilityHours));
+
   if (hoursPerDay <= shiftHoursStandard) {
     statusZone = 'green';
     tierLabel = `${shiftHoursStandard}ч (норма)`;
@@ -43,10 +45,16 @@ export function classifyMachineLoad(hoursPerMachine: number, caps: MachineCaps):
     statusZone = 'yellow';
     tierLabel = `Рекомендована смена: ${recommendedShift}ч`;
     isExtendedShift = true;
+  } else if (hoursPerDay <= physicalAvailability) {
+    const requiredShifts = Math.ceil(hoursPerDay / ceilingShift);
+    recommendedShift = Math.min(ceilingShift, ceilToHalfClamped(hoursPerDay / requiredShifts, shiftHoursStandard, ceilingShift));
+    statusZone = 'yellow';
+    tierLabel = `${requiredShifts} смены / звена (до ${ceilingShift}ч)`;
+    isExtendedShift = true;
   } else {
     recommendedShift = ceilingShift;
     statusZone = 'red';
-    tierLabel = `Перегруз (нужно ${hoursPerDay.toFixed(1)}ч, доступно ≤${ceilingShift}ч)`;
+    tierLabel = `Перегруз оборудования (нужно ${hoursPerDay.toFixed(1)}ч, доступно ≤${physicalAvailability}ч/сут)`;
     isExtendedShift = true;
   }
 
