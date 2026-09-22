@@ -589,3 +589,10 @@ body.report-mode #printReportRoot { display: block; background: #fff; color: #0f
 }
 .compare-value strong { font-size: 12px; }
 .compare-value span { font-size: 10px; color: var(--text-muted); }
+
+@media print {
+  @page { size: A4 landscape; margin: 10mm; }
+  body.report-mode { background: #fff; }
+  body.report-mode .rpt-table { page-break-inside: auto; }
+  body.report-mode tr { page-break-inside: avoid; page-break-after: auto; }
+}
