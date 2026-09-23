@@ -139,7 +139,7 @@ async function buildPlan(strategy){
         remaining,
         {width:pool.width,height:pool.height},
         cfg,
-        {timeLimitMs:cfg.timeLimitMs,stopOnFull:false}
+        {timeLimitMs:cfg.timeLimitMs,stopOnFull:cfg.stopOnFull}
       );
       var sheet=result.sheets&&result.sheets[0];
       if(!sheet||!sheet.items||!sheet.items.length)continue;
