@@ -36,7 +36,7 @@ export function expandParts(parts){
   const out=[];
   for(const part of parts){
     const q=Math.max(0, Math.min(1000, Math.round(Number(part.quantity)||0)));
-    for(let i=0;i<q;i++) out.push({ ...part, instanceId:part.id+"#"+(i+1), instanceNo:i+1 });
+    for(let i=0;i<q;i++) out.push({ ...part, originalPartId:part.id, id:part.id+"#"+(i+1), instanceId:part.id+"#"+(i+1), instanceNo:i+1 });
   }
   return out;
 }
