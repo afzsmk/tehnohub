@@ -100,6 +100,31 @@ function syncControls(){
 function buildInstanceMap(parts){return new Map(parts.map(function(p){return [p.instanceId,p]}))}
 function partArea(part){return Math.max(0,contourInfo(part).area)}
 
+function candidateBatch(remaining,pool,cfg,strategy){
+  const edge=Math.max(0,Number(cfg.edge)||0),usable=Math.max(1,(Number(pool.width)||0-2*edge)*(Number(pool.height)||0-2*edge));
+  const totalArea=remaining.reduce(function(s,p){return s+partArea(p)},0);
+  if(totalArea<=usable*0.9)return remaining.slice();
+  var target=strategy==="dense"?0.96:(strategy==="fast"?0.78:0.88);
+  var byDifficulty=remaining.slice().sort(function(a,b){
+    var ia=contourInfo(a),ib=contourInfo(b);
+    var da=(ia.width*ia.height)/Math.max(1,ia.area),db=(ib.width*ib.height)/Math.max(1,ib.area);
+    return db-da||ib.area-ia.area;
+  });
+  var chosen=[],areaSum=0,keys=new Set();
+  // Keep at least one instance of each geometry type in the candidate pool.
+  for(const p of byDifficulty){
+    const key=JSON.stringify((p.geometry?.loops||[]).map(function(loop){return loop.map(function(q){return [Math.round(q.x*100),Math.round(q.y*100)]})}));
+    if(!keys.has(key)){chosen.push(p);keys.add(key);areaSum+=partArea(p);}
+  }
+  for(const p of byDifficulty){
+    if(chosen.includes(p))continue;
+    if(areaSum<usable*target){chosen.push(p);areaSum+=partArea(p);}
+    else break;
+  }
+  const hardCap=Math.max(chosen.length,Math.min(remaining.length,Math.ceil(usable/Math.max(1,Math.min(...remaining.map(function(p){return Math.max(1,partArea(p))}))))*1.15));
+  return chosen.concat(byDifficulty.filter(function(p){return !chosen.includes(p)}).slice(0,Math.max(0,hardCap-chosen.length)));
+}
+
 async function buildPlan(strategy){
   syncControls();
   var original=state.parts,expanded=expandParts(original);
@@ -146,8 +171,9 @@ async function buildPlan(strategy){
         nfpCacheStore:nfpStores.get(profileKey),
         maxBins:1
       });
+      var candidates=candidateBatch(remaining,pool,cfg,strategy);
       var result=await runNest(
-        remaining,
+        candidates,
         {width:pool.width,height:pool.height},
         sheetCfg,
         {timeLimitMs:cfg.timeLimitMs,stopOnFull:cfg.stopOnFull}
