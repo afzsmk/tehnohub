@@ -94,7 +94,7 @@ function PlacementWorker(binPolygon, paths, ids, rotations, config, nfpCache){
 				path = paths[i];
 				
 				// inner NFP
-				key = JSON.stringify({A:'__BIN__',B:path.partNestKey||path.nestKey||path.id,inside:true,Arotation:0,Brotation:path.rotation});
+				key = JSON.stringify({N:self.config.cacheNamespace||"",A:'__BIN__:'+GeometryUtil.getPolygonBounds(self.binPolygon).width+'x'+GeometryUtil.getPolygonBounds(self.binPolygon).height+':'+(self.config.cacheNamespace||""),B:path.partNestKey||path.nestKey||path.id,inside:true,Arotation:0,Brotation:path.rotation});
 				var binNfp = self.nfpCache[key];
 				
 				// part unplaceable, skip
@@ -105,7 +105,7 @@ function PlacementWorker(binPolygon, paths, ids, rotations, config, nfpCache){
 				// ensure all necessary NFPs exist
 				var error = false;
 				for(j=0; j<placed.length; j++){			
-					key = JSON.stringify({A:placed[j].partNestKey||placed[j].nestKey||placed[j].id,B:path.partNestKey||path.nestKey||path.id,inside:false,Arotation:placed[j].rotation,Brotation:path.rotation});
+					key = JSON.stringify({N:self.config.cacheNamespace||"",A:placed[j].partNestKey||placed[j].nestKey||placed[j].id,B:path.partNestKey||path.nestKey||path.id,inside:false,Arotation:placed[j].rotation,Brotation:path.rotation});
 					nfp = self.nfpCache[key];
 										
 					if(!nfp){
