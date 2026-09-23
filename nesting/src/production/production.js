@@ -3,93 +3,131 @@ import { contourInfo, loopsBounds, transformLoops } from "../geometry/geometry.j
 function resolvePart(plan,it){
   return plan.partMap.get(it.instanceId) || plan.partMap.get(String(it.instanceId||"").split("#")[0]) || null;
 }
-
 function geometryArea(part){
   const loops=part?.geometry?.loops||[];
   const depths=part?.geometry?.loopDepths||[];
   let total=0;
-  loops.forEach(function(loop,i){const a=Math.abs(loop.reduce(function(s,p,j){const q=loop[(j+1)%loop.length];return s+p.x*q.y-q.x*p.y},0)/2);total += ((depths[i]||0)%2)?-a:a});
+  loops.forEach(function(loop,i){
+    const a=Math.abs(loop.reduce(function(s,p,j){
+      const q=loop[(j+1)%loop.length];
+      return s+p.x*q.y-q.x*p.y;
+    },0)/2);
+    total+=((depths[i]||0)%2)?-a:a;
+  });
   return Math.max(0,total);
 }
-
-export function calculateMetrics(plan, material){
+export function calculateMetrics(plan,material){
   let placed=0,partArea=0,sheetArea=0;
-  for(const sh of plan.sheets||[]){
-    const sw=Math.max(0,Number(sh.width)||0),hh=Math.max(0,Number(sh.height)||0);
-    sheetArea+=sw*hh; placed+=(sh.items||[]).length;
-    for(const it of sh.items||[]){const p=resolvePart(plan,it);if(p)partArea+=geometryArea(p)}
-  }
-  const thicknessM=Math.max(0,Number(plan.thickness)||0)/1000;
-  const density=Math.max(0,Number(material?.density)||0);
-  const materialWeight=sheetArea/1e6*thicknessM*density;
-  const partWeight=partArea/1e6*thicknessM*density;
+  (plan.sheets||[]).forEach(function(sh){
+    sheetArea+=Math.max(0,Number(sh.width)||0)*Math.max(0,Number(sh.height)||0);
+    placed+=(sh.items||[]).length;
+    (sh.items||[]).forEach(function(it){
+      const p=resolvePart(plan,it);
+      if(p)partArea+=geometryArea(p);
+    });
+  });
+  const t=Math.max(0,Number(plan.thickness)||0)/1000;
+  const d=Math.max(0,Number(material?.density)||0);
+  const materialWeight=sheetArea/1e6*t*d;
+  const partWeight=partArea/1e6*t*d;
   const scrapArea=Math.max(0,sheetArea-partArea);
   const utilization=sheetArea>0?partArea/sheetArea*100:0;
-  const scrapWeight=scrapArea/1e6*thicknessM*density;
   return {
-    sheets:(plan.sheets||[]).length,placed,total:plan.totalParts||0,
+    sheets:(plan.sheets||[]).length,
+    placed,
+    total:plan.totalParts||0,
     notPlaced:Math.max(0,(plan.totalParts||0)-placed),
-    partAreaM2:partArea/1e6,sheetAreaM2:sheetArea/1e6,scrapAreaM2:scrapArea/1e6,
-    utilization,wastePercent:Math.max(0,100-utilization),
-    partWeight,materialWeight,scrapWeight
+    partAreaM2:partArea/1e6,
+    sheetAreaM2:sheetArea/1e6,
+    scrapAreaM2:scrapArea/1e6,
+    utilization,
+    wastePercent:Math.max(0,100-utilization),
+    partWeight,
+    materialWeight,
+    scrapWeight:scrapArea/1e6*t*d
   };
 }
-
 export function makeBom(plan){
   const map=new Map();
-  for(const sh of plan.sheets||[]) for(const it of sh.items||[]){
-    const p=resolvePart(plan,it); if(!p)continue;
-    const key=p.id||String(p.instanceId); if(!map.has(key)){
-      const inf=contourInfo(p); map.set(key,{id:p.id,name:p.name,ordered:p.quantity,placed:0,width:inf.width,height:inf.height,area:geometryArea(p)});
-    }
-    map.get(key).placed++;
-  }
-  for(const p of plan.originalParts||[]){
-    const key=p.id||String(p.instanceId);
-    if(!map.has(key)){const inf=contourInfo(p);map.set(key,{id:p.id,name:p.name,ordered:p.quantity,placed:0,width:inf.width,height:inf.height,area:geometryArea(p)})}
-  }
+  (plan.sheets||[]).forEach(function(sh){
+    (sh.items||[]).forEach(function(it){
+      const p=resolvePart(plan,it);
+      if(!p)return;
+      const key=p.id;
+      if(!map.has(key)){
+        const inf=contourInfo(p);
+        map.set(key,{id:key,name:p.name,ordered:p.quantity,placed:0,width:inf.width,height:inf.height,area:geometryArea(p)});
+      }
+      map.get(key).placed++;
+    });
+  });
+  (plan.originalParts||[]).forEach(function(p){
+    const key=p.id,inf=contourInfo(p);
+    if(!map.has(key))map.set(key,{id:key,name:p.name,ordered:p.quantity,placed:0,width:inf.width,height:inf.height,area:geometryArea(p)});
+  });
   return [...map.values()];
 }
-
 function leftoverPolygons(plan,sheet){
   if(!window.ClipperLib)return null;
-  const scale=10000,toClip=loop=>loop.map(q=>({X:Math.round(q.x*scale),Y:Math.round(q.y*scale)}));
-  const subject=[{X:0,Y:0},{X:Math.round(sheet.width*scale),Y:0},{X:Math.round(sheet.width*scale),Y:Math.round(sheet.height*scale)},{X:0,Y:Math.round(sheet.height*scale)}];
+  const scale=10000;
+  const toClip=function(loop){return loop.map(function(q){return {X:Math.round(q.x*scale),Y:Math.round(q.y*scale)}})};
+  const subject=[
+    {X:0,Y:0},
+    {X:Math.round(sheet.width*scale),Y:0},
+    {X:Math.round(sheet.width*scale),Y:Math.round(sheet.height*scale)},
+    {X:0,Y:Math.round(sheet.height*scale)}
+  ];
   const cuts=[];
-  for(const it of sheet.items||[]){
-    const p=resolvePart(plan,it); if(!p)continue;
-    const loops=transformLoops(p.geometry.loops,it.rotation,it.x,it.y),depths=p.geometry.loopDepths||[];
-    loops.forEach(function(loop,i){if((depths[i]||0)%2===0)cuts.push(toClip(loop))});
-  }
-  if(!cuts.length)return [subject.map(q=>({x:q.X/scale,y:q.Y/scale}))];
-  const unioner=new window.ClipperLib.Clipper(),unioned=new window.ClipperLib.Paths();
-  unioner.AddPaths(cuts,window.ClipperLib.PolyType.ptSubject,true);
-  unioner.Execute(window.ClipperLib.ClipType.ctUnion,unioned,window.ClipperLib.PolyFillType.pftNonZero,window.ClipperLib.PolyFillType.pftNonZero);
-  const diff=new window.ClipperLib.Clipper(),out=new window.ClipperLib.Paths();
-  diff.AddPath(subject,window.ClipperLib.PolyType.ptSubject,true);
-  diff.AddPaths(unioned,window.ClipperLib.PolyType.ptClip,true);
-  if(!diff.Execute(window.ClipperLib.ClipType.ctDifference,out,window.ClipperLib.PolyFillType.pftNonZero,window.ClipperLib.PolyFillType.pftNonZero))return null;
-  return out.map(poly=>poly.map(q=>({x:q.X/scale,y:q.Y/scale}))).filter(poly=>poly.length>=3);
-}
-
-export function calculateRemnants(plan,minSizeM=0.01){
-  const remnants=[],minArea=Math.max(0.000001,Number(minSizeM)||0.01)*1e6;
-  (plan.sheets||[]).forEach(function(sheet,idx){
-    const paths=leftoverPolygons(plan,sheet); if(!paths)return;
-    for(const poly of paths){
-      const ar=Math.abs(poly.reduce(function(s,p,i){const q=poly[(i+1)%poly.length];return s+p.x*q.y-q.x*p.y},0)/2);
-      const ratio=ar/Math.max(1,sheet.width*sheet.height);
-      if(ar<minArea||ratio>0.985)continue;
-      const bb=loopsBounds([poly]);
-      remnants.push({
-        id:crypto.randomUUID(),sheet:idx+1,area:ar,width:bb.width,height:bb.height,loops:[poly],
-        utilization:bb.width*bb.height>0?ar/(bb.width*bb.height)*100:0,
-        touchesEdge:Math.abs(bb.minX)<0.5||Math.abs(bb.minY)<0.5||Math.abs(bb.maxX-sheet.width)<0.5||Math.abs(bb.maxY-sheet.height)<0.5
-      });
-    }
+  (sheet.items||[]).forEach(function(it){
+    const p=resolvePart(plan,it);
+    if(!p)return;
+    const loops=transformLoops(p.geometry.loops,it.rotation,it.x,it.y);
+    const depths=p.geometry.loopDepths||[];
+    loops.forEach(function(loop,i){
+      if((depths[i]||0)%2===0)cuts.push(toClip(loop));
+    });
   });
-  return remnants.sort((a,b)=>b.area-a.area);
+  if(!cuts.length)return [subject.map(function(q){return {x:q.X/scale,y:q.Y/scale}})];
+  const u=new window.ClipperLib.Clipper(),unioned=new window.ClipperLib.Paths();
+  u.AddPaths(cuts,window.ClipperLib.PolyType.ptSubject,true);
+  u.Execute(window.ClipperLib.ClipType.ctUnion,unioned,window.ClipperLib.PolyFillType.pftNonZero,window.ClipperLib.PolyFillType.pftNonZero);
+  const d=new window.ClipperLib.Clipper(),out=new window.ClipperLib.Paths();
+  d.AddPath(subject,window.ClipperLib.PolyType.ptSubject,true);
+  d.AddPaths(unioned,window.ClipperLib.PolyType.ptClip,true);
+  if(!d.Execute(window.ClipperLib.ClipType.ctDifference,out,window.ClipperLib.PolyFillType.pftNonZero,window.ClipperLib.PolyFillType.pftNonZero))return null;
+  return out.map(function(poly){
+    return poly.map(function(q){return {x:q.X/scale,y:q.Y/scale}});
+  }).filter(function(poly){return poly.length>=3});
+}
+export function calculateRemnants(plan,minSizeM=0.01){
+  const out=[];
+  const minArea=Math.max(1e-6,Number(minSizeM)||0.01)*1e6;
+  (plan.sheets||[]).forEach(function(sh,idx){
+    const paths=leftoverPolygons(plan,sh);
+    if(!paths)return;
+    paths.forEach(function(poly){
+      const a=Math.abs(poly.reduce(function(s,p,i){
+        const q=poly[(i+1)%poly.length];
+        return s+p.x*q.y-q.x*p.y;
+      },0)/2);
+      const ratio=a/Math.max(1,sh.width*sh.height);
+      if(a<minArea||ratio>.985)return;
+      const bb=loopsBounds([poly]);
+      out.push({
+        id:crypto.randomUUID(),
+        sheet:idx+1,
+        area:a,
+        width:bb.width,
+        height:bb.height,
+        loops:[poly],
+        utilization:bb.width*bb.height>0?a/(bb.width*bb.height)*100:0,
+        touchesEdge:Math.abs(bb.minX)<.5||Math.abs(bb.minY)<.5||Math.abs(bb.maxX-sh.width)<.5||Math.abs(bb.maxY-sh.height)<.5
+      });
+    });
+  });
+  return out.sort(function(a,b){return b.area-a.area});
 }
 export function getRemnantSummary(plan){
-  const items=plan.remnants||[];return {count:items.length,areaM2:items.reduce((s,r)=>s+r.area,0)/1e6};
+  const a=plan.remnants||[];
+  return {count:a.length,areaM2:a.reduce(function(s,r){return s+r.area},0)/1e6};
 }

@@ -114,32 +114,37 @@ function syncControls(){
 function buildInstanceMap(parts){return new Map(parts.map(function(p){return [p.instanceId,p]}))}
 function partArea(part){return Math.max(0,contourInfo(part).area)}
 
+function geometryKey(part){
+  return JSON.stringify((part.geometry?.loops||[]).map(function(loop){
+    return loop.map(function(q){return [Math.round(q.x*100),Math.round(q.y*100)]});
+  }));
+}
 function candidateBatch(remaining,pool,cfg,strategy){
-  const edge=Math.max(0,Number(cfg.edge)||0),usable=Math.max(1,(Number(pool.width)||0-2*edge)*(Number(pool.height)||0-2*edge));
-  const totalArea=remaining.reduce(function(s,p){return s+partArea(p)},0);
-  if(totalArea<=usable*0.9)return remaining.slice();
-  var target=strategy==="dense"?0.96:(strategy==="fast"?0.78:0.88);
-  var byDifficulty=remaining.slice().sort(function(a,b){
-    var ia=contourInfo(a),ib=contourInfo(b);
-    var da=(ia.width*ia.height)/Math.max(1,ia.area),db=(ib.width*ib.height)/Math.max(1,ib.area);
-    return db-da||ib.area-ia.area;
+  const edge=Math.max(0,Number(cfg.edge)||0);
+  const usable=Math.max(1,(Number(pool.width)-2*edge)*(Number(pool.height)-2*edge));
+  const target=strategy==="dense"?0.98:(strategy==="fast"?0.84:0.92);
+  const maxCount=strategy==="dense"?40:(strategy==="fast"?24:32);
+  if(remaining.length<=maxCount)return remaining.slice();
+  const groups=new Map();
+  remaining.forEach(function(p){const key=geometryKey(p);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(p)});
+  const queues=[...groups.values()];
+  const chosen=[],seen=new Set();let area=0,turn=0;
+  while(chosen.length<Math.min(maxCount,remaining.length)){
+    let progressed=false;
+    for(let t=0;t<queues.length;t++){
+      const idx=(turn+t)%queues.length,q=queues[idx];
+      if(!q.length)continue;
+      const p=q.shift();chosen.push(p);seen.add(p.instanceId);area+=partArea(p);
+      turn=(idx+1)%queues.length;progressed=true;
+      if(chosen.length>=maxCount||area>=usable*target)break;
+    }
+    if(!progressed||area>=usable*target)break;
+  }
+  remaining.slice().sort(function(a,b){return partArea(b)-partArea(a)}).forEach(function(p){
+    if(chosen.length>=maxCount||area>=usable*target||seen.has(p.instanceId))return;
+    chosen.push(p);seen.add(p.instanceId);area+=partArea(p);
   });
-  var chosen=[],areaSum=0,keys=new Set();
-  // Keep at least one instance of each geometry type in the candidate pool.
-  for(const p of byDifficulty){
-    const key=JSON.stringify((p.geometry?.loops||[]).map(function(loop){return loop.map(function(q){return [Math.round(q.x*100),Math.round(q.y*100)]})}));
-    if(!keys.has(key)){chosen.push(p);keys.add(key);areaSum+=partArea(p);}
-  }
-  for(const p of byDifficulty){
-    if(chosen.includes(p))continue;
-    if(areaSum<usable*target){chosen.push(p);areaSum+=partArea(p);}
-    else break;
-  }
-  const minArea=Math.max(1,Math.min(...remaining.map(function(p){return Math.max(1,partArea(p))})));
-  const densityCap=strategy==="dense"?36:(strategy==="fast"?20:28);
-  const areaCap=Math.ceil(usable/minArea*1.15);
-  const hardCap=Math.max(chosen.length,Math.min(remaining.length,densityCap,areaCap));
-  return chosen.concat(byDifficulty.filter(function(p){return !chosen.includes(p)}).slice(0,Math.max(0,hardCap-chosen.length)));
+  return chosen;
 }
 
 async function buildPlan(strategy){
