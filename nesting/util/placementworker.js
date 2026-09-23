@@ -153,7 +153,7 @@ function PlacementWorker(binPolygon, paths, ids, rotations, config, nfpCache){
 				
 				
 				for(j=0; j<placed.length; j++){			
-					key = JSON.stringify({A:placed[j].id,B:path.id,inside:false,Arotation:placed[j].rotation,Brotation:path.rotation});
+					key = JSON.stringify({N:self.config.cacheNamespace||"",A:placed[j].partNestKey||placed[j].nestKey||placed[j].id,B:path.partNestKey||path.nestKey||path.id,inside:false,Arotation:placed[j].rotation,Brotation:path.rotation});
 					nfp = self.nfpCache[key];
 										
 					if(!nfp){
