@@ -236,7 +236,7 @@ function renderPlan(){
   $("metric-part-area").textContent=fmt(m.partAreaM2,3)+" м²";
   $("metric-material-area").textContent=fmt(m.sheetAreaM2,3)+" м²";
   $("metric-waste-percent").textContent=fmt(m.wastePercent,1)+"%";
-  $("metric-material-weight").textContent=fmt(m.totalMaterialWeight,1)+" кг";
+  $("metric-material-weight").textContent=fmt(m.materialWeight,1)+" кг";
   $("metric-scrap-weight").textContent=fmt(m.scrapWeight,1)+" кг";
   $("result-status").className="status "+(m.notPlaced?"warn":"ok");$("result-status").textContent=m.notPlaced?"Не размещено: "+m.notPlaced:"Все детали размещены";renderMaps();renderBom();renderResultRemnants();
 }
