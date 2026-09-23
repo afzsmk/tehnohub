@@ -34,7 +34,8 @@
 			mutationRate: 10,
 			useHoles: false,
 			exploreConcave: false,
-			maxBins: Infinity
+			maxBins: Infinity,
+			cacheNamespace: ""
 		};
 		
 		this.working = false;
@@ -81,6 +82,9 @@
 			}
 			bin = element;
 		}
+		this.setNfpCacheStore = function(store){
+			nfpCache = store || {};
+		};
 		
 		this.config = function(c){
 			// clean up inputs
@@ -118,6 +122,9 @@
 			}
 			if('maxBins' in c){
 				config.maxBins = Number(c.maxBins) > 0 ? Number(c.maxBins) : Infinity;
+			}
+			if('cacheNamespace' in c){
+				config.cacheNamespace = String(c.cacheNamespace || "");
 			}
 			
 			SvgParser.config({ tolerance: config.curveTolerance});
@@ -183,7 +190,7 @@
 			}
 						
 			binPolygon.id = -1;
-			binPolygon.nestKey = '__BIN__';
+			binPolygon.nestKey = '__BIN__:' + binPolygon.width + 'x' + binPolygon.height + ':' + config.cacheNamespace;
 			binPolygon.partNestKey = '__BIN__';
 			
 			// put bin on origin
@@ -311,7 +318,7 @@
 			
 			for(i=0; i<placelist.length; i++){
 				var part = placelist[i];
-				key = {A: binPolygon.nestKey || binPolygon.id, B: part.partNestKey || part.nestKey || part.id, inside: true, Arotation: 0, Brotation: rotations[i]};
+				key = {N: config.cacheNamespace || "", A: binPolygon.nestKey || binPolygon.id, B: part.partNestKey || part.nestKey || part.id, inside: true, Arotation: 0, Brotation: rotations[i]};
 				if(!nfpCache[JSON.stringify(key)]){
 					nfpPairs.push({A: binPolygon, B: part, key: key});
 				}
@@ -320,7 +327,7 @@
 				}
 				for(j=0; j<i; j++){
 					var placed = placelist[j];
-					key = {A: placed.partNestKey || placed.nestKey || placed.id, B: part.partNestKey || part.nestKey || part.id, inside: false, Arotation: rotations[j], Brotation: rotations[i]};
+					key = {N: config.cacheNamespace || "", A: placed.partNestKey || placed.nestKey || placed.id, B: part.partNestKey || part.nestKey || part.id, inside: false, Arotation: rotations[j], Brotation: rotations[i]};
 					if(!nfpCache[JSON.stringify(key)]){
 						nfpPairs.push({A: placed, B: part, key: key});
 					}
