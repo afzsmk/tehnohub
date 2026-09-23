@@ -134,7 +134,10 @@ function candidateBatch(remaining,pool,cfg,strategy){
     if(areaSum<usable*target){chosen.push(p);areaSum+=partArea(p);}
     else break;
   }
-  const hardCap=Math.max(chosen.length,Math.min(remaining.length,Math.ceil(usable/Math.max(1,Math.min(...remaining.map(function(p){return Math.max(1,partArea(p))}))))*1.15));
+  const minArea=Math.max(1,Math.min(...remaining.map(function(p){return Math.max(1,partArea(p))})));
+  const densityCap=strategy==="dense"?36:(strategy==="fast"?20:28);
+  const areaCap=Math.ceil(usable/minArea*1.15);
+  const hardCap=Math.max(chosen.length,Math.min(remaining.length,densityCap,areaCap));
   return chosen.concat(byDifficulty.filter(function(p){return !chosen.includes(p)}).slice(0,Math.max(0,hardCap-chosen.length)));
 }
 
@@ -288,6 +291,7 @@ function bind(){
   $("export-json").onclick=function(){download("nestcut-job.json",new Blob([JSON.stringify({state:state,plan:currentPlan?Object.assign({},currentPlan,{partMap:undefined}):null},null,2)],{type:"application/json"}))};
   $("print").onclick=function(){window.print()};
   $("zoom-in").onclick=function(){mapZoom=Math.min(2.5,mapZoom*1.2);renderMaps()};$("zoom-out").onclick=function(){mapZoom=Math.max(.5,mapZoom/1.2);renderMaps()};$("zoom-fit").onclick=function(){mapZoom=1;renderMaps()};
-  $("clear").onclick=function(){state=createDefaultState();currentPlan=null;save();initControls();renderPlan()};$("zoom-fit").onclick=function(){mapZoom=1;renderMaps()};
+  $("clear").onclick=function(){state=createDefaultState();currentPlan=null;save();initControls();renderPlan()};
+  $("clear-remnants").onclick=function(){state.remnants=[];save();renderRemnants();toast("Библиотека остатков очищена.")};$("zoom-fit").onclick=function(){mapZoom=1;renderMaps()};
 }
 initControls();bind();
