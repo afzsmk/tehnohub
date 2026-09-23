@@ -846,23 +846,41 @@
 		
 		this.population = [{placement: adam, rotation: angles}];
 		
-		// Seed the population with deterministic orientation patterns.
-		// This gives repeated concave/simple parts a chance to alternate orientation
-		// before random mutation begins, which is important for dense production nests.
-		var seedCount = Math.max(0, Math.min(8, config.populationSize - 1));
+		// Seed GA with interleaved geometry-type orders and rotation patterns.
 		var orientationCount = Math.max(1, this.config.rotations);
-		for(var seed=1; seed<=seedCount; seed++){
-			var placementSeed = adam.slice(0);
-			var rotationSeed = [];
-			for(var si=0; si<placementSeed.length; si++){
-				var phase = (seed * (si % orientationCount + 1)) % orientationCount;
-				rotationSeed.push(phase * (360/orientationCount));
-			}
-			this.population.push({placement: placementSeed, rotation: rotationSeed});
+		var groups = {};
+		for(var gi=0; gi<adam.length; gi++){
+			var gkey = adam[gi].partNestKey || adam[gi].nestKey || ('id:'+adam[gi].id);
+			if(!groups[gkey]) groups[gkey] = [];
+			groups[gkey].push(adam[gi]);
 		}
-		while(this.population.length < config.populationSize){
-			var mutant = this.mutate(this.population[this.population.length % Math.max(1, seedCount + 1)]);
-			this.population.push(mutant);
+		var groupKeys = Object.keys(groups);
+		groupKeys.sort(function(a,b){
+			return Math.abs(GeometryUtil.polygonArea(groups[b][0])) - Math.abs(GeometryUtil.polygonArea(groups[a][0]));
+		});
+		var seedLimit = Math.max(0, Math.min(10, config.populationSize-1));
+		for(var seed=1; seed<=seedLimit; seed++){
+			var queues = groupKeys.map(function(k){return groups[k].slice(0)});
+			var placementSeed = [], cursor = seed % Math.max(1,groupKeys.length);
+			while(placementSeed.length<adam.length){
+				var picked=false;
+				for(var st=0;st<groupKeys.length;st++){
+					var idx=(cursor+st)%groupKeys.length,q=queues[idx];
+					if(!q.length)continue;
+					placementSeed.push(seed%2===0?q.pop():q.shift());
+					cursor=(idx+1)%groupKeys.length;picked=true;break;
+				}
+				if(!picked)break;
+			}
+			var rotationSeed=[];
+			for(var si=0;si<placementSeed.length;si++){
+				var phase=(seed*(si%orientationCount+1))%orientationCount;
+				rotationSeed.push(phase*(360/orientationCount));
+			}
+			this.population.push({placement:placementSeed,rotation:rotationSeed});
+		}
+		while(this.population.length<config.populationSize){
+			this.population.push(this.mutate(this.population[this.population.length%Math.max(1,this.population.length)]||this.population[0]));
 		}
 	}
 	
