@@ -20,6 +20,9 @@ function load(){
     const x=JSON.parse(localStorage.getItem(KEY)||"null");
     if(x&&x.job){
       if(x.nesting && Number(x.nesting.timeLimitMs)===1800) x.nesting.timeLimitMs=8000;
+      if(!x.options)x.options={maxVariants:3,minRemnant:100};
+      if(!Number.isFinite(Number(x.options.minRemnant)))x.options.minRemnant=100;
+      if(Array.isArray(x.remnants))x.remnants=x.remnants.filter(function(r){return Number(r.area)>0&&!(Number(r.width)>0&&Number(r.height)>0&&Number(r.area)/(Number(r.width)*Number(r.height))>.985)});
       return x;
     }
     return createDefaultState();
@@ -212,7 +215,7 @@ async function buildPlan(strategy){
   var map=buildInstanceMap(expanded);
   var plan={job:clone(state.job),thickness:state.job.thickness,totalParts:expanded.length,sheets:sheets,remaining:remaining,partMap:map,originalParts:original,remnants:[],strategy:strategy};
   plan.metrics=calculateMetrics(plan,mat());
-  plan.remnants=calculateRemnants(plan,state.options.minRemnant*state.options.minRemnant);
+  plan.remnants=calculateRemnants(plan,(Number(state.options.minRemnant)||100)*(Number(state.options.minRemnant)||100)/1e6);
   return plan;
 }
 function resolvePart(it){if(!currentPlan)return null;return currentPlan.partMap.get(it.instanceId)||currentPlan.partMap.get(String(it.instanceId||"").split("#")[0])||null}
