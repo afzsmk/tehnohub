@@ -43,7 +43,7 @@ function initControls(){
   $("job-name").value=state.job.name;
   $("spacing").value=state.nesting.spacing;$("edge").value=state.nesting.edge;$("tolerance").value=state.nesting.curveTolerance;
   $("rotations").value=state.nesting.rotations;$("population").value=state.nesting.populationSize;$("mutation").value=state.nesting.mutationRate;
-  $("timeLimit").value=Math.max(.4,state.nesting.timeLimitMs/1000);$("holes").checked=state.nesting.useHoles;$("concave").checked=state.nesting.exploreConcave;$("mirror").checked=state.nesting.allowMirror;
+  $("timeLimit").value=Math.max(.4,state.nesting.timeLimitMs/1000);$("minRemnant").value=state.options?.minRemnant||100;$("holes").checked=state.nesting.useHoles;$("concave").checked=state.nesting.exploreConcave;$("mirror").checked=state.nesting.allowMirror;
   renderSheets();renderParts();renderRemnants();renderSummary();
 }
 function renderSheets(){
@@ -107,6 +107,7 @@ async function importFiles(files){
 }
 function syncControls(){
   state.job.name=$("job-name").value.trim()||"Новый раскрой";state.job.materialId=$("material").value;state.job.technologyId=$("technology").value;state.job.thickness=Math.max(.01,Number($("thickness").value)||1);
+  state.options.minRemnant=Math.max(10,Number($("minRemnant").value)||100);
   Object.assign(state.nesting,{spacing:Math.max(0,Number($("spacing").value)||0),edge:Math.max(0,Number($("edge").value)||0),curveTolerance:Math.max(.05,Number($("tolerance").value)||.35),rotations:Math.max(1,Math.round(Number($("rotations").value)||4)),populationSize:Math.max(4,Math.round(Number($("population").value)||14)),mutationRate:Math.max(1,Math.round(Number($("mutation").value)||10)),timeLimitMs:Math.max(400,Math.round((Number($("timeLimit").value)||1)*1000)),useHoles:$("holes").checked,exploreConcave:$("concave").checked,allowMirror:$("mirror").checked});
   save();
 }
@@ -282,7 +283,7 @@ function bind(){
   $("add-part").onclick=function(e){e.stopPropagation();var m=$("preset-menu");m.classList.toggle("hidden")};
   $("preset-menu").querySelectorAll("[data-preset]").forEach(function(b){b.onclick=function(e){e.stopPropagation();addPartPreset(b.dataset.preset)}});$("file").onchange=function(e){importFiles(e.target.files);e.target.value=""};
   document.addEventListener("click",function(e){if(!e.target.closest("#add-part")&&!e.target.closest("#preset-menu"))closePresetMenu()});$("dropzone").ondragover=function(e){e.preventDefault();$("dropzone").classList.add("drag")};$("dropzone").ondragleave=function(){$("dropzone").classList.remove("drag")};$("dropzone").ondrop=function(e){e.preventDefault();$("dropzone").classList.remove("drag");importFiles(e.dataTransfer.files)};
-  ["job-name","material","technology","thickness","spacing","edge","tolerance","rotations","population","mutation","timeLimit","holes","concave","mirror"].forEach(function(id){$(id).addEventListener("change",syncControls)});
+  ["job-name","material","technology","thickness","spacing","edge","tolerance","rotations","population","mutation","timeLimit","minRemnant","holes","concave","mirror"].forEach(function(id){$(id).addEventListener("change",syncControls)});
   $("run").onclick=run;$("compare").onclick=compare;$("save-remnants").onclick=function(){if(currentPlan)saveResultRemnants()};
   $("export-svg").onclick=function(){if(currentPlan)download("nestcut-plan.svg",new Blob([planToSvg(currentPlan)],{type:"image/svg+xml"}))};
   $("export-dxf").onclick=function(){if(currentPlan)download("nestcut-plan.dxf",new Blob([planToDxf(currentPlan)],{type:"application/dxf"}))};
