@@ -63,8 +63,18 @@ function renderParts(){
 }
 function renderRemnants(){
   var a=state.remnants||[];
-  $("remnants").innerHTML=a.length?a.map(function(r,i){return '<div class="rem-item"><div><b>'+fmt0(r.width)+"×"+fmt0(r.height)+' мм</b><span>'+esc(r.materialName||mat().name)+" · "+fmt(r.area/1e6,3)+' м²</span></div><button class="small-btn" data-use-rem="'+i+'">Добавить как заготовку</button></div>'}).join(""):'<div class="muted">Сохранённых остатков пока нет.</div>';
-  $("remnants").querySelectorAll("[data-use-rem]").forEach(function(b){b.onclick=function(){var r=a[+b.dataset.useRem];var bb=loopsBounds(r.loops);var nearlyRect=Math.abs((r.area||0)/(bb.width*bb.height)-1)<.015;if(!nearlyRect){toast("Нерегулярный остаток пока не добавляется как прямоугольный лист.","warn");return}state.sheets.push({id:crypto.randomUUID(),name:"Остаток "+fmt0(bb.width)+"×"+fmt0(bb.height),width:Math.round(bb.width),height:Math.round(bb.height),qty:1,priority:1,source:"remnant"});save();renderSheets();toast("Остаток добавлен в заготовки.")}});
+  $("remnants").innerHTML=a.length?a.map(function(r,i){
+    return '<div class="rem-item"><div><b>'+fmt0(r.width)+"×"+fmt0(r.height)+' мм</b><span>'+esc(r.materialName||mat().name)+" · "+fmt(r.area/1e6,3)+" м² · лист "+(r.sheet||"—")+(r.touchesEdge?" · кромка":" · внутренний")+'</span></div><div class="rem-actions"><button class="small-btn" data-use-rem="'+i+'">В заготовки</button><button class="icon-btn" data-delete-rem="'+i+'" title="Удалить">×</button></div></div>'
+  }).join(""):'<div class="muted">Сохранённых остатков пока нет.</div>';
+  $("remnants").querySelectorAll("[data-use-rem]").forEach(function(b){b.onclick=function(){
+    var r=a[+b.dataset.useRem],bb=loopsBounds(r.loops),nearlyRect=Math.abs((r.area||0)/(bb.width*bb.height)-1)<.015;
+    if(!nearlyRect){toast("Нерегулярный остаток пока не добавляется как прямоугольный лист.","warn");return}
+    state.sheets.push({id:crypto.randomUUID(),name:"Остаток "+fmt0(bb.width)+"×"+fmt0(bb.height),width:Math.round(bb.width),height:Math.round(bb.height),qty:1,priority:1,source:"remnant"});
+    save();renderSheets();toast("Остаток добавлен в заготовки.");
+  }});
+  $("remnants").querySelectorAll("[data-delete-rem]").forEach(function(b){b.onclick=function(){
+    state.remnants.splice(+b.dataset.deleteRem,1);save();renderRemnants();toast("Остаток удалён.");
+  }});
 }
 function renderSummary(){$("part-count").textContent=fmt0(totalQuantity(state.parts));$("sheet-count").textContent=fmt0(state.sheets.reduce(function(a,s){return a+Math.max(0,Number(s.qty)||0)},0))}
 function addPartPreset(kind){
@@ -210,7 +220,17 @@ function sheetKim(sh){var used=sh.items.reduce(function(a,it){var p=resolvePart(
 function renderPlan(){
   if(!currentPlan){$("result").classList.add("hidden");$("result-empty").classList.remove("hidden");return}
   $("result").classList.remove("hidden");$("result-empty").classList.add("hidden");var m=currentPlan.metrics;
-  $("metric-sheets").textContent=fmt0(m.sheets);$("metric-util").textContent=fmt(m.utilization,1)+"%";$("metric-placed").textContent=fmt0(m.placed)+" / "+fmt0(m.total);$("metric-waste").textContent=fmt(m.wasteM2,3)+" м²";$("metric-weight").textContent=fmt(m.partWeight,1)+" кг";$("metric-unplaced").textContent=fmt0(m.notPlaced);
+  $("metric-sheets").textContent=fmt0(m.sheets);
+  $("metric-util").textContent=fmt(m.utilization,1)+"%";
+  $("metric-placed").textContent=fmt0(m.placed)+" / "+fmt0(m.total);
+  $("metric-waste").textContent=fmt(m.scrapAreaM2,3)+" м²";
+  $("metric-weight").textContent=fmt(m.partWeight,1)+" кг";
+  $("metric-unplaced").textContent=fmt0(m.notPlaced);
+  $("metric-part-area").textContent=fmt(m.partAreaM2,3)+" м²";
+  $("metric-material-area").textContent=fmt(m.sheetAreaM2,3)+" м²";
+  $("metric-waste-percent").textContent=fmt(m.wastePercent,1)+"%";
+  $("metric-material-weight").textContent=fmt(m.totalMaterialWeight,1)+" кг";
+  $("metric-scrap-weight").textContent=fmt(m.scrapWeight,1)+" кг";
   $("result-status").className="status "+(m.notPlaced?"warn":"ok");$("result-status").textContent=m.notPlaced?"Не размещено: "+m.notPlaced:"Все детали размещены";renderMaps();renderBom();renderResultRemnants();
 }
 function svgForSheet(sh){
@@ -223,9 +243,20 @@ function svgForSheet(sh){
 }
 function renderMaps(){$("maps").innerHTML=currentPlan.sheets.map(function(s,i){return '<article class="map-card"><div class="map-head"><div><b>Лист '+(i+1)+'</b><span>'+fmt0(s.width)+"×"+fmt0(s.height)+" мм · "+esc(s.name||"Заготовка")+'</span></div><span class="map-kim">'+fmt(sheetKim(s),1)+'%</span></div><div class="map-viewport">'+svgForSheet(s)+"</div></article>"}).join("")||'<div class="empty-block">Нет готовых карт.</div>'}
 function renderBom(){$("bom").innerHTML=makeBom(currentPlan).map(function(r){return '<tr><td>'+esc(r.name)+'</td><td>'+fmt0(r.ordered)+'</td><td>'+fmt0(r.placed)+'</td><td>'+fmt0(r.width)+"×"+fmt0(r.height)+'</td><td>'+(r.placed<r.ordered?'<span class="bad">недостача</span>':'<span class="good">OK</span>')+'</td></tr>'}).join("")}
-function renderResultRemnants(){$("result-remnants").innerHTML=(currentPlan.remnants||[]).length?currentPlan.remnants.map(function(r){return '<span class="rem-chip">'+fmt0(r.width)+"×"+fmt0(r.height)+" мм · "+fmt(r.area/1e6,3)+" м²</span>"}).join(""):'<span class="muted">Деловых остатков выше порога нет.</span>'}
+function renderResultRemnants(){
+  var a=currentPlan.remnants||[];
+  $("result-remnants").innerHTML=a.length?a.map(function(r){return '<span class="rem-chip">'+fmt0(r.width)+"×"+fmt0(r.height)+" мм · "+fmt(r.area/1e6,3)+" м² · лист "+r.sheet+"</span>"}).join(""):'<span class="muted">Деловых остатков выше порога нет.</span>';
+}
 function saveResultRemnants(){
-  (currentPlan.remnants||[]).forEach(function(r){state.remnants.push(Object.assign({},r,{materialId:state.job.materialId,materialName:mat().name,thickness:state.job.thickness}))});save();renderRemnants();toast("Остатки сохранены в библиотеку.");
+  var added=0;
+  (currentPlan.remnants||[]).forEach(function(r){
+    if((r.area||0)<=0)return;
+    var sig=[state.job.materialId,state.job.thickness,Math.round(r.width),Math.round(r.height),Math.round(r.area)].join("|");
+    if(state.remnants.some(function(x){return x.signature===sig}))return;
+    state.remnants.push(Object.assign({},r,{materialId:state.job.materialId,materialName:mat().name,thickness:state.job.thickness,signature:sig}));
+    added++;
+  });
+  save();renderRemnants();toast(added?"Сохранено остатков: "+added:"Новых остатков нет.","ok");
 }
 async function run(){
   if(running)return;try{setBusy(true,"Подготовка геометрии...");await new Promise(function(r){setTimeout(r,20)});currentPlan=await buildPlan(state.nesting.strategy);renderPlan();toast(currentPlan.metrics.notPlaced?"Раскладка готова, не размещено "+currentPlan.metrics.notPlaced:"Раскладка готова.")}catch(e){toast(e.message,"error")}finally{setBusy(false)}
