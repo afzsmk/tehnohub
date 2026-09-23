@@ -846,8 +846,22 @@
 		
 		this.population = [{placement: adam, rotation: angles}];
 		
+		// Seed the population with deterministic orientation patterns.
+		// This gives repeated concave/simple parts a chance to alternate orientation
+		// before random mutation begins, which is important for dense production nests.
+		var seedCount = Math.max(0, Math.min(8, config.populationSize - 1));
+		var orientationCount = Math.max(1, this.config.rotations);
+		for(var seed=1; seed<=seedCount; seed++){
+			var placementSeed = adam.slice(0);
+			var rotationSeed = [];
+			for(var si=0; si<placementSeed.length; si++){
+				var phase = (seed * (si % orientationCount + 1)) % orientationCount;
+				rotationSeed.push(phase * (360/orientationCount));
+			}
+			this.population.push({placement: placementSeed, rotation: rotationSeed});
+		}
 		while(this.population.length < config.populationSize){
-			var mutant = this.mutate(this.population[0]);
+			var mutant = this.mutate(this.population[this.population.length % Math.max(1, seedCount + 1)]);
 			this.population.push(mutant);
 		}
 	}

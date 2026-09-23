@@ -20,6 +20,9 @@ function load(){
     const x=JSON.parse(localStorage.getItem(KEY)||"null");
     if(x&&x.job){
       if(x.nesting && Number(x.nesting.timeLimitMs)===1800) x.nesting.timeLimitMs=8000;
+      if(!x.options)x.options={maxVariants:3,minRemnant:100};
+      if(!Number.isFinite(Number(x.options.minRemnant)))x.options.minRemnant=100;
+      if(Array.isArray(x.remnants))x.remnants=x.remnants.filter(function(r){return Number(r.area)>0&&!(Number(r.width)>0&&Number(r.height)>0&&Number(r.area)/(Number(r.width)*Number(r.height))>.985)});
       return x;
     }
     return createDefaultState();
@@ -40,7 +43,7 @@ function initControls(){
   $("job-name").value=state.job.name;
   $("spacing").value=state.nesting.spacing;$("edge").value=state.nesting.edge;$("tolerance").value=state.nesting.curveTolerance;
   $("rotations").value=state.nesting.rotations;$("population").value=state.nesting.populationSize;$("mutation").value=state.nesting.mutationRate;
-  $("timeLimit").value=Math.max(.4,state.nesting.timeLimitMs/1000);$("holes").checked=state.nesting.useHoles;$("concave").checked=state.nesting.exploreConcave;$("mirror").checked=state.nesting.allowMirror;
+  $("timeLimit").value=Math.max(.4,state.nesting.timeLimitMs/1000);$("minRemnant").value=state.options?.minRemnant||100;$("holes").checked=state.nesting.useHoles;$("concave").checked=state.nesting.exploreConcave;$("mirror").checked=state.nesting.allowMirror;
   renderSheets();renderParts();renderRemnants();renderSummary();
 }
 function renderSheets(){
@@ -63,8 +66,18 @@ function renderParts(){
 }
 function renderRemnants(){
   var a=state.remnants||[];
-  $("remnants").innerHTML=a.length?a.map(function(r,i){return '<div class="rem-item"><div><b>'+fmt0(r.width)+"×"+fmt0(r.height)+' мм</b><span>'+esc(r.materialName||mat().name)+" · "+fmt(r.area/1e6,3)+' м²</span></div><button class="small-btn" data-use-rem="'+i+'">Добавить как заготовку</button></div>'}).join(""):'<div class="muted">Сохранённых остатков пока нет.</div>';
-  $("remnants").querySelectorAll("[data-use-rem]").forEach(function(b){b.onclick=function(){var r=a[+b.dataset.useRem];var bb=loopsBounds(r.loops);var nearlyRect=Math.abs((r.area||0)/(bb.width*bb.height)-1)<.015;if(!nearlyRect){toast("Нерегулярный остаток пока не добавляется как прямоугольный лист.","warn");return}state.sheets.push({id:crypto.randomUUID(),name:"Остаток "+fmt0(bb.width)+"×"+fmt0(bb.height),width:Math.round(bb.width),height:Math.round(bb.height),qty:1,priority:1,source:"remnant"});save();renderSheets();toast("Остаток добавлен в заготовки.")}});
+  $("remnants").innerHTML=a.length?a.map(function(r,i){
+    return '<div class="rem-item"><div><b>'+fmt0(r.width)+"×"+fmt0(r.height)+' мм</b><span>'+esc(r.materialName||mat().name)+" · "+fmt(r.area/1e6,3)+" м² · лист "+(r.sheet||"—")+(r.touchesEdge?" · кромка":" · внутренний")+'</span></div><div class="rem-actions"><button class="small-btn" data-use-rem="'+i+'">В заготовки</button><button class="icon-btn" data-delete-rem="'+i+'" title="Удалить">×</button></div></div>'
+  }).join(""):'<div class="muted">Сохранённых остатков пока нет.</div>';
+  $("remnants").querySelectorAll("[data-use-rem]").forEach(function(b){b.onclick=function(){
+    var r=a[+b.dataset.useRem],bb=loopsBounds(r.loops),nearlyRect=Math.abs((r.area||0)/(bb.width*bb.height)-1)<.015;
+    if(!nearlyRect){toast("Нерегулярный остаток пока не добавляется как прямоугольный лист.","warn");return}
+    state.sheets.push({id:crypto.randomUUID(),name:"Остаток "+fmt0(bb.width)+"×"+fmt0(bb.height),width:Math.round(bb.width),height:Math.round(bb.height),qty:1,priority:1,source:"remnant"});
+    save();renderSheets();toast("Остаток добавлен в заготовки.");
+  }});
+  $("remnants").querySelectorAll("[data-delete-rem]").forEach(function(b){b.onclick=function(){
+    state.remnants.splice(+b.dataset.deleteRem,1);save();renderRemnants();toast("Остаток удалён.");
+  }});
 }
 function renderSummary(){$("part-count").textContent=fmt0(totalQuantity(state.parts));$("sheet-count").textContent=fmt0(state.sheets.reduce(function(a,s){return a+Math.max(0,Number(s.qty)||0)},0))}
 function addPartPreset(kind){
@@ -94,11 +107,40 @@ async function importFiles(files){
 }
 function syncControls(){
   state.job.name=$("job-name").value.trim()||"Новый раскрой";state.job.materialId=$("material").value;state.job.technologyId=$("technology").value;state.job.thickness=Math.max(.01,Number($("thickness").value)||1);
+  state.options.minRemnant=Math.max(10,Number($("minRemnant").value)||100);
   Object.assign(state.nesting,{spacing:Math.max(0,Number($("spacing").value)||0),edge:Math.max(0,Number($("edge").value)||0),curveTolerance:Math.max(.05,Number($("tolerance").value)||.35),rotations:Math.max(1,Math.round(Number($("rotations").value)||4)),populationSize:Math.max(4,Math.round(Number($("population").value)||14)),mutationRate:Math.max(1,Math.round(Number($("mutation").value)||10)),timeLimitMs:Math.max(400,Math.round((Number($("timeLimit").value)||1)*1000)),useHoles:$("holes").checked,exploreConcave:$("concave").checked,allowMirror:$("mirror").checked});
   save();
 }
 function buildInstanceMap(parts){return new Map(parts.map(function(p){return [p.instanceId,p]}))}
 function partArea(part){return Math.max(0,contourInfo(part).area)}
+
+function candidateBatch(remaining,pool,cfg,strategy){
+  const edge=Math.max(0,Number(cfg.edge)||0),usable=Math.max(1,(Number(pool.width)||0-2*edge)*(Number(pool.height)||0-2*edge));
+  const totalArea=remaining.reduce(function(s,p){return s+partArea(p)},0);
+  if(totalArea<=usable*0.9)return remaining.slice();
+  var target=strategy==="dense"?0.96:(strategy==="fast"?0.78:0.88);
+  var byDifficulty=remaining.slice().sort(function(a,b){
+    var ia=contourInfo(a),ib=contourInfo(b);
+    var da=(ia.width*ia.height)/Math.max(1,ia.area),db=(ib.width*ib.height)/Math.max(1,ib.area);
+    return db-da||ib.area-ia.area;
+  });
+  var chosen=[],areaSum=0,keys=new Set();
+  // Keep at least one instance of each geometry type in the candidate pool.
+  for(const p of byDifficulty){
+    const key=JSON.stringify((p.geometry?.loops||[]).map(function(loop){return loop.map(function(q){return [Math.round(q.x*100),Math.round(q.y*100)]})}));
+    if(!keys.has(key)){chosen.push(p);keys.add(key);areaSum+=partArea(p);}
+  }
+  for(const p of byDifficulty){
+    if(chosen.includes(p))continue;
+    if(areaSum<usable*target){chosen.push(p);areaSum+=partArea(p);}
+    else break;
+  }
+  const minArea=Math.max(1,Math.min(...remaining.map(function(p){return Math.max(1,partArea(p))})));
+  const densityCap=strategy==="dense"?36:(strategy==="fast"?20:28);
+  const areaCap=Math.ceil(usable/minArea*1.15);
+  const hardCap=Math.max(chosen.length,Math.min(remaining.length,densityCap,areaCap));
+  return chosen.concat(byDifficulty.filter(function(p){return !chosen.includes(p)}).slice(0,Math.max(0,hardCap-chosen.length)));
+}
 
 async function buildPlan(strategy){
   syncControls();
@@ -146,8 +188,9 @@ async function buildPlan(strategy){
         nfpCacheStore:nfpStores.get(profileKey),
         maxBins:1
       });
+      var candidates=candidateBatch(remaining,pool,cfg,strategy);
       var result=await runNest(
-        remaining,
+        candidates,
         {width:pool.width,height:pool.height},
         sheetCfg,
         {timeLimitMs:cfg.timeLimitMs,stopOnFull:cfg.stopOnFull}
@@ -176,7 +219,7 @@ async function buildPlan(strategy){
   var map=buildInstanceMap(expanded);
   var plan={job:clone(state.job),thickness:state.job.thickness,totalParts:expanded.length,sheets:sheets,remaining:remaining,partMap:map,originalParts:original,remnants:[],strategy:strategy};
   plan.metrics=calculateMetrics(plan,mat());
-  plan.remnants=calculateRemnants(plan,state.options.minRemnant*state.options.minRemnant);
+  plan.remnants=calculateRemnants(plan,(Number(state.options.minRemnant)||100)*(Number(state.options.minRemnant)||100)/1e6);
   return plan;
 }
 function resolvePart(it){if(!currentPlan)return null;return currentPlan.partMap.get(it.instanceId)||currentPlan.partMap.get(String(it.instanceId||"").split("#")[0])||null}
@@ -184,7 +227,17 @@ function sheetKim(sh){var used=sh.items.reduce(function(a,it){var p=resolvePart(
 function renderPlan(){
   if(!currentPlan){$("result").classList.add("hidden");$("result-empty").classList.remove("hidden");return}
   $("result").classList.remove("hidden");$("result-empty").classList.add("hidden");var m=currentPlan.metrics;
-  $("metric-sheets").textContent=fmt0(m.sheets);$("metric-util").textContent=fmt(m.utilization,1)+"%";$("metric-placed").textContent=fmt0(m.placed)+" / "+fmt0(m.total);$("metric-waste").textContent=fmt(m.wasteM2,3)+" м²";$("metric-weight").textContent=fmt(m.partWeight,1)+" кг";$("metric-unplaced").textContent=fmt0(m.notPlaced);
+  $("metric-sheets").textContent=fmt0(m.sheets);
+  $("metric-util").textContent=fmt(m.utilization,1)+"%";
+  $("metric-placed").textContent=fmt0(m.placed)+" / "+fmt0(m.total);
+  $("metric-waste").textContent=fmt(m.scrapAreaM2,3)+" м²";
+  $("metric-weight").textContent=fmt(m.partWeight,1)+" кг";
+  $("metric-unplaced").textContent=fmt0(m.notPlaced);
+  $("metric-part-area").textContent=fmt(m.partAreaM2,3)+" м²";
+  $("metric-material-area").textContent=fmt(m.sheetAreaM2,3)+" м²";
+  $("metric-waste-percent").textContent=fmt(m.wastePercent,1)+"%";
+  $("metric-material-weight").textContent=fmt(m.materialWeight,1)+" кг";
+  $("metric-scrap-weight").textContent=fmt(m.scrapWeight,1)+" кг";
   $("result-status").className="status "+(m.notPlaced?"warn":"ok");$("result-status").textContent=m.notPlaced?"Не размещено: "+m.notPlaced:"Все детали размещены";renderMaps();renderBom();renderResultRemnants();
 }
 function svgForSheet(sh){
@@ -197,9 +250,20 @@ function svgForSheet(sh){
 }
 function renderMaps(){$("maps").innerHTML=currentPlan.sheets.map(function(s,i){return '<article class="map-card"><div class="map-head"><div><b>Лист '+(i+1)+'</b><span>'+fmt0(s.width)+"×"+fmt0(s.height)+" мм · "+esc(s.name||"Заготовка")+'</span></div><span class="map-kim">'+fmt(sheetKim(s),1)+'%</span></div><div class="map-viewport">'+svgForSheet(s)+"</div></article>"}).join("")||'<div class="empty-block">Нет готовых карт.</div>'}
 function renderBom(){$("bom").innerHTML=makeBom(currentPlan).map(function(r){return '<tr><td>'+esc(r.name)+'</td><td>'+fmt0(r.ordered)+'</td><td>'+fmt0(r.placed)+'</td><td>'+fmt0(r.width)+"×"+fmt0(r.height)+'</td><td>'+(r.placed<r.ordered?'<span class="bad">недостача</span>':'<span class="good">OK</span>')+'</td></tr>'}).join("")}
-function renderResultRemnants(){$("result-remnants").innerHTML=(currentPlan.remnants||[]).length?currentPlan.remnants.map(function(r){return '<span class="rem-chip">'+fmt0(r.width)+"×"+fmt0(r.height)+" мм · "+fmt(r.area/1e6,3)+" м²</span>"}).join(""):'<span class="muted">Деловых остатков выше порога нет.</span>'}
+function renderResultRemnants(){
+  var a=currentPlan.remnants||[];
+  $("result-remnants").innerHTML=a.length?a.map(function(r){return '<span class="rem-chip">'+fmt0(r.width)+"×"+fmt0(r.height)+" мм · "+fmt(r.area/1e6,3)+" м² · лист "+r.sheet+"</span>"}).join(""):'<span class="muted">Деловых остатков выше порога нет.</span>';
+}
 function saveResultRemnants(){
-  (currentPlan.remnants||[]).forEach(function(r){state.remnants.push(Object.assign({},r,{materialId:state.job.materialId,materialName:mat().name,thickness:state.job.thickness}))});save();renderRemnants();toast("Остатки сохранены в библиотеку.");
+  var added=0;
+  (currentPlan.remnants||[]).forEach(function(r){
+    if((r.area||0)<=0)return;
+    var sig=[state.job.materialId,state.job.thickness,Math.round(r.width),Math.round(r.height),Math.round(r.area)].join("|");
+    if(state.remnants.some(function(x){return x.signature===sig}))return;
+    state.remnants.push(Object.assign({},r,{materialId:state.job.materialId,materialName:mat().name,thickness:state.job.thickness,signature:sig}));
+    added++;
+  });
+  save();renderRemnants();toast(added?"Сохранено остатков: "+added:"Новых остатков нет.","ok");
 }
 async function run(){
   if(running)return;try{setBusy(true,"Подготовка геометрии...");await new Promise(function(r){setTimeout(r,20)});currentPlan=await buildPlan(state.nesting.strategy);renderPlan();toast(currentPlan.metrics.notPlaced?"Раскладка готова, не размещено "+currentPlan.metrics.notPlaced:"Раскладка готова.")}catch(e){toast(e.message,"error")}finally{setBusy(false)}
@@ -219,7 +283,7 @@ function bind(){
   $("add-part").onclick=function(e){e.stopPropagation();var m=$("preset-menu");m.classList.toggle("hidden")};
   $("preset-menu").querySelectorAll("[data-preset]").forEach(function(b){b.onclick=function(e){e.stopPropagation();addPartPreset(b.dataset.preset)}});$("file").onchange=function(e){importFiles(e.target.files);e.target.value=""};
   document.addEventListener("click",function(e){if(!e.target.closest("#add-part")&&!e.target.closest("#preset-menu"))closePresetMenu()});$("dropzone").ondragover=function(e){e.preventDefault();$("dropzone").classList.add("drag")};$("dropzone").ondragleave=function(){$("dropzone").classList.remove("drag")};$("dropzone").ondrop=function(e){e.preventDefault();$("dropzone").classList.remove("drag");importFiles(e.dataTransfer.files)};
-  ["job-name","material","technology","thickness","spacing","edge","tolerance","rotations","population","mutation","timeLimit","holes","concave","mirror"].forEach(function(id){$(id).addEventListener("change",syncControls)});
+  ["job-name","material","technology","thickness","spacing","edge","tolerance","rotations","population","mutation","timeLimit","minRemnant","holes","concave","mirror"].forEach(function(id){$(id).addEventListener("change",syncControls)});
   $("run").onclick=run;$("compare").onclick=compare;$("save-remnants").onclick=function(){if(currentPlan)saveResultRemnants()};
   $("export-svg").onclick=function(){if(currentPlan)download("nestcut-plan.svg",new Blob([planToSvg(currentPlan)],{type:"image/svg+xml"}))};
   $("export-dxf").onclick=function(){if(currentPlan)download("nestcut-plan.dxf",new Blob([planToDxf(currentPlan)],{type:"application/dxf"}))};
@@ -228,6 +292,7 @@ function bind(){
   $("export-json").onclick=function(){download("nestcut-job.json",new Blob([JSON.stringify({state:state,plan:currentPlan?Object.assign({},currentPlan,{partMap:undefined}):null},null,2)],{type:"application/json"}))};
   $("print").onclick=function(){window.print()};
   $("zoom-in").onclick=function(){mapZoom=Math.min(2.5,mapZoom*1.2);renderMaps()};$("zoom-out").onclick=function(){mapZoom=Math.max(.5,mapZoom/1.2);renderMaps()};$("zoom-fit").onclick=function(){mapZoom=1;renderMaps()};
-  $("clear").onclick=function(){state=createDefaultState();currentPlan=null;save();initControls();renderPlan()};$("zoom-fit").onclick=function(){mapZoom=1;renderMaps()};
+  $("clear").onclick=function(){state=createDefaultState();currentPlan=null;save();initControls();renderPlan()};
+  $("clear-remnants").onclick=function(){state.remnants=[];save();renderRemnants();toast("Библиотека остатков очищена.")};$("zoom-fit").onclick=function(){mapZoom=1;renderMaps()};
 }
 initControls();bind();

@@ -64,7 +64,7 @@
         <div class="field"><label>Популяция GA</label><input id="population" type="number" min="4" step="1"></div>
         <div class="field"><label>Мутация, %</label><input id="mutation" type="number" min="1" max="100"></div>
         <div class="field"><label>Время на вариант, сек</label><input id="timeLimit" type="number" min="0.4" step="0.2"></div>
-        <div></div>
+        <div class="field"><label>Мин. размер остатка, мм</label><input id="minRemnant" type="number" min="10" step="10"></div>
       </div>
       <label class="check"><input id="holes" type="checkbox"> Использовать отверстия (part-in-part)</label>
       <label class="check"><input id="concave" type="checkbox"> Искать вогнутые области</label>
@@ -73,8 +73,8 @@
     </div>
 
     <div class="panel">
-      <div class="panel-head"><b>Остатки материала</b><span class="sub">локальная библиотека</span></div>
-      <div id="remnants"></div>
+      <div class="panel-head"><div><b>Остатки материала</b><span class="sub">пригодные к повторному раскрою куски</span></div><button id="clear-remnants" class="small-btn">Очистить</button></div>
+      <div id="remnants"></div><div class="hint" style="margin-top:8px">Целый лист не считается остатком. В библиотеку попадают только отдельные куски материала не меньше заданного минимального размера.</div>
     </div>
 
     <div class="panel">
@@ -104,8 +104,13 @@
         <div class="metric"><div class="v" id="metric-sheets">0</div><div class="l">Листов</div></div>
         <div class="metric"><div class="v g" id="metric-util">0%</div><div class="l">КИМ</div></div>
         <div class="metric"><div class="v b" id="metric-placed">0 / 0</div><div class="l">Размещено</div></div>
-        <div class="metric"><div class="v r" id="metric-waste">0 м²</div><div class="l">Отход</div></div>
+        <div class="metric"><div class="v r" id="metric-waste">0 м²</div><div class="l">Площадь отхода</div></div>
+        <div class="metric"><div class="v" id="metric-part-area">0 м²</div><div class="l">Площадь деталей</div></div>
+        <div class="metric"><div class="v" id="metric-material-area">0 м²</div><div class="l">Площадь материала</div></div>
+        <div class="metric"><div class="v r" id="metric-waste-percent">0%</div><div class="l">Отход, %</div></div>
         <div class="metric"><div class="v" id="metric-weight">0 кг</div><div class="l">Вес деталей</div></div>
+        <div class="metric"><div class="v" id="metric-material-weight">0 кг</div><div class="l">Вес материала</div></div>
+        <div class="metric"><div class="v r" id="metric-scrap-weight">0 кг</div><div class="l">Вес отхода</div></div>
         <div class="metric"><div class="v r" id="metric-unplaced">0</div><div class="l">Не размещено</div></div>
       </div>
     </div>
