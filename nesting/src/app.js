@@ -101,28 +101,72 @@ function buildInstanceMap(parts){return new Map(parts.map(function(p){return [p.
 function partArea(part){return Math.max(0,contourInfo(part).area)}
 
 async function buildPlan(strategy){
-  syncControls();var original=state.parts,expanded=expandParts(original);if(!expanded.length)throw new Error("Нет деталей для раскроя");
-  var pools=state.sheets.filter(function(s){return Number(s.qty)>0}).map(function(s){return Object.assign({},s)}).sort(function(a,b){return a.priority-b.priority||(b.width*b.height-a.width*a.height)});if(!pools.length)throw new Error("Нет доступных листов");
+  syncControls();
+  var original=state.parts,expanded=expandParts(original);
+  if(!expanded.length)throw new Error("Нет деталей для раскроя");
+  var pools=state.sheets.filter(function(s){return Number(s.qty)>0})
+    .map(function(s){return Object.assign({},s)})
+    .sort(function(a,b){return a.priority-b.priority||(b.width*b.height-a.width*a.height)});
+  if(!pools.length)throw new Error("Нет доступных листов");
+
   var remaining=expanded.slice(),sheets=[],steps=0;
-  var vars={fast:{populationSize:8,mutationRate:8,rotations:state.nesting.rotations},balanced:{populationSize:state.nesting.populationSize,mutationRate:state.nesting.mutationRate,rotations:state.nesting.rotations},dense:{populationSize:20,mutationRate:16,rotations:Math.max(8,state.nesting.rotations)}};
-  var uniqueTypes=new Set(expanded.map(function(p){return JSON.stringify((p.geometry?.loops||[]).map(function(loop){return loop.map(function(q){return [Math.round(q.x*100),Math.round(q.y*100)]})}))})).size;
-  var cfg=Object.assign({},state.nesting,vars[strategy||"balanced"],{spacing:state.nesting.spacing+Math.max(0,Number(tech().kerf)||0),populationSize:Math.max(6,Math.min(Number(state.nesting.populationSize||14),uniqueTypes<=3?8:uniqueTypes<=8?10:14)),stopOnFull:strategy!=="dense"});
-  while(remaining.length&&steps<50){
+  var vars={
+    fast:{populationSize:8,mutationRate:8,rotations:state.nesting.rotations},
+    balanced:{populationSize:state.nesting.populationSize,mutationRate:state.nesting.mutationRate,rotations:state.nesting.rotations},
+    dense:{populationSize:20,mutationRate:16,rotations:Math.max(8,state.nesting.rotations)}
+  };
+  var uniqueTypes=new Set(expanded.map(function(p){
+    return JSON.stringify((p.geometry?.loops||[]).map(function(loop){
+      return loop.map(function(q){return [Math.round(q.x*100),Math.round(q.y*100)]})
+    }))
+  })).size;
+  var basePopulation=Math.max(6,Math.min(Number(state.nesting.populationSize||14),uniqueTypes<=3?8:uniqueTypes<=8?10:14));
+  var cfg=Object.assign({},state.nesting,vars[strategy||"balanced"],{
+    spacing:state.nesting.spacing+Math.max(0,Number(tech().kerf)||0),
+    populationSize:basePopulation,
+    stopOnFull:strategy!=="dense",
+    maxBins:1
+  });
+
+  while(remaining.length&&steps<200){
     var best=null;
-    for(const pool of pools.filter(function(s){return s.qty>0})){
-      var r=await runNest(remaining,{width:pool.width,height:pool.height},cfg,{timeLimitMs:cfg.timeLimitMs,stopOnFull:cfg.stopOnFull});
-      var capped=r.sheets.slice(0,Math.max(1,Math.round(pool.qty))),ids=new Set(capped.flatMap(function(s){return s.items.map(function(x){return x.instanceId})})),placed=ids.size;
-      if(!placed)continue;
-      var used=capped.length*pool.width*pool.height,score=placed*1000000-capped.length*20000+(placed/Math.max(1,used))*100000;
-      if(!best||score>best.score)best={pool:pool,capped:capped,ids:ids,score:score};
+    var available=pools.filter(function(s){return s.qty>0});
+    if(!available.length)break;
+
+    for(const pool of available){
+      if(running)$("busy-text").textContent="Поиск раскладки: лист "+(steps+1)+" · проверка "+pool.width+"×"+pool.height+" · осталось деталей "+remaining.length;
+      var result=await runNest(
+        remaining,
+        {width:pool.width,height:pool.height},
+        cfg,
+        {timeLimitMs:cfg.timeLimitMs,stopOnFull:false}
+      );
+      var sheet=result.sheets&&result.sheets[0];
+      if(!sheet||!sheet.items||!sheet.items.length)continue;
+
+      var ids=new Set(sheet.items.map(function(x){return x.instanceId}));
+      var placed=ids.size;
+      var area=sheet.items.reduce(function(sum,it){
+        var p=expanded.find(function(x){return x.instanceId===it.instanceId});
+        return sum+(p?partArea(p):0);
+      },0);
+      var utilization=area/Math.max(1,pool.width*pool.height);
+      var score=placed*1000000+utilization*100000-pool.priority*1000;
+      if(!best||score>best.score)best={pool:pool,sheet:Object.assign({},sheet,{width:pool.width,height:pool.height,name:pool.name,source:pool.source||"stock"}),ids:ids,score:score};
     }
+
     if(!best)break;
-    best.capped.forEach(function(s){sheets.push(Object.assign({},s,{name:best.pool.name,source:best.pool.source||"stock"}))});
-    remaining=remaining.filter(function(p){return !best.ids.has(p.instanceId)});best.pool.qty-=best.capped.length;steps++;
-    if(running)$("busy-text").textContent="Оптимизация: размещено "+(expanded.length-remaining.length)+" из "+expanded.length;
+    sheets.push(best.sheet);
+    remaining=remaining.filter(function(p){return !best.ids.has(p.instanceId)});
+    best.pool.qty-=1;
+    steps++;
   }
-  var map=buildInstanceMap(expanded),plan={job:clone(state.job),thickness:state.job.thickness,totalParts:expanded.length,sheets:sheets,remaining:remaining,partMap:map,originalParts:original,remnants:[],strategy:strategy};
-  plan.metrics=calculateMetrics(plan,mat());plan.remnants=calculateRemnants(plan,state.options.minRemnant*state.options.minRemnant);return plan;
+
+  var map=buildInstanceMap(expanded);
+  var plan={job:clone(state.job),thickness:state.job.thickness,totalParts:expanded.length,sheets:sheets,remaining:remaining,partMap:map,originalParts:original,remnants:[],strategy:strategy};
+  plan.metrics=calculateMetrics(plan,mat());
+  plan.remnants=calculateRemnants(plan,state.options.minRemnant*state.options.minRemnant);
+  return plan;
 }
 function resolvePart(it){if(!currentPlan)return null;return currentPlan.partMap.get(it.instanceId)||currentPlan.partMap.get(String(it.instanceId||"").split("#")[0])||null}
 function sheetKim(sh){var used=sh.items.reduce(function(a,it){var p=resolvePart(it);return a+(p?partArea(p):0)},0);return used/(sh.width*sh.height)*100}
