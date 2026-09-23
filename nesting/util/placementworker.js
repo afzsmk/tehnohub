@@ -74,6 +74,8 @@ function PlacementWorker(binPolygon, paths, ids, rotations, config, nfpCache){
 			r.rotation = paths[i].rotation;
 			r.source = paths[i].source;
 			r.id = paths[i].id;
+			r.nestKey = paths[i].nestKey || paths[i].id;
+			r.partNestKey = paths[i].partNestKey || paths[i].nestKey || paths[i].id;
 			rotated.push(r);
 		}
 		
