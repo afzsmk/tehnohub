@@ -846,23 +846,53 @@
 		
 		this.population = [{placement: adam, rotation: angles}];
 		
-		// Seed the population with deterministic orientation patterns.
-		// This gives repeated concave/simple parts a chance to alternate orientation
-		// before random mutation begins, which is important for dense production nests.
-		var seedCount = Math.max(0, Math.min(8, config.populationSize - 1));
+		// Seed the GA with several deterministic ordering strategies.
+		// Area-only ordering tends to fill a sheet with one repeated part type.
+		// Interleaved type ordering gives triangles/L-parts and other concave shapes
+		// an opportunity to occupy the voids between larger parts from generation 1.
 		var orientationCount = Math.max(1, this.config.rotations);
-		for(var seed=1; seed<=seedCount; seed++){
-			var placementSeed = adam.slice(0);
-			var rotationSeed = [];
-			for(var si=0; si<placementSeed.length; si++){
-				var phase = (seed * (si % orientationCount + 1)) % orientationCount;
-				rotationSeed.push(phase * (360/orientationCount));
+		var groups = {};
+		for(var gi=0; gi<adam.length; gi++){
+			var gkey = adam[gi].partNestKey || adam[gi].nestKey || ('id:'+adam[gi].id);
+			if(!groups[gkey]) groups[gkey] = [];
+			groups[gkey].push(adam[gi]);
+		}
+		var groupKeys = Object.keys(groups);
+		groupKeys.sort(function(a,b){
+			var aa=Math.abs(GeometryUtil.polygonArea(groups[a][0]));
+			var bb=Math.abs(GeometryUtil.polygonArea(groups[b][0]));
+			return bb-aa;
+		});
+		var seedLimit = Math.max(0, Math.min(10, config.populationSize-1));
+		for(var seed=1; seed<=seedLimit; seed++){
+			var queues = groupKeys.map(function(k){ return groups[k].slice(0); });
+			var placementSeed = [];
+			var cursor = seed % Math.max(1,groupKeys.length);
+			while(placementSeed.length < adam.length){
+				var picked = false;
+				for(var step=0; step<groupKeys.length; step++){
+					var idx=(cursor+step)%groupKeys.length;
+					var q=queues[idx];
+					if(q.length){
+						var takeFromEnd = (seed % 2 === 0);
+						placementSeed.push(takeFromEnd ? q.pop() : q.shift());
+						cursor=(idx+1)%groupKeys.length;
+						picked=true;
+						break;
+					}
+				}
+				if(!picked)break;
 			}
-			this.population.push({placement: placementSeed, rotation: rotationSeed});
+			var rotationSeed=[];
+			for(var si=0; si<placementSeed.length; si++){
+				var phase=(seed*(si%orientationCount+1))%orientationCount;
+				rotationSeed.push(phase*(360/orientationCount));
+			}
+			this.population.push({placement:placementSeed,rotation:rotationSeed});
 		}
 		while(this.population.length < config.populationSize){
-			var mutant = this.mutate(this.population[this.population.length % Math.max(1, seedCount + 1)]);
-			this.population.push(mutant);
+			var base=this.population[1+(this.population.length%Math.max(1,this.population.length-1))] || this.population[0];
+			this.population.push(this.mutate(base));
 		}
 	}
 	
