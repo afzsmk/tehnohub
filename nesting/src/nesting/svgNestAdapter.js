@@ -50,8 +50,10 @@ export async function runNest(parts, bin, config={}, opts={}){
     curveTolerance:Number(config.curveTolerance||0.35),
     useHoles:!!config.useHoles,
     exploreConcave:!!config.exploreConcave,
-    maxBins:Number(config.maxBins)>0?Number(config.maxBins):Infinity
+    maxBins:Number(config.maxBins)>0?Number(config.maxBins):Infinity,
+    cacheNamespace:String(config.cacheNamespace||"")
   });
+  if(window.SvgNest.setNfpCacheStore) window.SvgNest.setNfpCacheStore(config.nfpCacheStore||{});
 
   return await new Promise(resolve=>{
     let best=null, finished=false;
