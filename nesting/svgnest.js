@@ -33,7 +33,8 @@
 			populationSize: 10,
 			mutationRate: 10,
 			useHoles: false,
-			exploreConcave: false
+			exploreConcave: false,
+			maxBins: Infinity
 		};
 		
 		this.working = false;
@@ -114,6 +115,9 @@
 			
 			if('exploreConcave' in c){
 				config.exploreConcave = !!c.exploreConcave;
+			}
+			if('maxBins' in c){
+				config.maxBins = Number(c.maxBins) > 0 ? Number(c.maxBins) : Infinity;
 			}
 			
 			SvgParser.config({ tolerance: config.curveTolerance});
