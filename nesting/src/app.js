@@ -110,6 +110,7 @@ async function buildPlan(strategy){
   if(!pools.length)throw new Error("Нет доступных листов");
 
   var remaining=expanded.slice(),sheets=[],steps=0;
+  var nfpStores=new Map();
   var vars={
     fast:{populationSize:8,mutationRate:8,rotations:state.nesting.rotations},
     balanced:{populationSize:state.nesting.populationSize,mutationRate:state.nesting.mutationRate,rotations:state.nesting.rotations},
@@ -135,10 +136,20 @@ async function buildPlan(strategy){
 
     for(const pool of available){
       if(running)$("busy-text").textContent="Поиск раскладки: лист "+(steps+1)+" · проверка "+pool.width+"×"+pool.height+" · осталось деталей "+remaining.length;
+      var profileKey=[
+        pool.width,pool.height,cfg.spacing,cfg.curveTolerance,cfg.rotations,
+        cfg.useHoles,cfg.exploreConcave
+      ].join("|");
+      if(!nfpStores.has(profileKey)) nfpStores.set(profileKey,{});
+      var sheetCfg=Object.assign({},cfg,{
+        cacheNamespace:profileKey,
+        nfpCacheStore:nfpStores.get(profileKey),
+        maxBins:1
+      });
       var result=await runNest(
         remaining,
         {width:pool.width,height:pool.height},
-        cfg,
+        sheetCfg,
         {timeLimitMs:cfg.timeLimitMs,stopOnFull:cfg.stopOnFull}
       );
       var sheet=result.sheets&&result.sheets[0];
