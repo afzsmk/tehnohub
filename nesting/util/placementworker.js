@@ -53,6 +53,7 @@ function PlacementWorker(binPolygon, paths, ids, rotations, config, nfpCache){
 	this.rotations = rotations;
 	this.config = config;
 	this.nfpCache = nfpCache || {};
+	this.maxBins = config && Number(config.maxBins) > 0 ? Number(config.maxBins) : Infinity;
 	
 	// return a placement for the paths/rotations given
 	// happens inside a webworker
@@ -276,6 +277,9 @@ function PlacementWorker(binPolygon, paths, ids, rotations, config, nfpCache){
 			
 			if(placements && placements.length > 0){
 				allplacements.push(placements);
+				if(allplacements.length >= this.maxBins){
+					break;
+				}
 			}
 			else{
 				break; // something went wrong
