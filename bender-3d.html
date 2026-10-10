@@ -3,9 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Калькулятор развёртки листового металла · Durma AD-R 40175</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <title>K-Bend · 3D САПР &amp; Симулятор листогибочного пресса · Durma AD-R 40175</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 105'%3E%3Cdefs%3E%3ClinearGradient id='g1' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23fbbf24'/%3E%3Cstop offset='100%25' stop-color='%23f59e0b'/%3E%3C/linearGradient%3E%3ClinearGradient id='g2' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%2338bdf8'/%3E%3Cstop offset='100%25' stop-color='%232563eb'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect x='6' y='8' width='16' height='84' rx='4' fill='%2364748b' stroke='%2394a3b8' stroke-width='1.5'/%3E%3Cline x1='14' y1='20' x2='14' y2='80' stroke='%23cbd5e1' stroke-width='2' stroke-dasharray='3 3'/%3E%3Cpath d='M 28 50 L 70 16 L 82 28 L 40 62 Z' fill='url(%23g1)'/%3E%3Cpath d='M 40 58 L 82 92 L 70 104 L 28 70 Z' fill='url(%23g2)'/%3E%3Ccircle cx='34' cy='60' r='7.5' fill='%23ffffff' stroke='%23f59e0b' stroke-width='2.5'/%3E%3Ccircle cx='34' cy='60' r='3' fill='%230f172a'/%3E%3C/svg%3E">
+    <script src="three.min.js"></script>
+    <script src="OrbitControls.js"></script>
+    <script>
+        if (typeof THREE === 'undefined') {
+            document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>');
+            document.write('<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"><\/script>');
+        }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&display=swap" rel="stylesheet">
@@ -15,46 +22,88 @@
             background: #0c141f;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 1.2rem;
+            height: 100vh;
+            overflow: hidden;
             color: #eef3f9;
         }
         .app {
             display: flex;
             width: 100%;
-            max-width: 1450px;
-            gap: 1.2rem;
-            background: rgba(18, 28, 40, 0.85);
-            backdrop-filter: blur(24px);
-            border-radius: 2rem;
-            padding: 1.5rem;
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            box-shadow: 0 30px 50px rgba(0, 0, 0, 0.7);
-            flex-wrap: wrap;
+            height: 100vh;
+            gap: 0;
+            background: #0c141f;
         }
         .sidebar { 
-            flex: 0 0 430px; 
-            background: rgba(10, 18, 28, 0.5); 
-            border-radius: 1.5rem; 
-            padding: 1.5rem; 
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            max-height: 90vh;
+            flex: 0 0 420px; 
+            background: rgba(10, 18, 28, 0.95); 
+            padding: 1.2rem; 
+            border-right: 1px solid rgba(255, 255, 255, 0.06);
+            height: 100vh;
             overflow-y: auto;
         }
         .sidebar::-webkit-scrollbar { width: 4px; }
         .sidebar::-webkit-scrollbar-track { background: transparent; }
         .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
-        .main-area { flex: 1 1 550px; min-width: 450px; display: flex; flex-direction: column; background: #0a121e; border-radius: 1.5rem; padding: 1.2rem; border: 1px solid rgba(255, 255, 255, 0.06); }
-        .header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.2rem; }
-        .header svg { width: 28px; height: 28px; fill: none; stroke: #60a5fa; stroke-width: 2; }
-        h1 { font-size: 1.5rem; font-weight: 500; letter-spacing: -0.3px; color: #fff; }
-
-        .subtitle { font-size: 0.75rem; color: #8899b5; margin-bottom: 1.5rem; }
-        .input-group { margin-bottom: 1rem; }
+        .main-area { flex: 1; min-width: 0; display: flex; flex-direction: column; background: #0a121e; padding: 0.8rem; }
+        .brand-header {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            margin-bottom: 1.1rem;
+            padding-bottom: 0.85rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .brand-logo {
+            width: 44px;
+            height: 44px;
+            flex-shrink: 0;
+            filter: drop-shadow(0 2px 10px rgba(245, 158, 11, 0.3));
+        }
+        .brand-text {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+        .brand-title {
+            font-size: 1.35rem;
+            font-weight: 800;
+            letter-spacing: -0.4px;
+            color: #f8fafc;
+            line-height: 1.1;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .brand-k {
+            color: #f59e0b;
+            text-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
+        }
+        .brand-hyphen {
+            color: #94a3b8;
+        }
+        .brand-badge {
+            font-size: 0.62rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: rgba(245, 158, 11, 0.15);
+            border: 1px solid rgba(245, 158, 11, 0.35);
+            color: #fbbf24;
+            letter-spacing: 0.5px;
+        }
+        .brand-subtitle {
+            font-size: 0.7rem;
+            color: #94a3b8;
+            letter-spacing: 0.2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .input-group { margin-bottom: 0.8rem; }
         .label-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.3rem; }
-        label { font-size: 0.9rem; font-weight: 500; letter-spacing: 0.3px; color: #d0ddf0; display: flex; align-items: center; gap: 6px; }
+        label { font-size: 0.85rem; font-weight: 500; letter-spacing: 0.3px; color: #d0ddf0; display: flex; align-items: center; gap: 6px; }
         .preset-group { display: flex; gap: 0.4rem; flex-wrap: wrap; }
         .preset-btn {
             background: rgba(100, 150, 200, 0.2);
@@ -72,7 +121,7 @@
         
         #profilePresets .preset-btn { padding: 0.4rem 0.6rem; display: flex; align-items: center; justify-content: center; }
 
-        select, input { width: 100%; padding: 0.65rem 0.9rem; border-radius: 0.8rem; background: rgba(0, 0, 0, 0.45); border: 1px solid rgba(255, 255, 255, 0.12); color: white; font-size: 0.9rem; outline: none; transition: 0.2s; }
+        select, input { width: 100%; padding: 0.55rem 0.8rem; border-radius: 0.7rem; background: rgba(0, 0, 0, 0.45); border: 1px solid rgba(255, 255, 255, 0.12); color: white; font-size: 0.85rem; outline: none; transition: 0.2s; }
         select:focus, input:focus { border-color: #3b82f6; box-shadow: 0 0 12px rgba(59, 130, 246, 0.3); }
         .input-row { display: flex; gap: 0.5rem; align-items: center; }
         .input-row input[type=number] { flex: 1; }
@@ -92,15 +141,15 @@
             50% { background: rgba(255, 100, 50, 0.95); border-color: #ffcc44; }
             100% { background: rgba(220, 60, 50, 0.7); border-color: #ffaa00; }
         }
-        .param-panel { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; background: #111c2b; border-radius: 1rem; padding: 0.7rem 1rem; margin-bottom: 0.8rem; border: 1px solid rgba(255,255,255,0.06); }
-        .param-item { display: flex; flex-direction: column; align-items: center; gap: 0.15rem; background: rgba(255,255,255,0.03); padding: 0.45rem 0.8rem; border-radius: 0.7rem; border: 1px solid transparent; }
+        .param-panel { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; background: #111c2b; border-radius: 0.8rem; padding: 0.5rem 0.8rem; margin-bottom: 0.5rem; border: 1px solid rgba(255,255,255,0.06); }
+        .param-item { display: flex; flex-direction: column; align-items: center; gap: 0.15rem; background: rgba(255,255,255,0.03); padding: 0.4rem 0.7rem; border-radius: 0.6rem; border: 1px solid transparent; }
         .param-icon { display: flex; align-items: center; opacity: 0.8; }
-        .param-value { font-size: 1.1rem; font-weight: 600; color: #fff; }
-        .param-label { font-size: 0.7rem; text-transform: uppercase; color: #8b9bb5; }
+        .param-value { font-size: 1rem; font-weight: 600; color: #fff; }
+        .param-label { font-size: 0.65rem; text-transform: uppercase; color: #8b9bb5; }
         
         #resLength {
             color: #4ade80 !important;
-            font-size: 1.25rem;
+            font-size: 1.15rem;
             font-weight: 700;
             text-shadow: 0 0 10px rgba(74, 222, 128, 0.3);
         }
@@ -117,36 +166,34 @@
             box-shadow: 0 0 15px rgba(74, 222, 128, 0.3);
             transform: translateY(-1px);
         }
-        #btnExportDxf:active {
-            transform: translateY(1px);
-        }
+        #btnExportDxf:active { transform: translateY(1px); }
 
         #resDieSelect {
-            background: transparent; border: none; color: #60a5fa; font-size: 1.1rem; font-weight: 700;
+            background: transparent; border: none; color: #60a5fa; font-size: 1rem; font-weight: 700;
             outline: none; cursor: pointer; padding: 0; font-family: inherit; width: 50px; text-align: center;
             border-bottom: 1px dashed rgba(96, 165, 250, 0.6); -webkit-appearance: none; appearance: none;
         }
         #resDieSelect option { background: #111c2b; color: white; font-weight: normal; }
 
-        .view-toggle { display: flex; gap: 0.5rem; margin-bottom: 0.8rem; }
-        .view-btn { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #a0b3cc; padding: 0.5rem 1rem; border-radius: 0.7rem; cursor: pointer; font-size: 0.8rem; font-weight: 500; transition: 0.2s; }
+        .view-toggle { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; }
+        .view-btn { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #a0b3cc; padding: 0.45rem 0.9rem; border-radius: 0.6rem; cursor: pointer; font-size: 0.8rem; font-weight: 500; transition: 0.2s; }
         .view-btn.active { background: #2563eb; border-color: #2563eb; color: white; }
-        .canvas-wrapper { flex: 1; position: relative; background: #060d16; border-radius: 1rem; overflow: hidden; cursor: grab; min-height: 520px; }
+        .canvas-wrapper { flex: 1; position: relative; background: #060d16; border-radius: 0.8rem; overflow: hidden; cursor: grab; min-height: 200px; }
         .canvas-wrapper:active { cursor: grabbing; }
         .canvas-wrapper svg#flatSvg { width: 100%; height: 100%; display: block; position: absolute; top:0; left:0; }
         .view-controls {
-            position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
-            display: flex; gap: 6px; z-index: 5;
-            background: rgba(10, 15, 25, 0.75); backdrop-filter: blur(12px);
-            padding: 6px 10px; border-radius: 12px;
+            position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 5px; z-index: 5;
+            background: rgba(10, 15, 25, 0.8); backdrop-filter: blur(12px);
+            padding: 5px 8px; border-radius: 10px;
             border: 1px solid rgba(255,255,255,0.08);
         }
         .view-btn-3d {
             display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
             background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06);
-            color: #7a8ba0; padding: 6px 10px; border-radius: 8px;
-            cursor: pointer; transition: all 0.2s; font-size: 0.65rem; font-weight: 500;
-            min-width: 52px; height: 48px;
+            color: #7a8ba0; padding: 5px 9px; border-radius: 7px;
+            cursor: pointer; transition: all 0.2s; font-size: 0.6rem; font-weight: 500;
+            min-width: 48px; height: 44px;
         }
         .view-btn-3d:hover { background: rgba(100, 150, 200, 0.15); color: #c0d4f0; border-color: rgba(100,150,200,0.3); }
         .view-btn-3d.active { background: rgba(37, 99, 235, 0.2); color: #60a5fa; border-color: rgba(96, 165, 250, 0.4); }
@@ -155,15 +202,137 @@
         .view-btn-3d.help-btn:hover { background: rgba(52, 211, 153, 0.25); color: #6ee7b7; border-color: rgba(52, 211, 153, 0.5); }
         .view-btn-3d.help-btn.active { background: rgba(52, 211, 153, 0.4); color: #ffffff; }
 
+        .view-btn-3d.punch-btn { background: rgba(168, 85, 247, 0.1); color: #a78bfa; border-color: rgba(168, 85, 247, 0.3); }
+        .view-btn-3d.punch-btn:hover { background: rgba(168, 85, 247, 0.25); color: #c4b5fd; border-color: rgba(168, 85, 247, 0.5); }
+        .view-btn-3d.punch-btn.active { background: rgba(168, 85, 247, 0.35); color: #e9d5ff; border-color: rgba(168, 85, 247, 0.6); }
+        .view-btn-3d.punch-btn.collision { background: rgba(239, 68, 68, 0.25); color: #fca5a5; border-color: rgba(239, 68, 68, 0.5); animation: pulseCollision 1.5s ease-in-out infinite; }
+
+        .view-btn-3d.punch-flip-btn {
+            background: rgba(168, 85, 247, 0.15);
+            color: #c4b5fd;
+            border-color: rgba(168, 85, 247, 0.4);
+            transition: all 0.2s;
+        }
+        .view-btn-3d.punch-flip-btn:hover {
+            background: rgba(168, 85, 247, 0.3);
+            color: #ffffff;
+            border-color: rgba(168, 85, 247, 0.6);
+        }
+        .view-btn-3d.punch-flip-btn.active {
+            background: rgba(147, 51, 234, 0.4);
+            color: #f3e8ff;
+            border-color: #c084fc;
+        }
+
+        @keyframes pulseCollision {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+            50% { box-shadow: 0 0 12px 2px rgba(239, 68, 68, 0.4); }
+        }
+
         .view-btn-3d svg { opacity: 0.8; }
         .view-btn-3d:hover svg, .view-btn-3d.active svg { opacity: 1; }
 
+        .collision-badge {
+            position: absolute; top: 12px; right: 12px; z-index: 10;
+            display: none; align-items: center; gap: 6px;
+            background: rgba(220, 38, 38, 0.85); backdrop-filter: blur(8px);
+            border: 1px solid rgba(248, 113, 113, 0.6);
+            color: #fff; font-size: 0.78rem; font-weight: 600;
+            padding: 6px 12px; border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4);
+            animation: fadeIn 0.25s ease-out;
+        }
+        .collision-badge.show { display: flex; }
+        .collision-badge svg { flex-shrink: 0; }
+
+        .punch-hint {
+            position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 8;
+            display: none; align-items: center; gap: 6px;
+            background: rgba(168, 85, 247, 0.15); backdrop-filter: blur(8px);
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            color: #c4b5fd; font-size: 0.72rem; font-weight: 500;
+            padding: 5px 10px; border-radius: 6px;
+        }
+        .punch-hint.show { display: flex; }
+
+        /* Панель симулятора гибки */
+        .sim-bar {
+            position: absolute; top: 12px; left: 14px; z-index: 10;
+            display: flex; align-items: center; gap: 8px;
+            background: rgba(10, 16, 26, 0.88); backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 9px; padding: 4px 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            font-size: 0.75rem;
+        }
+        .sim-status {
+            display: flex; align-items: center; gap: 6px;
+            font-weight: 600; color: #d0ddf0;
+            user-select: none;
+        }
+        .status-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            display: inline-block; flex-shrink: 0;
+        }
+        .status-dot.status-ok { background: #10b981; box-shadow: 0 0 8px #10b981; }
+        .status-dot.status-fail { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
+        .status-dot.status-calc { background: #f59e0b; box-shadow: 0 0 8px #f59e0b; }
+        .sim-divider { width: 1px; height: 18px; background: rgba(255, 255, 255, 0.12); }
+        .sim-controls { display: flex; align-items: center; gap: 4px; }
+        .sim-btn {
+            background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #d0ddf0; padding: 4px 8px; border-radius: 6px;
+            cursor: pointer; font-size: 0.72rem; font-weight: 500;
+            display: flex; align-items: center; gap: 4px;
+            transition: all 0.15s; user-select: none;
+        }
+        .sim-btn:hover { background: rgba(59, 130, 246, 0.25); color: #fff; border-color: #60a5fa; }
+        .sim-btn.active { background: #2563eb; color: #fff; border-color: #60a5fa; }
+        .sim-btn.sim-step-btn { padding: 4px 6px; min-width: 22px; justify-content: center; }
+        .sim-step-text {
+            font-size: 0.72rem; color: #cbd5e1; font-weight: 600;
+            padding: 0 4px; min-width: 80px; text-align: center;
+        }
+        .sim-speed-group {
+            display: flex; align-items: center; gap: 2px;
+            background: rgba(0, 0, 0, 0.3); border-radius: 6px; padding: 2px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .sim-speed-btn {
+            background: transparent; border: none; color: #94a3b8;
+            font-size: 0.68rem; font-weight: 600; padding: 2px 6px;
+            border-radius: 4px; cursor: pointer; transition: all 0.15s;
+        }
+        .sim-speed-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.08); }
+        .sim-speed-btn.active { color: #60a5fa; background: rgba(59, 130, 246, 0.25); }
+
+        .sim-scrubber-wrap {
+            display: flex; flex-direction: column; gap: 2px; min-width: 140px; justify-content: center;
+        }
+        .sim-scrubber-wrap input[type=range] {
+            -webkit-appearance: none; appearance: none;
+            width: 100%; height: 4px; border-radius: 2px;
+            background: rgba(255, 255, 255, 0.18); outline: none; cursor: pointer;
+        }
+        .sim-scrubber-wrap input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none;
+            width: 11px; height: 11px; border-radius: 50%;
+            background: #60a5fa; cursor: pointer; box-shadow: 0 0 6px rgba(96, 165, 250, 0.8);
+            transition: transform 0.1s;
+        }
+        .sim-scrubber-wrap input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.25);
+        }
+        .sim-phase-text {
+            font-size: 0.65rem; color: #94a3b8; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+
         .help-overlay {
             position: absolute;
-            bottom: 75px; 
-            right: 16px;
+            bottom: 70px; 
+            right: 12px;
             width: 340px;
-            max-height: calc(100% - 90px);
+            max-height: calc(100% - 85px);
             overflow-y: auto;
             background: rgba(15, 23, 35, 0.9);
             backdrop-filter: blur(15px);
@@ -183,16 +352,11 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
         .close-help {
-            position: absolute;
-            top: 12px;
-            right: 12px;
+            position: absolute; top: 12px; right: 12px;
             background: rgba(255,255,255,0.05);
             border: 1px solid rgba(255,255,255,0.1);
-            color: #8899b5;
-            cursor: pointer;
-            font-size: 14px;
-            width: 24px; height: 24px;
-            border-radius: 50%;
+            color: #8899b5; cursor: pointer; font-size: 14px;
+            width: 24px; height: 24px; border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
             transition: 0.2s;
         }
@@ -208,59 +372,52 @@
         .fix-link { text-decoration: underline; cursor: pointer; color: #60a5fa; font-weight: 700; }
         
         .inner-indicator { 
-            font-size: 0.72rem; 
+            font-size: 0.7rem; 
             color: #34d399; 
             background: rgba(52, 211, 153, 0.12);
             border: 1px solid rgba(52, 211, 153, 0.25);
-            padding: 0.4rem 0.55rem;
-            border-radius: 0.6rem;
+            padding: 0.35rem 0.5rem;
+            border-radius: 0.5rem;
             white-space: nowrap;
             font-weight: 600;
             letter-spacing: 0.2px;
             display: inline-block;
             box-shadow: inset 0 1px 2px rgba(0,0,0,0.2);
-            width: 90px;
+            width: 86px;
             text-align: center;
         }
 
         .bend-item {
             background: rgba(249, 115, 22, 0.08);
             border: 1px solid rgba(249, 115, 22, 0.2);
-            border-radius: 0.8rem;
-            padding: 0.6rem 0.8rem;
-            margin-bottom: 0.4rem;
+            border-radius: 0.7rem;
+            padding: 0.5rem 0.7rem;
+            margin-bottom: 0.3rem;
+            cursor: pointer;
+            transition: box-shadow 0.15s;
         }
+        .bend-item:hover { box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.4); }
+        .bend-item.selected { box-shadow: 0 0 0 2px #f97316; }
         .bend-item-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 0.4rem;
+            display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.3rem;
         }
         .bend-item-label {
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: #f97316;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            font-size: 0.72rem; font-weight: 600; color: #f97316;
+            text-transform: uppercase; letter-spacing: 0.5px;
         }
         .bend-item-actions { display: flex; gap: 0.3rem; align-items: center; flex-wrap: wrap; }
         .angle-preset {
             font-size: 0.65rem !important;
             padding: 0.15rem 0.4rem !important;
-            min-width: 32px;
-            text-align: center;
+            min-width: 32px; text-align: center;
         }
         .dir-btn {
             display: flex; align-items: center; gap: 4px;
             background: rgba(249, 115, 22, 0.2);
             border: 1px solid rgba(249, 115, 22, 0.4);
-            color: #fbbf24;
-            font-size: 0.7rem;
-            padding: 0.2rem 0.5rem;
-            border-radius: 0.5rem;
-            cursor: pointer;
-            transition: 0.15s;
-            font-weight: 600;
+            color: #fbbf24; font-size: 0.7rem;
+            padding: 0.2rem 0.5rem; border-radius: 0.5rem;
+            cursor: pointer; transition: 0.15s; font-weight: 600;
         }
         .dir-btn:hover { background: #f97316; color: white; }
         .dir-btn.dir-up { background: rgba(52, 211, 153, 0.2); border-color: rgba(52, 211, 153, 0.4); color: #34d399; }
@@ -271,48 +428,36 @@
             display: flex; align-items: center; justify-content: center;
             background: rgba(220, 60, 50, 0.15);
             border: 1px solid rgba(220, 60, 50, 0.3);
-            color: #f87171;
-            padding: 0.2rem;
-            border-radius: 0.5rem;
-            cursor: pointer;
-            transition: 0.15s;
+            color: #f87171; padding: 0.2rem; border-radius: 0.5rem;
+            cursor: pointer; transition: 0.15s;
         }
         .del-bend-btn:hover { background: #dc3c32; color: white; }
 
         .segment-item {
             background: rgba(30, 59, 92, 0.3);
             border: 1px solid rgba(92, 123, 156, 0.25);
-            border-radius: 0.8rem;
-            padding: 0.6rem 0.8rem;
-            margin-bottom: 0.3rem;
+            border-radius: 0.7rem;
+            padding: 0.5rem 0.7rem;
+            margin-bottom: 0.2rem;
         }
         .segment-label {
-            font-size: 0.72rem;
-            font-weight: 600;
-            color: #60a5fa;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 0.3rem;
+            font-size: 0.7rem; font-weight: 600; color: #60a5fa;
+            text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.25rem;
         }
 
-        .add-btn-row { display: flex; gap: 0.4rem; margin-top: 0.6rem; }
+        .add-btn-row { display: flex; gap: 0.4rem; margin-top: 0.5rem; }
         .add-btn {
             flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
             background: rgba(100, 150, 200, 0.2);
             border: 1px solid rgba(100, 150, 200, 0.4);
-            color: #c0d4f0;
-            font-size: 0.75rem;
-            padding: 0.35rem 0.6rem;
-            border-radius: 0.6rem;
-            cursor: pointer;
-            transition: 0.15s;
-            font-weight: 600;
+            color: #c0d4f0; font-size: 0.75rem;
+            padding: 0.3rem 0.6rem; border-radius: 0.5rem;
+            cursor: pointer; transition: 0.15s; font-weight: 600;
         }
         .add-btn:hover { background: rgba(100, 150, 200, 0.35); border-color: #c0d4f0; }
 
         .save-load-section {
-            margin-top: 0.8rem;
-            padding-top: 0.8rem;
+            margin-top: 0.6rem; padding-top: 0.6rem;
             border-top: 1px solid rgba(255,255,255,0.06);
         }
         .save-row { display: flex; gap: 0.4rem; margin-bottom: 0.5rem; }
@@ -320,12 +465,8 @@
         .save-btn, .load-btn, .delete-btn {
             padding: 0.4rem;
             display: flex; align-items: center; justify-content: center;
-            border-radius: 0.7rem;
-            font-size: 0.75rem;
-            font-weight: 600;
-            cursor: pointer;
-            border: 1px solid;
-            transition: 0.15s;
+            border-radius: 0.7rem; font-size: 0.75rem; font-weight: 600;
+            cursor: pointer; border: 1px solid; transition: 0.15s;
         }
         .save-btn { background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.4); color: #60a5fa; }
         .save-btn:hover { background: #2563eb; color: white; }
@@ -334,42 +475,63 @@
         .delete-btn { background: rgba(220, 60, 50, 0.15); border-color: rgba(220, 60, 50, 0.3); color: #f87171; }
         .delete-btn:hover { background: #dc3c32; color: white; }
 
-        .profiles-list {
-            max-height: 120px;
-            overflow-y: auto;
-            margin-bottom: 0.4rem;
-        }
+        .profiles-list { max-height: 100px; overflow-y: auto; margin-bottom: 0.4rem; }
         .profiles-list::-webkit-scrollbar { width: 3px; }
         .profiles-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
         .profile-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0.35rem 0.6rem;
-            border-radius: 0.5rem;
-            cursor: pointer;
-            transition: 0.1s;
-            font-size: 0.8rem;
-            color: #b4c6e0;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0.3rem 0.5rem; border-radius: 0.4rem;
+            cursor: pointer; transition: 0.1s; font-size: 0.78rem; color: #b4c6e0;
         }
         .profile-item:hover { background: rgba(255,255,255,0.06); }
         .profile-item.selected { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
         .profile-item-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .profile-item-date { font-size: 0.65rem; color: #5c6e82; margin-left: 0.5rem; white-space: nowrap; }
+        .profile-item-date { font-size: 0.6rem; color: #5c6e82; margin-left: 0.5rem; white-space: nowrap; }
 
         @media (max-width: 850px) {
-            .app { flex-direction: column; }
-            .sidebar { flex: auto; max-height: none; }
-            .main-area { min-width: auto; }
+            .app { flex-direction: column; height: auto; }
+            .sidebar { flex: auto; height: auto; max-height: 50vh; border-right: none; border-bottom: 1px solid rgba(255,255,255,0.06); }
+            .main-area { min-width: auto; min-height: 50vh; }
         }
     </style>
 </head>
 <body>
 <div class="app">
     <div class="sidebar">
-        <div class="header">
-            <svg viewBox="0 0 24 24"><path d="M3 3h7v7H3V3zm11 0h7v7h-7V3zM3 14h7v7H3v-7zm11 0h7v7h-7v-7z" /><line x1="3" y1="3" x2="10" y2="10" stroke-width="1.5" /><line x1="14" y1="3" x2="21" y2="10" /><line x1="3" y1="14" x2="10" y2="21" /><line x1="14" y1="14" x2="21" y2="21" /></svg>
-            <h1>Калькулятор гибки</h1>
+        <div class="brand-header">
+            <svg class="brand-logo" viewBox="0 0 100 105" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="kb-grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#fbbf24"/>
+                        <stop offset="100%" stop-color="#f59e0b"/>
+                    </linearGradient>
+                    <linearGradient id="kb-grad2" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#38bdf8"/>
+                        <stop offset="100%" stop-color="#2563eb"/>
+                    </linearGradient>
+                    <linearGradient id="kb-steel" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="#64748b"/>
+                        <stop offset="100%" stop-color="#334155"/>
+                    </linearGradient>
+                </defs>
+                <!-- Машинная стойка / Траверса ЧПУ -->
+                <rect x="6" y="8" width="16" height="84" rx="4" fill="url(#kb-steel)" stroke="#94a3b8" stroke-width="1.5"/>
+                <line x1="14" y1="20" x2="14" y2="80" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="3 3"/>
+                <!-- Верхняя отгибаемая полка листа (K) -->
+                <path d="M 28 50 L 70 16 L 82 28 L 40 62 Z" fill="url(#kb-grad1)"/>
+                <!-- Нижняя отгибаемая полка листа (K) -->
+                <path d="M 40 58 L 82 92 L 70 104 L 28 70 Z" fill="url(#kb-grad2)"/>
+                <!-- Точка нейтрального слоя K-фактора -->
+                <circle cx="34" cy="60" r="7.5" fill="#ffffff" stroke="#f59e0b" stroke-width="2.5"/>
+                <circle cx="34" cy="60" r="3" fill="#0f172a"/>
+            </svg>
+            <div class="brand-text">
+                <div class="brand-title">
+                    <span class="brand-k">K</span><span class="brand-hyphen">-</span>BEND
+                    <span class="brand-badge">3D CAM</span>
+                </div>
+                <div class="brand-subtitle">Листогибочный САПР &amp; 3D Симулятор · Durma AD-R</div>
+            </div>
         </div>
         <div class="input-group">
             <div class="label-row">
@@ -420,7 +582,7 @@
             </div>
             <div class="input-row">
                 <input type="number" id="bendLength" value="100" step="1" min="10" max="4050">
-                <input type="range" id="bendLengthSlider" min="50" max="4050" step="10" value="100">
+                <input type="range" id="bendLengthSlider" min="10" max="4050" step="10" value="100">
             </div>
         </div>
 
@@ -549,6 +711,54 @@
         <div class="canvas-wrapper" id="drawingArea">
             <svg id="flatSvg" viewBox="0 0 800 300" preserveAspectRatio="xMidYMid meet" style="display:none;"></svg>
             
+            <!-- Панель симулятора гибки -->
+            <div id="simBar" class="sim-bar">
+                <div class="sim-status" id="simStatus" title="Статус выполнимости детали">
+                    <span class="status-dot status-ok" id="simDot"></span>
+                    <span id="simStatusText">Расчёт...</span>
+                </div>
+                <div class="sim-divider"></div>
+                <div class="sim-controls">
+                    <button class="sim-btn" id="simPlayBtn" title="Запуск/Пауза симуляции процесса гибки">
+                        <svg id="simPlayIcon" viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                        <span id="simPlayLabel">Симуляция</span>
+                    </button>
+                    <button class="sim-btn sim-step-btn" id="simPrevBtn" title="Предыдущий шаг">◀</button>
+                    <span class="sim-step-text" id="simStepText">Заготовка</span>
+                    <button class="sim-btn sim-step-btn" id="simNextBtn" title="Следующий шаг">▶</button>
+                    <button class="sim-btn" id="simDoneBtn" title="Показать готовую согнутую деталь">Готовая</button>
+                    <button class="sim-btn" id="simResetBtn" title="Сбросить к плоской заготовке (развёртке)">
+                        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                    </button>
+                </div>
+                <div class="sim-divider"></div>
+                <!-- Ползунок хода и индикатор фазы -->
+                <div class="sim-scrubber-wrap">
+                    <input type="range" id="simScrubber" min="0" max="100" value="0" title="Шкала хода гибки (скраббер)">
+                    <span id="simPhaseText" class="sim-phase-text">Лист в матрице</span>
+                </div>
+                <div class="sim-divider"></div>
+                <!-- Выбор скорости воспроизведения -->
+                <div class="sim-speed-group" id="simSpeedGroup" title="Скорость симуляции">
+                    <button class="sim-speed-btn" data-speed="0.25">0.25x</button>
+                    <button class="sim-speed-btn" data-speed="0.5">0.5x</button>
+                    <button class="sim-speed-btn active" data-speed="1">1x</button>
+                    <button class="sim-speed-btn" data-speed="2">2x</button>
+                </div>
+            </div>
+
+            <!-- Индикатор коллизии -->
+            <div id="collisionBadge" class="collision-badge">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <span id="collisionText">Коллизия пуансона!</span>
+            </div>
+
+            <!-- Подсказка для пуансона -->
+            <div id="punchHint" class="punch-hint">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                <span>Выберите гиб для отображения пуансона</span>
+            </div>
+
             <div id="helpOverlay" class="help-overlay">
                 <button id="closeHelpBtn" class="close-help">✕</button>
                 <div class="help-content">
@@ -600,11 +810,18 @@
                     <span>Сбоку</span>
                 </button>
                 
-                <button class="view-btn-3d" id="viewPunchBtn" title="Показать инструмент (пуансон)">
+                <button class="view-btn-3d punch-btn" id="viewPunchBtn" title="Показать/скрыть пуансон (P)">
                     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M7 3h10v4l-4 8v6h-2v-6l-4-8V3z"/>
                     </svg>
-                    <span id="punchBtnLabel">Пуансон</span>
+                    <span>Пуансон</span>
+                </button>
+
+                <button class="view-btn-3d punch-flip-btn" id="viewPunchFlipBtn" title="Развернуть пуансон на 180° (F)" style="display:none;">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                    </svg>
+                    <span>Разворот</span>
                 </button>
 
                 <button class="view-btn-3d" id="viewLabelsBtn" title="Показать подсказки на 3D">
@@ -629,6 +846,10 @@
 </div>
 
 <script>
+    window.addEventListener('error', function(e) {
+        console.error('BENDER ERROR:', e.error || e.message);
+    });
+
     (function() {
         window.setQuickAngle = function(idx, angle) {
             bends[idx].angle = angle;
@@ -651,8 +872,33 @@
         let selectedBendIdx = -1;
 
         let punchMesh = null;
-        let punchState = 0; 
+        let punchEnabled = false;
+        let punchFlipped = false;
         let currentPunchLength = 0;
+        let currentPunchType = '';
+        let hasCollision = false;
+
+        let dieMesh = null;
+        let currentDieLength = 0;
+        let currentDieKey = '';
+
+        // Переменные симуляции
+        let simRunning = false;
+        let simCurrentStep = -1; // -1 = режим готовой детали, >=0 = шаг симуляции
+        let simProgress = 1.0;   // прогресс сгибания на текущем шаге (0..1)
+        let simSequence = [];    // рассчитанная последовательность шагов
+        let simAnimFrame = null;
+        let simSolverResult = null;
+
+        // Материал для подсветки коллизий
+        const collisionMaterial = new THREE.MeshStandardMaterial({
+            color: 0xff2222,
+            transparent: true,
+            opacity: 0.75,
+            emissive: 0xff0000,
+            emissiveIntensity: 0.3,
+            side: THREE.DoubleSide
+        });
 
         function deepCopySegments() { return segments.map(s => ({ length: s.length })); }
         function deepCopyBends() { return bends.map(b => ({ angle: b.angle, direction: b.direction })); }
@@ -696,7 +942,7 @@
         }
 
         function getMinFlange(V, S, externalAngleDeg) {
-            const halfAngleRad = (180 - externalAngleDeg) / 2 * Math.PI / 180;
+            const halfAngleRad = Math.max(0.01, (180 - externalAngleDeg) / 2) * Math.PI / 180;
             return (V / 2) * Math.tan(halfAngleRad) + S;
         }
 
@@ -823,7 +1069,7 @@
                     <div class="segment-label">${label}</div>
                     <div class="input-group" style="margin-bottom:0;">
                         <div class="input-row">
-                            <input type="number" id="seg_${i}" value="${seg.length}" step="1" min="6" max="200" style="flex:0 0 85px; text-align:center;">
+                            <input type="number" id="seg_${i}" value="${seg.length}" step="1" min="6" max="200" style="flex:0 0 80px; text-align:center;">
                             <span class="inner-indicator" id="inner_seg_${i}"></span>
                             <input type="range" id="seg_${i}Slider" min="6" max="200" step="1" value="${seg.length}">
                         </div>
@@ -838,9 +1084,9 @@
                         : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>`;
                     const dirLabel = b.direction > 0 ? 'Вверх' : 'Вниз';
                     const dirClass = b.direction > 0 ? 'dir-up' : 'dir-down';
-                    const sel = (i === selectedBendIdx) ? ' style="box-shadow: 0 0 0 2px #f97316;"' : '';
+                    const selClass = (i === selectedBendIdx) ? ' selected' : '';
 
-                    html += `<div class="bend-item"${sel} data-bend-idx="${i}">
+                    html += `<div class="bend-item${selClass}" data-bend-idx="${i}">
                         <div class="bend-item-header">
                             <span class="bend-item-label">Гиб ${i + 1}</span>
                             <div class="bend-item-actions">
@@ -858,7 +1104,7 @@
                         </div>
                         <div class="input-group" style="margin-bottom:0;">
                             <div class="input-row">
-                                <input type="number" id="bendAngle_${i}" value="${b.angle}" step="1" min="60" max="170" style="flex:0 0 85px; text-align:center;">
+                                <input type="number" id="bendAngle_${i}" value="${b.angle}" step="1" min="60" max="170" style="flex:0 0 80px; text-align:center;">
                                 <input type="range" id="bendAngle_${i}Slider" min="60" max="170" step="1" value="${b.angle}">
                                 <span style="font-size:0.8rem; color:#8b9bb5;">°</span>
                             </div>
@@ -892,7 +1138,7 @@
                         const idx = parseInt(numId.split('_')[1]);
                         if (!isNaN(idx) && bends[idx]) bends[idx].angle = val;
                     }
-                    redraw();
+                    scheduleRedraw();
                 });
             });
             document.querySelectorAll('#bendEditor input[type=number]').forEach(n => {
@@ -908,7 +1154,7 @@
                         const idx = parseInt(id.split('_')[1]);
                         if (!isNaN(idx) && bends[idx]) bends[idx].angle = val;
                     }
-                    redraw();
+                    scheduleRedraw();
                 });
             });
 
@@ -927,6 +1173,7 @@
                 btn.addEventListener('click', e => {
                     const idx = parseInt(e.currentTarget.dataset.delBend);
                     if (!isNaN(idx) && bends.length > 0) {
+                        if (typeof simController !== 'undefined') simController.reset();
                         bends.splice(idx, 1);
                         const segIdx = idx + 1;
                         if (segIdx < segments.length && idx < segments.length - 1) {
@@ -944,6 +1191,7 @@
 
             const addBend = document.getElementById('addBendBtn');
             if (addBend) addBend.addEventListener('click', () => {
+                if (typeof simController !== 'undefined') simController.reset();
                 const lastDir = bends.length > 0 ? bends[bends.length - 1].direction : 1;
                 bends.push({ angle: 90, direction: -lastDir });
                 if (segments.length <= bends.length) {
@@ -964,6 +1212,7 @@
         }
 
         function applyPreset(name) {
+            if (typeof simController !== 'undefined') simController.reset();
             document.querySelectorAll('#profilePresets .preset-btn').forEach(b => b.classList.remove('active-preset'));
             const btn = document.querySelector(`[data-preset="${name}"]`);
             if (btn) btn.classList.add('active-preset');
@@ -994,6 +1243,7 @@
 
         let scene, camera, renderer, controls, sheetGroup;
         let showLabels = false;
+        let renderLoopRunning = false;
 
         function createTextSprite(text, bgColor) {
             try {
@@ -1034,49 +1284,213 @@
             }
         }
 
-        // ГЕНЕРАТОР ГЕОМЕТРИИ ПУАНСОНА С ПОЛУПРОЗРАЧНЫМ МАТЕРИАЛОМ И ВАШИМИ КООРДИНАТАМИ
-        function getPunchMesh(length) {
-            if (punchMesh && currentPunchLength !== length) {
+        // Рекурсивная очистка Three.js объектов для предотвращения утечек памяти
+        function disposeGroup(group) {
+            while (group.children.length > 0) {
+                const child = group.children[0];
+                if (child.children && child.children.length > 0) disposeGroup(child);
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) {
+                    if (child.material === collisionMaterial) { /* не диспоузим общий материал */ }
+                    else {
+                        if (child.material.map) child.material.map.dispose();
+                        child.material.dispose();
+                    }
+                }
+                group.remove(child);
+            }
+        }
+        // ==========================================
+        //  ОСНАСТКА DURMA AD-R 40175
+        // ==========================================
+
+        // 1. Пуансон "Гусиная шейка" 86° (для углов >= 85°)
+        const PUNCH_GOOSENECK_Y_OFFSET = 1.18402631 - 0.8; // 0.38402631
+        let punchGooseneckPoly = null;
+        let punchAcutePoly = null;
+
+        function createGooseneckPunchShape() {
+            const shape = new THREE.Shape();
+            const yo = PUNCH_GOOSENECK_Y_OFFSET;
+            
+            shape.moveTo(0.589911, 0.643651 - yo);
+            shape.lineTo(4.069089, 4.440124 - yo); 
+            shape.lineTo(-32.224911, 62.522124 - yo); 
+            const cx = -15.26378619;
+            const cy = 73.12024823 - yo;
+            const r = 20;
+            const startAngle = Math.atan2(62.52212353 - yo - cy, -32.22491093 - cx);
+            const endAngle = Math.atan2(92.14112353 - yo - cy, -21.44491093 - cx);
+            shape.absarc(cx, cy, r, startAngle, endAngle, true); 
+            shape.lineTo(7.00008907, 101.38412353 - yo); 
+            shape.lineTo(7.00008907, 114.38412353 - yo); 
+            shape.lineTo(6.00008907, 115.38412353 - yo); 
+            shape.lineTo(-6.99991093, 115.38412353 - yo); 
+            shape.lineTo(-6.99991093, 144.38412353 - yo); 
+            shape.lineTo(-7.99991093, 145.38412353 - yo); 
+            shape.lineTo(-18.99991093, 145.38412353 - yo); 
+            shape.lineTo(-19.99991093, 144.38412353 - yo); 
+            shape.lineTo(-19.99991093, 115.184124 - yo); 
+            shape.lineTo(-49.999911, 115.184124 - yo); 
+            shape.lineTo(-59.999911, 105.184124 - yo); 
+            shape.lineTo(-59.999911, 66.588124 - yo); 
+            shape.lineTo(-4.985911, 6.550124 - yo); 
+            shape.lineTo(-4.985911, 5.440124 - yo); 
+            shape.lineTo(-0.589911, 0.643651 - yo);
+            const noseCx = 0.0;
+            const noseCy = 0.8;
+            const noseR = 0.8;
+            const noseStartAngle = Math.atan2(0.643651 - yo - noseCy, -0.589911 - noseCx);
+            const noseEndAngle = Math.atan2(0.643651 - yo - noseCy, 0.589911 - noseCx);
+            shape.absarc(noseCx, noseCy, noseR, noseStartAngle, noseEndAngle, false);
+            
+            return shape;
+        }
+
+        // 2. Остроносый пуансон 26° (для острых углов < 85°) по заводскому чертежу Durma
+        function createAcutePunchShape() {
+            const shape = new THREE.Shape();
+            const r = 0.8;
+            const halfAngle = (13 * Math.PI) / 180; // 13° в каждую сторону (26° суммарно)
+            const tanHalf = Math.tan(halfAngle);
+            const noseCy = r;
+            
+            const xTangent = r * Math.sin(halfAngle);
+            const yTangent = noseCy - r * Math.cos(halfAngle);
+            
+            const xRight = 7.0;
+            const yRight = noseCy + (xRight - xTangent) / tanHalf; // ~30.2 мм
+            
+            shape.moveTo(0, 0); // вершина носика
+            shape.lineTo(xRight, yRight);
+            shape.lineTo(xRight, 117);
+            shape.lineTo(xRight, 147);
+            shape.lineTo(-20, 147);
+            shape.lineTo(-20, 142);
+            shape.lineTo(-16, 142);
+            shape.lineTo(-16, 134);
+            shape.lineTo(-20, 134);
+            shape.lineTo(-20, 130);
+            shape.lineTo(-7, 117);
+            shape.lineTo(-7, yRight);
+            shape.lineTo(-xTangent, yTangent);
+            const startA = -Math.PI / 2 - halfAngle;
+            shape.absarc(0, noseCy, r, startA, -Math.PI / 2, false);
+            shape.closePath();
+            
+            return shape;
+        }
+
+        function getPunchPolygon(type) {
+            if (type === 'acute') {
+                if (!punchAcutePoly) punchAcutePoly = createAcutePunchShape().getPoints(60);
+                return punchAcutePoly;
+            }
+            if (!punchGooseneckPoly) punchGooseneckPoly = createGooseneckPunchShape().getPoints(80);
+            return punchGooseneckPoly;
+        }
+
+        // 3. Т-образная высокая матрица V10 (чертеж 1)
+        function createDieV10Shape() {
+            const shape = new THREE.Shape();
+            const V = 12.0;
+            const halfV = V / 2;
+            const halfAngle = (42.5 * Math.PI) / 180;
+            const vDepth = halfV / Math.tan(halfAngle);
+            const rShoulder = 2.75;
+
+            shape.moveTo(-halfV - rShoulder, 0);
+            shape.lineTo(-halfV, 0);
+            shape.lineTo(0, -vDepth);
+            shape.lineTo(halfV, 0);
+            shape.lineTo(halfV + rShoulder, 0);
+            shape.lineTo(9, 0);
+            shape.lineTo(9, -102);
+            shape.lineTo(30, -102);
+            shape.lineTo(30, -120);
+            shape.lineTo(-30, -120);
+            shape.lineTo(-30, -102);
+            shape.lineTo(-9, -102);
+            shape.lineTo(-9, 0);
+            shape.closePath();
+            return shape;
+        }
+
+        // 4. 4-ручьевые матрицы 60x60 мм (чертежи 2 и 3)
+        function create4WayDieShape(dieAngleDeg, vTop, vBottom, vLeft, vRight) {
+            const shape = new THREE.Shape();
+            const halfAngle = (dieAngleDeg / 2 * Math.PI) / 180;
+            const tanA = Math.tan(halfAngle);
+
+            const halfVtop = vTop / 2;
+            const depthTop = halfVtop / tanA;
+
+            shape.moveTo(-30, 0);
+            shape.lineTo(-halfVtop, 0);
+            shape.lineTo(0, -depthTop);
+            shape.lineTo(halfVtop, 0);
+            shape.lineTo(30, 0);
+
+            const halfVright = vRight / 2;
+            const depthRight = halfVright / tanA;
+            shape.lineTo(30, -30 + halfVright);
+            shape.lineTo(30 - depthRight, -30);
+            shape.lineTo(30, -30 - halfVright);
+            shape.lineTo(30, -60);
+
+            const halfVbottom = vBottom / 2;
+            const depthBottom = halfVbottom / tanA;
+            shape.lineTo(halfVbottom, -60);
+            shape.lineTo(0, -60 + depthBottom);
+            shape.lineTo(-halfVbottom, -60);
+            shape.lineTo(-30, -60);
+
+            const halfVleft = vLeft / 2;
+            const depthLeft = halfVleft / tanA;
+            shape.lineTo(-30, -30 - halfVleft);
+            shape.lineTo(-30 + depthLeft, -30);
+            shape.lineTo(-30, -30 + halfVleft);
+            shape.closePath();
+
+            return shape;
+        }
+
+        function getDieShape(V, isAcute) {
+            if (isAcute) {
+                if (V === 10) return create4WayDieShape(60, 10, 35, 16, 22);
+                if (V === 16) return create4WayDieShape(60, 16, 22, 10, 35);
+                if (V === 22) return create4WayDieShape(60, 22, 16, 35, 10);
+                return create4WayDieShape(60, 35, 10, 22, 16);
+            } else {
+                if (V <= 10) return createDieV10Shape();
+                if (V === 16) return create4WayDieShape(85, 16, 35, 22, 50);
+                if (V === 22) return create4WayDieShape(85, 22, 50, 16, 35);
+                if (V === 35) return create4WayDieShape(85, 35, 50, 22, 16);
+                return create4WayDieShape(85, 50, 35, 16, 22);
+            }
+        }
+
+        let diePolyPointsMap = {};
+        function getDiePolygon(V, isAcute) {
+            const key = `${isAcute ? 60 : 85}_${V}`;
+            if (!diePolyPointsMap[key]) {
+                const shape = getDieShape(V, isAcute);
+                diePolyPointsMap[key] = shape.getPoints(50);
+            }
+            return diePolyPointsMap[key];
+        }
+
+        // ГЕНЕРАТОР ГЕОМЕТРИИ ПУАНСОНА
+        function getPunchMesh(length, punchType) {
+            const key = `${punchType}_${length}`;
+            if (punchMesh && currentPunchKey !== key) {
                 punchMesh.geometry.dispose();
             }
             
-            if (!punchMesh || currentPunchLength !== length) {
-                const shape = new THREE.Shape();
-                
-                shape.moveTo(0.589911, 0.643651);
-                shape.lineTo(4.069089, 4.440124); 
-                shape.lineTo(-32.224911, 62.522124); 
-                const cx = -15.26378619;
-                const cy = 73.12024823;
-                const r = 20;
-                const startAngle = Math.atan2(62.52212353 - cy, -32.22491093 - cx);
-                const endAngle = Math.atan2(92.14112353 - cy, -21.44491093 - cx);
-                shape.absarc(cx, cy, r, startAngle, endAngle, true); 
-                shape.lineTo(7.00008907, 101.38412353); 
-                shape.lineTo(7.00008907, 114.38412353); 
-                shape.lineTo(6.00008907, 115.38412353); 
-                shape.lineTo(-6.99991093, 115.38412353); 
-                shape.lineTo(-6.99991093, 144.38412353); 
-                shape.lineTo(-7.99991093, 145.38412353); 
-                shape.lineTo(-18.99991093, 145.38412353); 
-                shape.lineTo(-19.99991093, 144.38412353); 
-                shape.lineTo(-19.99991093, 115.184124); 
-                shape.lineTo(-49.999911, 115.184124); 
-                shape.lineTo(-59.999911, 105.184124); 
-                shape.lineTo(-59.999911, 66.588124); 
-                shape.lineTo(-4.985911, 6.550124); 
-                shape.lineTo(-4.985911, 5.440124); 
-                shape.lineTo(-0.589911, 0.643651);
-                const noseCx = 0.0;
-                const noseCy = 1.18402631;
-                const noseR = 0.8;
-                const noseStartAngle = Math.atan2(0.643651 - noseCy, -0.589911 - noseCx);
-                const noseEndAngle = Math.atan2(0.643651 - noseCy, 0.589911 - noseCx);
-                shape.absarc(noseCx, noseCy, noseR, noseStartAngle, noseEndAngle, false);
-
+            if (!punchMesh || currentPunchKey !== key) {
+                const shape = (punchType === 'acute') ? createAcutePunchShape() : createGooseneckPunchShape();
                 const extrudeSettings = { depth: length, bevelEnabled: false };
                 const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-                
                 geometry.translate(0, 0, -length / 2);
 
                 const material = new THREE.MeshStandardMaterial({ 
@@ -1085,7 +1499,7 @@
                     roughness: 0.3,
                     side: THREE.DoubleSide,
                     transparent: true,
-                    opacity: 0.7
+                    opacity: 0.78
                 });
 
                 if (!punchMesh) {
@@ -1093,24 +1507,135 @@
                 } else {
                     punchMesh.geometry = geometry;
                 }
-                
+
+                // Верхняя балка / Траверса пресса над креплением пуансона
+                const oldRam = punchMesh.getObjectByName('upperRamMesh');
+                if (oldRam) {
+                    if (oldRam.geometry) oldRam.geometry.dispose();
+                    punchMesh.remove(oldRam);
+                }
+                const ramWidth = 70;
+                const ramHeight = 160;
+                const ramDepth = length + 40;
+                const ramGeom = new THREE.BoxGeometry(ramWidth, ramHeight, ramDepth);
+                ramGeom.translate(0, 145 + ramHeight / 2, 0);
+                const ramMat = new THREE.MeshStandardMaterial({
+                    color: 0x1e293b,
+                    metalness: 0.8,
+                    roughness: 0.3,
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                    opacity: 0.85
+                });
+                const ramMesh = new THREE.Mesh(ramGeom, ramMat);
+                ramMesh.name = 'upperRamMesh';
+                punchMesh.add(ramMesh);
+
+                currentPunchKey = key;
                 currentPunchLength = length;
             }
             return punchMesh;
         }
 
-        function updatePunch() {
-            if (punchState === 0 || selectedBendIdx < 0) {
-                if (punchMesh && punchMesh.parent) {
-                    punchMesh.parent.remove(punchMesh);
+        // ГЕНЕРАТОР ГЕОМЕТРИИ МАТРИЦЫ
+        function getDieMesh(length, V, isAcute) {
+            const key = `die_${isAcute ? 60 : 85}_V${V}_${length}`;
+            if (dieMesh && currentDieKey !== key) {
+                dieMesh.geometry.dispose();
+            }
+            
+            if (!dieMesh || currentDieKey !== key) {
+                const shape = getDieShape(V, isAcute);
+                const extrudeSettings = { depth: length, bevelEnabled: false };
+                const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+                geometry.translate(0, 0, -length / 2);
+
+                const material = new THREE.MeshStandardMaterial({ 
+                    color: 0x2c3b4d, 
+                    metalness: 0.6, 
+                    roughness: 0.45,
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                    opacity: 0.85
+                });
+
+                if (!dieMesh) {
+                    dieMesh = new THREE.Mesh(geometry, material);
+                } else {
+                    dieMesh.geometry = geometry;
                 }
+
+                // Нижний стол пресса под матрицей
+                const oldBed = dieMesh.getObjectByName('lowerBedMesh');
+                if (oldBed) {
+                    if (oldBed.geometry) oldBed.geometry.dispose();
+                    dieMesh.remove(oldBed);
+                }
+                const dieBaseY = (V <= 10 && !isAcute) ? -120 : -60;
+                const bedWidth = 70;
+                const bedHeight = 150;
+                const bedDepth = length + 60;
+                const bedGeom = new THREE.BoxGeometry(bedWidth, bedHeight, bedDepth);
+                bedGeom.translate(0, dieBaseY - bedHeight / 2, 0);
+                const bedMat = new THREE.MeshStandardMaterial({
+                    color: 0x0f172a,
+                    metalness: 0.6,
+                    roughness: 0.5,
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                    opacity: 0.88
+                });
+                const bedMesh = new THREE.Mesh(bedGeom, bedMat);
+                bedMesh.name = 'lowerBedMesh';
+                dieMesh.add(bedMesh);
+
+                currentDieKey = key;
+                currentDieLength = length;
+            }
+            return dieMesh;
+        }
+
+        function updatePunchAndDie(activeBendOverride, punchYOffset = 0, forcePunchFlipped = null) {
+            const punchHint = document.getElementById('punchHint');
+            const punchFlipBtn = document.getElementById('viewPunchFlipBtn');
+            const punchBtn = document.getElementById('viewPunchBtn');
+
+            const showTools = punchEnabled || (simCurrentStep >= 0);
+
+            if (!showTools) {
+                if (punchMesh && punchMesh.parent) punchMesh.parent.remove(punchMesh);
+                if (dieMesh && dieMesh.parent) dieMesh.parent.remove(dieMesh);
+                if (punchHint) punchHint.classList.remove('show');
+                if (punchFlipBtn) punchFlipBtn.style.display = 'none';
                 return;
             }
+
+            if (punchFlipBtn) {
+                punchFlipBtn.style.display = 'flex';
+                punchFlipBtn.classList.toggle('active', (forcePunchFlipped !== null ? forcePunchFlipped : punchFlipped));
+            }
+
+            let bIdx = (activeBendOverride !== undefined) ? activeBendOverride : selectedBendIdx;
+
+            if (bIdx < 0 || bIdx >= bends.length) {
+                if (bends.length > 0) {
+                    bIdx = 0;
+                    selectedBendIdx = 0;
+                    updateBendEditor();
+                } else {
+                    if (punchMesh && punchMesh.parent) punchMesh.parent.remove(punchMesh);
+                    if (dieMesh && dieMesh.parent) dieMesh.parent.remove(dieMesh);
+                    if (punchHint) punchHint.classList.add('show');
+                    return;
+                }
+            }
+
+            if (punchHint) punchHint.classList.remove('show');
 
             let targetAnchor = null;
             if (sheetGroup) {
                 sheetGroup.traverse(child => {
-                    if (child.userData && child.userData.isPunchAnchor && child.userData.bendIdx === selectedBendIdx) {
+                    if (child.userData && child.userData.isPunchAnchor && child.userData.bendIdx === bIdx) {
                         targetAnchor = child;
                     }
                 });
@@ -1118,23 +1643,314 @@
 
             if (targetAnchor) {
                 const L = getBendLength();
-                const mesh = getPunchMesh(L);
-                
-                targetAnchor.add(mesh);
-                
-                mesh.position.set(0, 0, 0);
-                mesh.rotation.set(0, 0, 0);
-                
+                const bendAngle = bends[bIdx] ? bends[bIdx].angle : 90;
+                const isAcute = bendAngle < 85;
+                const punchType = isAcute ? 'acute' : 'gooseneck';
+                const V = parseInt(document.getElementById('resDieSelect').value) || 16;
+                const S = getThickness();
+
+                const pMesh = getPunchMesh(L, punchType);
+                const dMesh = getDieMesh(L, V, isAcute);
+
+                targetAnchor.add(pMesh);
+                targetAnchor.add(dMesh);
+
                 const dir = targetAnchor.userData.dir;
-                
-                if (dir < 0) {
-                    mesh.rotation.z = Math.PI;
+                const isFlipped = (forcePunchFlipped !== null) ? forcePunchFlipped : punchFlipped;
+
+                // Пуансон (всегда сверху)
+                pMesh.position.set(0, punchYOffset, 0);
+                pMesh.rotation.set(0, 0, 0);
+                if (isFlipped) pMesh.rotation.y = Math.PI;
+
+                // Матрица (всегда снизу, V-паз встречает лист в y = -S)
+                dMesh.position.set(0, -S, 0);
+                dMesh.rotation.set(0, 0, 0);
+            }
+        }
+
+        function updatePunch() {
+            updatePunchAndDie();
+        }
+
+        function pointInPolygon(x, y, poly) {
+            let inside = false;
+            for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+                const xi = poly[i].x, yi = poly[i].y;
+                const xj = poly[j].x, yj = poly[j].y;
+                const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+                if (intersect) inside = !inside;
+            }
+            return inside;
+        }
+
+        function checkSegmentsIntersect(p1, p2, p3, p4) {
+            function ccw(a, b, c) {
+                return (c.y - a.y) * (b.x - a.x) > (b.y - a.y) * (c.x - a.x);
+            }
+            return (ccw(p1, p3, p4) !== ccw(p2, p3, p4)) && (ccw(p1, p2, p3) !== ccw(p1, p2, p4));
+        }
+
+        function checkSegmentBoxIntersect(p1, p2, xmin, xmax, ymin, ymax) {
+            if (p1.x >= xmin && p1.x <= xmax && p1.y >= ymin && p1.y <= ymax) return true;
+            if (p2.x >= xmin && p2.x <= xmax && p2.y >= ymin && p2.y <= ymax) return true;
+            const tl = { x: xmin, y: ymax }, tr = { x: xmax, y: ymax };
+            const bl = { x: xmin, y: ymin }, br = { x: xmax, y: ymin };
+            if (checkSegmentsIntersect(p1, p2, tl, tr)) return true;
+            if (checkSegmentsIntersect(p1, p2, tr, br)) return true;
+            if (checkSegmentsIntersect(p1, p2, br, bl)) return true;
+            if (checkSegmentsIntersect(p1, p2, bl, tl)) return true;
+            return false;
+        }
+
+        // === ВЫСОКОТОЧНАЯ ДЕТЕКЦИЯ КОЛЛИЗИЙ ПУАНСОНА, МАТРИЦЫ И РАМЫ С ДЕТАЛЬЮ ===
+        function checkPunchCollision() {
+            hasCollision = false;
+            const badge = document.getElementById('collisionBadge');
+            const punchBtn = document.getElementById('viewPunchBtn');
+
+            // Сброс цвета у всех мешей детали
+            if (sheetGroup) {
+                sheetGroup.traverse(child => {
+                    if (child.isMesh && child.userData && child.userData._origMaterial) {
+                        child.material = child.userData._origMaterial;
+                    }
+                });
+            }
+
+            const showTools = punchEnabled || (simCurrentStep >= 0);
+            if (!showTools || !punchMesh || !punchMesh.parent || !sheetGroup) {
+                if (badge) badge.classList.remove('show');
+                if (punchBtn) punchBtn.classList.remove('collision');
+                return false;
+            }
+
+            const L = getBendLength();
+            const curBIdx = (simCurrentStep >= 0 && simSequence[simCurrentStep])
+                ? simSequence[simCurrentStep].bendIdx
+                : selectedBendIdx;
+            const bendAngle = (curBIdx >= 0 && bends[curBIdx]) ? bends[curBIdx].angle : 90;
+            const isAcute = bendAngle < 85;
+            const punchPoly = getPunchPolygon(isAcute ? 'acute' : 'gooseneck');
+            const V = parseInt(document.getElementById('resDieSelect').value) || 16;
+            const hasDie = dieMesh && dieMesh.parent;
+            const diePoly = hasDie ? getDiePolygon(V, isAcute) : null;
+
+            const collisions = [];
+            const collidingLabels = new Set();
+            let hasPunchColl = false;
+            let hasDieColl = false;
+            let hasRamColl = false;
+            let hasBedColl = false;
+
+            const geom = calculateGeometry();
+            const Ri = geom ? geom.R : 2.0;
+            const S = geom ? geom.S : 2.0;
+            // Радиус безопасной контактной зоны у кончика пуансона для текущего гиба и смежных полок
+            const contactSafeDist = Math.max(2.8, Ri + S * 0.2 + 0.8);
+            const halfV = V / 2;
+            const dieBaseY = (V <= 10 && !isAcute) ? -120 : -60;
+
+            sheetGroup.traverse(child => {
+                if (!child.isMesh) return;
+                if (child === punchMesh || child === dieMesh) return;
+                if (!child.userData || !child.userData.type) return;
+
+                const uType = child.userData.type;
+                if (uType !== 'segment' && uType !== 'bendArc' && uType !== 'bendFlat') return;
+
+                child.updateMatrixWorld(true);
+                punchMesh.updateMatrixWorld(true);
+                if (hasDie) dieMesh.updateMatrixWorld(true);
+
+                const isCurrentBend = (uType === 'bendArc' || uType === 'bendFlat') && (child.userData.bendIdx === curBIdx);
+                const isAdjacentSeg = (uType === 'segment') && (child.userData.segIdx === curBIdx || child.userData.segIdx === curBIdx + 1);
+                const isWorkZone = isCurrentBend || isAdjacentSeg;
+
+                let meshCollided = false;
+                const testPoints = [];
+                const outlineCorners = [];
+
+                if (uType === 'segment' || uType === 'bendFlat') {
+                    const netLen = child.userData.netLen || child.geometry.parameters.width;
+                    const segS = child.userData.S || S;
+                    if (!netLen || netLen <= 0) return;
+
+                    const steps = Math.max(3, Math.ceil(netLen / 2));
+                    for (let k = 0; k <= steps; k++) {
+                        const lx = -netLen / 2 + (k / steps) * netLen;
+                        testPoints.push(new THREE.Vector3(lx, segS / 2, 0));
+                        testPoints.push(new THREE.Vector3(lx, -segS / 2, 0));
+                        if (segS >= 1.5) {
+                            testPoints.push(new THREE.Vector3(lx, 0, 0));
+                        }
+                    }
+
+                    outlineCorners.push(new THREE.Vector3(-netLen / 2, -segS / 2, 0));
+                    outlineCorners.push(new THREE.Vector3( netLen / 2, -segS / 2, 0));
+                    outlineCorners.push(new THREE.Vector3( netLen / 2,  segS / 2, 0));
+                    outlineCorners.push(new THREE.Vector3(-netLen / 2,  segS / 2, 0));
+                } else if (uType === 'bendArc') {
+                    // Сам текущий гиб облегает кончик пуансона штатно
+                    if (isCurrentBend) return;
+
+                    const bDir = child.userData.dir;
+                    const bRi = child.userData.Ri;
+                    const bS = child.userData.S;
+                    const bAngle = child.userData.bendAngleRad;
+                    if (!bAngle || bAngle <= 0) return;
+
+                    const aSteps = Math.max(4, Math.ceil((bAngle * 180 / Math.PI) / 10));
+                    const cY = bDir * (bRi + bS / 2);
+                    const startA = bDir > 0 ? -Math.PI / 2 : Math.PI / 2;
+                    const endA = bDir > 0 ? -Math.PI / 2 + bAngle : Math.PI / 2 - bAngle;
+
+                    for (let k = 0; k <= aSteps; k++) {
+                        const phi = startA + (k / aSteps) * (endA - startA);
+                        const cosPhi = Math.cos(phi);
+                        const sinPhi = Math.sin(phi);
+
+                        testPoints.push(new THREE.Vector3(bRi * cosPhi, cY + bRi * sinPhi, 0));
+                        testPoints.push(new THREE.Vector3((bRi + bS) * cosPhi, cY + (bRi + bS) * sinPhi, 0));
+                        if (bS >= 1.5) {
+                            testPoints.push(new THREE.Vector3((bRi + bS / 2) * cosPhi, cY + (bRi + bS / 2) * sinPhi, 0));
+                        }
+                    }
                 }
 
-                if (punchState === 2) {
-                    mesh.rotation.y = Math.PI;
+                // 1. Проверка попадания точек внутрь пуансона, траверсы, матрицы и стола
+                for (let pt of testPoints) {
+                    const worldP = child.localToWorld(pt.clone());
+                    
+                    // ПУАНСОН И ВЕРХНЯЯ БАЛКА
+                    const localPunchP = punchMesh.worldToLocal(worldP.clone());
+                    if (Math.abs(localPunchP.z) <= L / 2 + 0.5) {
+                        // Верхняя траверса (рама над пуансоном)
+                        if (localPunchP.y >= 144 && Math.abs(localPunchP.x) <= 35) {
+                            meshCollided = true;
+                            hasRamColl = true;
+                            break;
+                        }
+
+                        const distTip = Math.hypot(localPunchP.x, localPunchP.y);
+                        if (!isWorkZone || distTip > contactSafeDist) {
+                            if (pointInPolygon(localPunchP.x, localPunchP.y, punchPoly)) {
+                                meshCollided = true;
+                                hasPunchColl = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    // МАТРИЦА И СТОЛ СТАНКА
+                    if (!meshCollided && hasDie && diePoly) {
+                        const localDieP = dieMesh.worldToLocal(worldP.clone());
+                        if (Math.abs(localDieP.z) <= L / 2 + 0.5) {
+                            // Нижний стол станка (под подошвой матрицы)
+                            if (localDieP.y <= dieBaseY && Math.abs(localDieP.x) <= 35) {
+                                meshCollided = true;
+                                hasBedColl = true;
+                                break;
+                            }
+
+                            const inDieGrooveZone = isWorkZone && (Math.abs(localDieP.x) <= halfV + 1.5) && (localDieP.y >= -20 && localDieP.y <= 1.5);
+                            if (!inDieGrooveZone) {
+                                if (pointInPolygon(localDieP.x, localDieP.y, diePoly)) {
+                                    meshCollided = true;
+                                    hasDieColl = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
                 }
+
+                // 2. Проверка пересечения ребер сечения с пуансоном и балками
+                if (!meshCollided && outlineCorners.length === 4) {
+                    const localCorners = outlineCorners.map(c => {
+                        const wp = child.localToWorld(c.clone());
+                        return punchMesh.worldToLocal(wp);
+                    });
+
+                    for (let ci = 0; ci < 4; ci++) {
+                        const ca = localCorners[ci];
+                        const cb = localCorners[(ci + 1) % 4];
+
+                        if (Math.abs(ca.z) > L / 2 + 0.5 && Math.abs(cb.z) > L / 2 + 0.5) continue;
+
+                        // Пересечение с верхней балкой
+                        if ((ca.y >= 144 || cb.y >= 144) && checkSegmentBoxIntersect(ca, cb, -35, 35, 144, 400)) {
+                            meshCollided = true;
+                            hasRamColl = true;
+                            break;
+                        }
+
+                        // Пересечение со столом пресса
+                        if (hasDie && diePoly) {
+                            const da = dieMesh.worldToLocal(child.localToWorld(outlineCorners[ci].clone()));
+                            const db = dieMesh.worldToLocal(child.localToWorld(outlineCorners[(ci + 1) % 4].clone()));
+                            if ((da.y <= dieBaseY || db.y <= dieBaseY) && checkSegmentBoxIntersect(da, db, -35, 35, -400, dieBaseY)) {
+                                meshCollided = true;
+                                hasBedColl = true;
+                                break;
+                            }
+                        }
+
+                        const midDist = Math.hypot((ca.x + cb.x) / 2, (ca.y + cb.y) / 2);
+                        if (isWorkZone && midDist <= contactSafeDist) continue;
+
+                        for (let pi = 0, pj = punchPoly.length - 1; pi < punchPoly.length; pj = pi++) {
+                            const ppa = punchPoly[pi];
+                            const ppb = punchPoly[pj];
+
+                            if (isWorkZone && Math.hypot((ppa.x + ppb.x) / 2, (ppa.y + ppb.y) / 2) <= contactSafeDist) continue;
+
+                            if (checkSegmentsIntersect(ca, cb, ppa, ppb)) {
+                                meshCollided = true;
+                                hasPunchColl = true;
+                                break;
+                            }
+                        }
+                        if (meshCollided) break;
+                    }
+                }
+
+                if (meshCollided) {
+                    collisions.push(child);
+                    const label = child.userData.label || (uType === 'segment' ? `Сегмент ${child.userData.segIdx + 1}` : `Гиб ${child.userData.bendIdx + 1}`);
+                    collidingLabels.add(label);
+                }
+            });
+
+            if (collisions.length > 0) {
+                hasCollision = true;
+                collisions.forEach(mesh => {
+                    if (!mesh.userData._origMaterial) {
+                        mesh.userData._origMaterial = mesh.material;
+                    }
+                    mesh.material = collisionMaterial;
+                });
+
+                if (badge) {
+                    const text = document.getElementById('collisionText');
+                    if (text) {
+                        const listStr = Array.from(collidingLabels).join(', ');
+                        let toolLabel = 'Коллизия инструмента';
+                        if (hasRamColl) toolLabel = 'Коллизия: Верхняя балка пресса';
+                        else if (hasBedColl) toolLabel = 'Коллизия: Стол станка';
+                        else if (hasPunchColl && hasDieColl) toolLabel = 'Коллизия: Пуансон и матрица';
+                        else if (hasDieColl) toolLabel = 'Коллизия: Матрица';
+                        else if (hasPunchColl) toolLabel = 'Коллизия: Пуансон';
+                        text.textContent = `${toolLabel}: ${listStr}`;
+                    }
+                    badge.classList.add('show');
+                }
+                if (punchBtn) punchBtn.classList.add('collision');
+            } else {
+                if (badge) badge.classList.remove('show');
+                if (punchBtn) punchBtn.classList.remove('collision');
             }
+            return hasCollision;
         }
 
         function init3D() {
@@ -1204,12 +2020,37 @@
             sheetGroup = new THREE.Group();
             scene.add(sheetGroup);
 
-            function animate() {
-                requestAnimationFrame(animate);
-                controls.update();
-                renderer.render(scene, camera);
-            }
-            animate();
+            // Клик по гибу прямо в 3D для мгновенного переноса пуансона
+            let pointerDownX = 0, pointerDownY = 0;
+            const raycaster = new THREE.Raycaster();
+            const mouseVec = new THREE.Vector2();
+
+            renderer.domElement.addEventListener('pointerdown', (e) => {
+                pointerDownX = e.clientX;
+                pointerDownY = e.clientY;
+            });
+
+            renderer.domElement.addEventListener('pointerup', (e) => {
+                if (Math.hypot(e.clientX - pointerDownX, e.clientY - pointerDownY) > 4) return;
+                
+                const rect = renderer.domElement.getBoundingClientRect();
+                mouseVec.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+                mouseVec.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+                
+                raycaster.setFromCamera(mouseVec, camera);
+                const intersects = raycaster.intersectObjects(sheetGroup.children, true);
+                
+                for (let hit of intersects) {
+                    if (hit.object && hit.object.userData && hit.object.userData.type === 'bendArc') {
+                        selectedBendIdx = hit.object.userData.bendIdx;
+                        updateBendEditor();
+                        redraw();
+                        break;
+                    }
+                }
+            });
+
+            startRenderLoop();
             
             new ResizeObserver(() => {
                 if(!wrapper.clientWidth) return;
@@ -1219,10 +2060,30 @@
             }).observe(wrapper);
         }
 
-        function build3DSheet(geom, dims) {
-            while(sheetGroup.children.length > 0){ 
-                sheetGroup.remove(sheetGroup.children[0]); 
+        // Управление рендер-циклом — останавливаем когда 3D не виден
+        function startRenderLoop() {
+            if (renderLoopRunning) return;
+            renderLoopRunning = true;
+            function animate() {
+                if (!renderLoopRunning) return;
+                requestAnimationFrame(animate);
+                if (typeof simController !== 'undefined' && simController.isPlaying) {
+                    simController.tick();
+                }
+                controls.update();
+                renderer.render(scene, camera);
             }
+            animate();
+        }
+
+        function stopRenderLoop() {
+            renderLoopRunning = false;
+        }
+
+        function build3DSheet(geom, dims, customAnglesMap = null, alignBendIdx = -1) {
+            // Очистка с освобождением ресурсов
+            disposeGroup(sheetGroup);
+
             if (!geom || dims.segments.length === 0) return;
 
             const S = geom.S;
@@ -1250,6 +2111,7 @@
             sheetGroup.add(currentParent);
             
             const anchorIdx = Math.floor((segs.length - 1) / 2);
+            const sheetFlip = (alignBendIdx >= 0 && bds[alignBendIdx] && bds[alignBendIdx].direction < 0) ? -1 : 1;
 
             for (let i = 0; i < segs.length; i++) {
                 let leftOSSB = 0, rightOSSB = 0;
@@ -1261,16 +2123,19 @@
 
                 if (netLen > 0) {
                     const box = new THREE.BoxGeometry(netLen, S, W);
-                    const mesh = new THREE.Mesh(box, material);
+                    const mesh = new THREE.Mesh(box, material.clone());
                     mesh.castShadow = true; mesh.receiveShadow = true;
                     mesh.position.set(netLen/2, 0, 0);
+                    const segLabel = (i === 0) ? 'Полка 1' : (i === segs.length - 1 ? `Полка ${i + 1}` : `Сегмент ${i + 1}`);
+                    mesh.userData = { type: 'segment', segIdx: i, netLen: netLen, S: S, label: segLabel };
                     if (i === anchorIdx) mesh.userData.isAnchor = true;
                     currentParent.add(mesh);
 
-                    if (showLabels) {
+                    if (showLabels && alignBendIdx < 0) {
                         const flangeLabel = createTextSprite(`Полка ${i+1}`, 'rgba(59, 130, 246, 0.9)');
                         if (flangeLabel) {
                             flangeLabel.position.set(netLen/2, S/2 + 6, 0);
+                            flangeLabel.userData = { type: 'label' };
                             currentParent.add(flangeLabel);
                         }
                     }
@@ -1279,59 +2144,89 @@
                 if (i < bendGeom.length) {
                     const b = bds[i];
                     const bg = bendGeom[i];
-                    const dir = b.direction;
-                    const bendAngleRad = bg.bendAngleDeg * Math.PI / 180;
+                    const dir = b.direction * sheetFlip;
+                    const bendAngleDeg = (customAnglesMap && customAnglesMap[i] !== undefined)
+                        ? customAnglesMap[i]
+                        : (customAnglesMap ? 0 : bg.bendAngleDeg);
+                    const bendAngleRad = bendAngleDeg * Math.PI / 180;
                     
-                    const punchAnchor = new THREE.Group();
-                    const tanVal = Math.tan(bendAngleRad / 2);
-                    punchAnchor.position.set(netLen + Ri * tanVal, dir * S/2, 0);
-                    punchAnchor.rotation.z = dir * bendAngleRad / 2;
-                    punchAnchor.userData = { isPunchAnchor: true, bendIdx: i, dir: dir };
-                    currentParent.add(punchAnchor);
-
-                    const bendShape = new THREE.Shape();
-                    if (dir > 0) {
-                        bendShape.absarc(0, Ri + S/2, Ri + S, -Math.PI/2, -Math.PI/2 + bendAngleRad, false);
-                        bendShape.lineTo((Ri) * Math.cos(-Math.PI/2 + bendAngleRad), Ri + S/2 + (Ri) * Math.sin(-Math.PI/2 + bendAngleRad));
-                        bendShape.absarc(0, Ri + S/2, Ri, -Math.PI/2 + bendAngleRad, -Math.PI/2, true);
-                    } else {
-                        bendShape.absarc(0, -Ri - S/2, Ri + S, Math.PI/2, Math.PI/2 - bendAngleRad, true);
-                        bendShape.lineTo((Ri) * Math.cos(Math.PI/2 - bendAngleRad), -Ri - S/2 + (Ri) * Math.sin(Math.PI/2 - bendAngleRad));
-                        bendShape.absarc(0, -Ri - S/2, Ri, Math.PI/2 - bendAngleRad, Math.PI/2, false);
-                    }
-                    
-                    const extSettings = { depth: W, bevelEnabled: false, curveSegments: 32 };
-                    const bGeom = new THREE.ExtrudeGeometry(bendShape, extSettings);
-                    bGeom.translate(0, 0, -W/2);
-                    
-                    const bMesh = new THREE.Mesh(bGeom, material);
-                    bMesh.castShadow = true; bMesh.receiveShadow = true;
-                    bMesh.position.set(netLen, 0, 0);
-                    currentParent.add(bMesh);
-
-                    if (showLabels) {
-                        const bendLabel = createTextSprite(`Гиб ${i+1}`, 'rgba(245, 158, 11, 0.9)');
-                        if (bendLabel) {
-                            const yOffset = dir > 0 ? (Ri + S) + 6 : -(Ri + S) - 6;
-                            bendLabel.position.set(netLen, yOffset, 0);
-                            currentParent.add(bendLabel);
+                    if (bendAngleRad < 0.005) {
+                        // Несогнутый (плоский) участок гиба
+                        const flatLen = bg.BA || (bg.OSSB * 2) || 0.1;
+                        if (flatLen > 0) {
+                            const flatBox = new THREE.BoxGeometry(flatLen, S, W);
+                            const flatMesh = new THREE.Mesh(flatBox, material.clone());
+                            flatMesh.castShadow = true; flatMesh.receiveShadow = true;
+                            flatMesh.position.set(netLen + flatLen / 2, 0, 0);
+                            flatMesh.userData = { type: 'bendFlat', bendIdx: i, dir: dir, Ri: Ri, S: S, netLen: flatLen, label: `Гиб ${i + 1} (разв)` };
+                            currentParent.add(flatMesh);
                         }
+
+                        const punchAnchor = new THREE.Group();
+                        punchAnchor.position.set(netLen + flatLen / 2, dir * (S / 2), 0);
+                        punchAnchor.userData = { isPunchAnchor: true, bendIdx: i, dir: dir };
+                        currentParent.add(punchAnchor);
+
+                        const nextParent = new THREE.Group();
+                        nextParent.position.set(netLen + flatLen, 0, 0);
+                        currentParent.add(nextParent);
+                        currentParent = nextParent;
+                    } else {
+                        // Согнутая дуга
+                        const punchAnchor = new THREE.Group();
+                        const halfAngle = bendAngleRad / 2;
+                        const punchPosX = netLen + Ri * Math.sin(halfAngle);
+                        const punchPosY = dir * (S / 2 + Ri * (1 - Math.cos(halfAngle)));
+                        punchAnchor.position.set(punchPosX, punchPosY, 0);
+                        punchAnchor.rotation.z = dir * halfAngle;
+                        punchAnchor.userData = { isPunchAnchor: true, bendIdx: i, dir: dir };
+                        currentParent.add(punchAnchor);
+
+                        const bendShape = new THREE.Shape();
+                        if (dir > 0) {
+                            bendShape.absarc(0, Ri + S/2, Ri + S, -Math.PI/2, -Math.PI/2 + bendAngleRad, false);
+                            bendShape.lineTo((Ri) * Math.cos(-Math.PI/2 + bendAngleRad), Ri + S/2 + (Ri) * Math.sin(-Math.PI/2 + bendAngleRad));
+                            bendShape.absarc(0, Ri + S/2, Ri, -Math.PI/2 + bendAngleRad, -Math.PI/2, true);
+                        } else {
+                            bendShape.absarc(0, -Ri - S/2, Ri + S, Math.PI/2, Math.PI/2 - bendAngleRad, true);
+                            bendShape.lineTo((Ri) * Math.cos(Math.PI/2 - bendAngleRad), -Ri - S/2 + (Ri) * Math.sin(Math.PI/2 - bendAngleRad));
+                            bendShape.absarc(0, -Ri - S/2, Ri, Math.PI/2 - bendAngleRad, Math.PI/2, false);
+                        }
+                        
+                        const extSettings = { depth: W, bevelEnabled: false, curveSegments: Math.max(16, Math.ceil(bendAngleDeg / 4)) };
+                        const bGeom = new THREE.ExtrudeGeometry(bendShape, extSettings);
+                        bGeom.translate(0, 0, -W/2);
+                        
+                        const bMesh = new THREE.Mesh(bGeom, material.clone());
+                        bMesh.castShadow = true; bMesh.receiveShadow = true;
+                        bMesh.position.set(netLen, 0, 0);
+                        bMesh.userData = { type: 'bendArc', bendIdx: i, dir: dir, Ri: Ri, S: S, bendAngleRad: bendAngleRad, label: `Гиб ${i + 1}` };
+                        currentParent.add(bMesh);
+
+                        if (showLabels && alignBendIdx < 0) {
+                            const bendLabel = createTextSprite(`Гиб ${i+1}`, 'rgba(245, 158, 11, 0.9)');
+                            if (bendLabel) {
+                                const yOffset = dir > 0 ? (Ri + S) + 6 : -(Ri + S) - 6;
+                                bendLabel.position.set(netLen, yOffset, 0);
+                                bendLabel.userData = { type: 'label' };
+                                currentParent.add(bendLabel);
+                            }
+                        }
+                        
+                        const nextParent = new THREE.Group();
+                        const pivotX = netLen;
+                        const pivotY = dir > 0 ? (Ri + S/2) : (-Ri - S/2);
+                        
+                        nextParent.position.set(pivotX, pivotY, 0);
+                        nextParent.rotation.z = dir * bendAngleRad;
+                        
+                        const shiftBack = new THREE.Group();
+                        shiftBack.position.set(0, -pivotY, 0);
+                        nextParent.add(shiftBack);
+                        
+                        currentParent.add(nextParent);
+                        currentParent = shiftBack;
                     }
-                    
-                    const nextParent = new THREE.Group();
-                    const pivotX = netLen;
-                    const pivotY = dir > 0 ? (Ri + S/2) : (-Ri - S/2);
-                    
-                    nextParent.position.set(pivotX, pivotY, 0);
-                    nextParent.rotation.z = dir * bendAngleRad;
-                    
-                    const shiftBack = new THREE.Group();
-                    shiftBack.position.set(0, -pivotY, 0);
-                    nextParent.add(shiftBack);
-                    
-                    nextParent.add(shiftBack);
-                    currentParent.add(nextParent);
-                    currentParent = shiftBack;
                 }
             }
             
@@ -1339,32 +2234,64 @@
             sheetGroup.rotation.set(0, 0, 0);
             sheetGroup.updateMatrixWorld(true);
             
-            let accumAngle = 0;
-            for(let i = 0; i < anchorIdx; i++) {
-                accumAngle += bds[i].direction * (bendGeom[i].bendAngleDeg * Math.PI / 180);
-            }
-            sheetGroup.rotation.z = -accumAngle;
-            sheetGroup.updateMatrixWorld(true);
-            
-            sheetGroup.rotation.x = -Math.PI / 2;
-            sheetGroup.updateMatrixWorld(true);
-            
-            let anchorCenter = new THREE.Vector3();
-            sheetGroup.traverse(child => {
-                if (child.userData.isAnchor) {
-                    child.getWorldPosition(anchorCenter);
+            if (alignBendIdx >= 0) {
+                // Выравнивание по активному гибу симуляции
+                let accumAngle = 0;
+                for (let i = 0; i < alignBendIdx; i++) {
+                    const ang = (customAnglesMap && customAnglesMap[i] !== undefined) ? customAnglesMap[i] : (customAnglesMap ? 0 : bendGeom[i].bendAngleDeg);
+                    accumAngle += (bds[i].direction * sheetFlip) * (ang * Math.PI / 180);
                 }
-            });
-            
-            const bbox = new THREE.Box3().setFromObject(sheetGroup);
-            const center = new THREE.Vector3();
-            bbox.getCenter(center);
-            
-            sheetGroup.position.x -= anchorCenter.x;
-            sheetGroup.position.y += (S/2 - anchorCenter.y); 
-            sheetGroup.position.z -= center.z;               
-            
-            sheetGroup.updateMatrixWorld(true);
+                const activeBendAngle = (customAnglesMap && customAnglesMap[alignBendIdx] !== undefined) ? customAnglesMap[alignBendIdx] : (customAnglesMap ? 0 : bendGeom[alignBendIdx].bendAngleDeg);
+                accumAngle += (bds[alignBendIdx].direction * sheetFlip) * (activeBendAngle * Math.PI / 180) / 2;
+
+                sheetGroup.rotation.z = -accumAngle;
+                sheetGroup.updateMatrixWorld(true);
+
+                sheetGroup.rotation.x = -Math.PI / 2;
+                sheetGroup.updateMatrixWorld(true);
+
+                let targetAnchorPos = new THREE.Vector3();
+                let foundAnchor = false;
+                sheetGroup.traverse(child => {
+                    if (child.userData && child.userData.isPunchAnchor && child.userData.bendIdx === alignBendIdx) {
+                        child.getWorldPosition(targetAnchorPos);
+                        foundAnchor = true;
+                    }
+                });
+
+                if (foundAnchor) {
+                    sheetGroup.position.x -= targetAnchorPos.x;
+                    sheetGroup.position.y += (S / 2 - targetAnchorPos.y);
+                    sheetGroup.position.z -= targetAnchorPos.z;
+                }
+                sheetGroup.updateMatrixWorld(true);
+            } else {
+                let accumAngle = 0;
+                for(let i = 0; i < anchorIdx; i++) {
+                    accumAngle += bds[i].direction * (bendGeom[i].bendAngleDeg * Math.PI / 180);
+                }
+                sheetGroup.rotation.z = -accumAngle;
+                sheetGroup.updateMatrixWorld(true);
+                
+                sheetGroup.rotation.x = -Math.PI / 2;
+                sheetGroup.updateMatrixWorld(true);
+                
+                let anchorCenter = new THREE.Vector3();
+                sheetGroup.traverse(child => {
+                    if (child.userData.isAnchor) {
+                        child.getWorldPosition(anchorCenter);
+                    }
+                });
+                
+                const bbox = new THREE.Box3().setFromObject(sheetGroup);
+                const center = new THREE.Vector3();
+                bbox.getCenter(center);
+                
+                sheetGroup.position.x -= anchorCenter.x;
+                sheetGroup.position.y += (S/2 - anchorCenter.y); 
+                sheetGroup.position.z -= center.z;               
+                sheetGroup.updateMatrixWorld(true);
+            }
         }
 
         let scale = 1, offsetX = 0, offsetY = 0, isPanning = false, panStart = {x:0,y:0}, panOffsetStart = {x:0,y:0};
@@ -1401,6 +2328,11 @@
         function drawFlat(geom, dims, totalLen) {
             if (document.getElementById('webglCanvas')) document.getElementById('webglCanvas').style.display = 'none';
             svg.style.display = 'block';
+            stopRenderLoop();
+
+            // Скрыть индикаторы 3D-режима
+            document.getElementById('collisionBadge').classList.remove('show');
+            document.getElementById('punchHint').classList.remove('show');
 
             svg.innerHTML = '';
             const g = document.createElementNS('http://www.w3.org/2000/svg','g');
@@ -1479,7 +2411,7 @@
                 txt.setAttribute('class','bend-zone-text'); txt.textContent = `BA ${baVal.toFixed(1)}`; g.appendChild(txt);
             }
 
-            const segs = [];
+            const flatSegs = [];
             const bd = dims.bends;
             const segLen = dims.segments.length;
             const bendGeom = geom.bends;
@@ -1493,14 +2425,14 @@
                 
                 let segLabel = netLen.toFixed(1);
                 
-                segs.push({ t: 's', w: Math.max(0, netLen) * drawScale, lbl: segLabel });
+                flatSegs.push({ t: 's', w: Math.max(0, netLen) * drawScale, lbl: segLabel });
                 if (i < bends.length) {
-                    segs.push({ t: 'b', w: bendGeom[i].BA * drawScale, ba: bendGeom[i].BA, idx: i });
+                    flatSegs.push({ t: 'b', w: bendGeom[i].BA * drawScale, ba: bendGeom[i].BA, idx: i });
                 }
             }
 
             let xPos = startX;
-            segs.forEach(s => {
+            flatSegs.forEach(s => {
                 if (s.t === 'b') drawBend(xPos, s.w, s.ba, s.idx);
                 else if (s.w > 0.1) addDim(xPos, xPos + s.w, baseY, s.lbl, true);
                 xPos += s.w;
@@ -1513,9 +2445,768 @@
             if (!scene) init3D();
             svg.style.display = 'none';
             document.getElementById('webglCanvas').style.display = 'block';
-            build3DSheet(geom, dims);
-            updatePunch();
+            startRenderLoop();
+            if (simCurrentStep >= 0 && typeof simController !== 'undefined') {
+                simController.renderStep();
+            } else {
+                build3DSheet(geom, dims);
+                updatePunch();
+                checkPunchCollision();
+            }
         }
+
+        // ========================================================
+        // МОДУЛЬ ТЕХНОЛОГИЧЕСКОГО РАСЧЕТА И СИМУЛЯЦИИ ГИБКИ (DURMA)
+        // ========================================================
+
+        // 1. Быстрая 2D кинематическая модель профиля листа в координатах инструмента
+        function getKinematicProfile2D(geom, dims, formedAngles, activeBendIdx, progress) {
+            const S = geom.S;
+            const Ri = geom.R;
+            const Rc = Ri + S / 2;
+            const segs = dims.segments;
+            const bds = dims.bends;
+            const bendGeom = geom.bends;
+            const numBends = bds.length;
+            const B = activeBendIdx;
+
+            const targetBendDeg = bendGeom[B].bendAngleDeg;
+            const curBendDeg = targetBendDeg * progress;
+            const curBendRad = curBendDeg * Math.PI / 180;
+            const halfAngle = curBendRad / 2;
+
+            const testPoints = [];
+            const outlineSegments = [];
+
+            // Безопасное контактное расстояние у кончика пуансона
+            const contactSafeDist = Math.max(3.0, Ri + S * 0.2 + 1.2);
+
+            let leftStart, leftTan, leftNorm;
+            let rightStart, rightTan, rightNorm;
+
+            if (curBendRad < 0.005) {
+                // Плоский активный гиб (исходное состояние листа в матрице)
+                const flatLen = bendGeom[B].BA || (bendGeom[B].OSSB * 2) || 0.1;
+                leftStart = { x: -flatLen / 2, y: -S / 2 };
+                leftTan = { x: -1, y: 0 };
+                leftNorm = { x: 0, y: 1 };
+
+                rightStart = { x: flatLen / 2, y: -S / 2 };
+                rightTan = { x: 1, y: 0 };
+                rightNorm = { x: 0, y: 1 };
+
+                for (let t = -0.5; t <= 0.5; t += 0.25) {
+                    testPoints.push({ x: t * flatLen, y: 0, isWorkZone: true, label: `Гиб ${B + 1}` });
+                    testPoints.push({ x: t * flatLen, y: -S, isWorkZone: true, label: `Гиб ${B + 1}` });
+                }
+            } else {
+                // Согнутая вершина активного гиба
+                // Кончик пуансона в (0, 0), центр дуги по нейтральному слою в (0, Ri + S/2)
+                const cY = Ri + S / 2;
+                leftStart = {
+                    x: -Rc * Math.sin(halfAngle),
+                    y: cY - Rc * Math.cos(halfAngle)
+                };
+                leftTan = {
+                    x: -Math.cos(halfAngle),
+                    y: Math.sin(halfAngle)
+                };
+                leftNorm = {
+                    x: -Math.sin(halfAngle),
+                    y: -Math.cos(halfAngle)
+                };
+
+                rightStart = {
+                    x: Rc * Math.sin(halfAngle),
+                    y: cY - Rc * Math.cos(halfAngle)
+                };
+                rightTan = {
+                    x: Math.cos(halfAngle),
+                    y: Math.sin(halfAngle)
+                };
+                rightNorm = {
+                    x: Math.sin(halfAngle),
+                    y: -Math.cos(halfAngle)
+                };
+
+                // Дискретизация дуги активного гиба
+                const arcSteps = Math.max(4, Math.ceil(curBendDeg / 15));
+                for (let k = 0; k <= arcSteps; k++) {
+                    const phi = -Math.PI / 2 - halfAngle + (k / arcSteps) * curBendRad;
+                    const px = Rc * Math.cos(phi);
+                    const py = cY + Rc * Math.sin(phi);
+                    testPoints.push({ x: px, y: py, isWorkZone: true, label: `Гиб ${B + 1}` });
+                    testPoints.push({ x: Ri * Math.cos(phi), y: cY - S / 2 + Ri * Math.sin(phi), isWorkZone: true, label: `Гиб ${B + 1}` });
+                    testPoints.push({ x: (Ri + S) * Math.cos(phi), y: cY - S / 2 + (Ri + S) * Math.sin(phi), isWorkZone: true, label: `Гиб ${B + 1}` });
+                }
+            }
+
+            // Трассировка левой ветви (сегмент B, гиб B-1, сегмент B-1 ... полка 1)
+            let curP = { ...leftStart };
+            let curTan = { ...leftTan };
+            let curNorm = { ...leftNorm };
+
+            for (let k = B; k >= 0; k--) {
+                let leftOSSB = (k < numBends) ? bendGeom[k].OSSB : 0;
+                let rightOSSB = (k > 0) ? bendGeom[k - 1].OSSB : 0;
+                let netLen = Math.max(0, segs[k].length - leftOSSB - rightOSSB);
+                const isAdj = (k === B);
+
+                const pStart = { ...curP };
+                const pEnd = { x: curP.x + curTan.x * netLen, y: curP.y + curTan.y * netLen };
+                outlineSegments.push({ p1: pStart, p2: pEnd, isWorkZone: isAdj, label: `Полка ${k + 1}` });
+
+                const steps = Math.max(2, Math.ceil(netLen / 5));
+                for (let s = 0; s <= steps; s++) {
+                    const t = s / steps;
+                    const midX = pStart.x + curTan.x * netLen * t;
+                    const midY = pStart.y + curTan.y * netLen * t;
+                    const isNearTip = isAdj && (Math.hypot(midX, midY) <= contactSafeDist);
+
+                    testPoints.push({ x: midX, y: midY, isWorkZone: isNearTip, label: `Полка ${k + 1}` });
+                    testPoints.push({ x: midX + curNorm.x * (S / 2), y: midY + curNorm.y * (S / 2), isWorkZone: isNearTip, label: `Полка ${k + 1}` });
+                    testPoints.push({ x: midX - curNorm.x * (S / 2), y: midY - curNorm.y * (S / 2), isWorkZone: isNearTip, label: `Полка ${k + 1}` });
+                }
+
+                curP = pEnd;
+
+                if (k > 0) {
+                    const prevBIdx = k - 1;
+                    const prevBendDeg = formedAngles[prevBIdx] || 0;
+                    const prevBendRad = prevBendDeg * Math.PI / 180;
+                    const dirRel = -bds[prevBIdx].direction * bds[B].direction;
+
+                    if (prevBendRad > 0.005) {
+                        const dTheta = dirRel * prevBendRad;
+                        const cosT = Math.cos(dTheta), sinT = Math.sin(dTheta);
+                        const nextTan = {
+                            x: curTan.x * cosT - curTan.y * sinT,
+                            y: curTan.x * sinT + curTan.y * cosT
+                        };
+                        const nextNorm = {
+                            x: curNorm.x * cosT - curNorm.y * sinT,
+                            y: curNorm.x * sinT + curNorm.y * cosT
+                        };
+
+                        const arcCenter = {
+                            x: curP.x + curNorm.x * Rc * dirRel,
+                            y: curP.y + curNorm.y * Rc * dirRel
+                        };
+                        for (let a = 0; a <= 3; a++) {
+                            const phi = a / 3 * dTheta;
+                            const cP = Math.cos(phi), sP = Math.sin(phi);
+                            const rx = -curNorm.x * Rc * dirRel * cP + curTan.x * Rc * dirRel * sP;
+                            const ry = -curNorm.y * Rc * dirRel * cP + curTan.y * Rc * dirRel * sP;
+                            testPoints.push({ x: arcCenter.x + rx, y: arcCenter.y + ry, isWorkZone: false, label: `Гиб ${prevBIdx + 1}` });
+                        }
+
+                        curTan = nextTan;
+                        curNorm = nextNorm;
+                    } else {
+                        const ba = bendGeom[prevBIdx].BA || (bendGeom[prevBIdx].OSSB * 2) || 0;
+                        curP = { x: curP.x + curTan.x * ba, y: curP.y + curTan.y * ba };
+                    }
+                }
+            }
+
+            // Трассировка правой ветви (сегмент B+1, гиб B+1 ... полка N)
+            curP = { ...rightStart };
+            curTan = { ...rightTan };
+            curNorm = { ...rightNorm };
+
+            for (let k = B + 1; k < segs.length; k++) {
+                let leftOSSB = (k < numBends) ? bendGeom[k].OSSB : 0;
+                let rightOSSB = (k > 0) ? bendGeom[k - 1].OSSB : 0;
+                let netLen = Math.max(0, segs[k].length - leftOSSB - rightOSSB);
+                const isAdj = (k === B + 1);
+
+                const pStart = { ...curP };
+                const pEnd = { x: curP.x + curTan.x * netLen, y: curP.y + curTan.y * netLen };
+                outlineSegments.push({ p1: pStart, p2: pEnd, isWorkZone: isAdj, label: `Полка ${k + 1}` });
+
+                const steps = Math.max(2, Math.ceil(netLen / 5));
+                for (let s = 0; s <= steps; s++) {
+                    const t = s / steps;
+                    const midX = pStart.x + curTan.x * netLen * t;
+                    const midY = pStart.y + curTan.y * netLen * t;
+                    const isNearTip = isAdj && (Math.hypot(midX, midY) <= contactSafeDist);
+
+                    testPoints.push({ x: midX, y: midY, isWorkZone: isNearTip, label: `Полка ${k + 1}` });
+                    testPoints.push({ x: midX + curNorm.x * (S / 2), y: midY + curNorm.y * (S / 2), isWorkZone: isNearTip, label: `Полка ${k + 1}` });
+                    testPoints.push({ x: midX - curNorm.x * (S / 2), y: midY - curNorm.y * (S / 2), isWorkZone: isNearTip, label: `Полка ${k + 1}` });
+                }
+
+                curP = pEnd;
+
+                if (k < numBends) {
+                    const nextBIdx = k;
+                    const nextBendDeg = formedAngles[nextBIdx] || 0;
+                    const nextBendRad = nextBendDeg * Math.PI / 180;
+                    const dirRel = bds[nextBIdx].direction * bds[B].direction;
+
+                    if (nextBendRad > 0.005) {
+                        const dTheta = dirRel * nextBendRad;
+                        const cosT = Math.cos(dTheta), sinT = Math.sin(dTheta);
+                        const nextTan = {
+                            x: curTan.x * cosT - curTan.y * sinT,
+                            y: curTan.x * sinT + curTan.y * cosT
+                        };
+                        const nextNorm = {
+                            x: curNorm.x * cosT - curNorm.y * sinT,
+                            y: curNorm.x * sinT + curNorm.y * cosT
+                        };
+
+                        const arcCenter = {
+                            x: curP.x + curNorm.x * Rc * dirRel,
+                            y: curP.y + curNorm.y * Rc * dirRel
+                        };
+                        for (let a = 0; a <= 3; a++) {
+                            const phi = a / 3 * dTheta;
+                            const cP = Math.cos(phi), sP = Math.sin(phi);
+                            const rx = -curNorm.x * Rc * dirRel * cP + curTan.x * Rc * dirRel * sP;
+                            const ry = -curNorm.y * Rc * dirRel * cP + curTan.y * Rc * dirRel * sP;
+                            testPoints.push({ x: arcCenter.x + rx, y: arcCenter.y + ry, isWorkZone: false, label: `Гиб ${nextBIdx + 1}` });
+                        }
+
+                        curTan = nextTan;
+                        curNorm = nextNorm;
+                    } else {
+                        const ba = bendGeom[nextBIdx].BA || (bendGeom[nextBIdx].OSSB * 2) || 0;
+                        curP = { x: curP.x + curTan.x * ba, y: curP.y + curTan.y * ba };
+                    }
+                }
+            }
+
+            return { testPoints, outlineSegments, contactSafeDist };
+        }
+
+        // 2. Проверка коллизий 2D профиля с пуансоном, матрицей и рамой станка
+        function checkKinematicCollision(geom, dims, formedAngles, activeBendIdx, progress, punchFlipped) {
+            const { testPoints, outlineSegments, contactSafeDist } = getKinematicProfile2D(geom, dims, formedAngles, activeBendIdx, progress);
+            const S = geom.S;
+            const V = geom.V;
+            const isAcute = dims.bends[activeBendIdx].angle < 85;
+            const punchPoly = getPunchPolygon(isAcute ? 'acute' : 'gooseneck');
+            const diePoly = getDiePolygon(V, isAcute);
+            const halfV = V / 2;
+            const dieBaseY = (V <= 10 && !isAcute) ? -120 : -60;
+
+            // Проверка точек листа
+            for (const pt of testPoints) {
+                const px = punchFlipped ? -pt.x : pt.x;
+                const py = pt.y;
+
+                // 1. Верхняя балка / Траверса (рама над пуансоном)
+                if (py >= 144 && Math.abs(px) <= 35) {
+                    return { collides: true, tool: 'ram', label: pt.label };
+                }
+
+                // 2. Пуансон
+                if (!pt.isWorkZone || Math.hypot(pt.x, pt.y) > contactSafeDist) {
+                    if (pointInPolygon(px, py, punchPoly)) {
+                        return { collides: true, tool: 'punch', label: pt.label };
+                    }
+                }
+
+                // 3. Нижний стол пресса (рама под подошвой матрицы)
+                const dx = pt.x;
+                const dy = pt.y + S;
+                if (dy <= dieBaseY && Math.abs(dx) <= 35) {
+                    return { collides: true, tool: 'bed', label: pt.label };
+                }
+
+                // 4. Матрица (координата y = -S соответствует верху матрицы)
+                const inDieGroove = pt.isWorkZone && (Math.abs(dx) <= halfV + 1.5) && (dy >= -20 && dy <= 1.5);
+                if (!inDieGroove) {
+                    if (pointInPolygon(dx, dy, diePoly)) {
+                        return { collides: true, tool: 'die', label: pt.label };
+                    }
+                }
+            }
+
+            // Проверка пересечения ребер сечения с полигоном пуансона и зонами рамы
+            for (const seg of outlineSegments) {
+                if (seg.isWorkZone) continue;
+                const p1 = { x: punchFlipped ? -seg.p1.x : seg.p1.x, y: seg.p1.y };
+                const p2 = { x: punchFlipped ? -seg.p2.x : seg.p2.x, y: seg.p2.y };
+
+                // Пересечение с верхней балкой
+                if ((p1.y >= 144 || p2.y >= 144) && checkSegmentBoxIntersect(p1, p2, -35, 35, 144, 400)) {
+                    return { collides: true, tool: 'ram', label: seg.label };
+                }
+
+                // Пересечение со столом пресса
+                const d1 = { x: seg.p1.x, y: seg.p1.y + S };
+                const d2 = { x: seg.p2.x, y: seg.p2.y + S };
+                if ((d1.y <= dieBaseY || d2.y <= dieBaseY) && checkSegmentBoxIntersect(d1, d2, -35, 35, -400, dieBaseY)) {
+                    return { collides: true, tool: 'bed', label: seg.label };
+                }
+
+                for (let i = 0, j = punchPoly.length - 1; i < punchPoly.length; j = i++) {
+                    if (checkSegmentsIntersect(p1, p2, punchPoly[i], punchPoly[j])) {
+                        return { collides: true, tool: 'punch', label: seg.label };
+                    }
+                }
+            }
+
+            return { collides: false };
+        }
+
+        // 3. Автоматический расчет технологической последовательности гибки
+        function solveBendSequence(geom, dims) {
+            if (!geom || !dims || dims.bends.length === 0) {
+                return { isFeasible: true, sequence: [], message: 'Нет гибов' };
+            }
+
+            const numBends = dims.bends.length;
+            const indices = [];
+            for (let i = 0; i < numBends; i++) indices.push(i);
+
+            // Генерация перестановок с приоритетом стандартных производственных стратегий
+            const permutations = [];
+
+            // Стратегия 1: Снаружи внутрь (0, N-1, 1, N-2...)
+            const outsideIn = [];
+            let l = 0, r = numBends - 1;
+            while (l <= r) {
+                if (l === r) outsideIn.push(l);
+                else { outsideIn.push(l); outsideIn.push(r); }
+                l++; r--;
+            }
+            permutations.push(outsideIn);
+
+            // Стратегия 2: Снаружи внутрь с правого края (N-1, 0, N-2, 1...)
+            const outsideInR = [];
+            l = 0; r = numBends - 1;
+            while (l <= r) {
+                if (l === r) outsideInR.push(r);
+                else { outsideInR.push(r); outsideInR.push(l); }
+                l++; r--;
+            }
+            permutations.push(outsideInR);
+
+            // Стратегия 3: Последовательно слева направо [0, 1, ... N-1]
+            permutations.push([...indices]);
+
+            // Стратегия 4: Последовательно справа налево [N-1, ... 0]
+            permutations.push([...indices].reverse());
+
+            // Полный перебор оставшихся вариантов для N <= 6
+            function permute(arr, m = []) {
+                if (arr.length === 0) {
+                    permutations.push(m);
+                } else {
+                    for (let i = 0; i < arr.length; i++) {
+                        const curr = arr.slice();
+                        const next = curr.splice(i, 1);
+                        permute(curr.slice(), m.concat(next));
+                    }
+                }
+            }
+            if (numBends <= 6) {
+                permute(indices);
+            }
+
+            const seen = new Set();
+            const uniquePerms = [];
+            for (const p of permutations) {
+                const key = p.join(',');
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    uniquePerms.push(p);
+                }
+            }
+
+            let bestSeq = null;
+            let bestScore = -1;
+            let worstFailReason = '';
+
+            for (const perm of uniquePerms) {
+                const formedAngles = new Array(numBends).fill(0);
+                let seq = [];
+                let permFeasible = true;
+                let failReason = '';
+
+                for (let step = 0; step < perm.length; step++) {
+                    const bIdx = perm[step];
+                    let stepFeasible = false;
+                    let chosenFlip = false;
+
+                    // Пробуем ориентацию пуансона: прямой монтаж, затем разворот 180°
+                    for (const flip of [false, true]) {
+                        let flipOk = true;
+                        // Проверка 3 контрольных положений хода: 0% (укладка), 50% (деформация), 100% (дожим)
+                        for (const prog of [0.0, 0.5, 1.0]) {
+                            const res = checkKinematicCollision(geom, dims, formedAngles, bIdx, prog, flip);
+                            if (res.collides) {
+                                flipOk = false;
+                                const tName = (res.tool === 'ram') ? 'с верхней балкой' : (res.tool === 'bed' ? 'со столом пресса' : (res.tool === 'die' ? 'с матрицей' : 'с пуансоном'));
+                                failReason = `Гиб ${bIdx + 1}: коллизия ${tName} (${res.label})`;
+                                break;
+                            }
+                        }
+                        if (flipOk) {
+                            stepFeasible = true;
+                            chosenFlip = flip;
+                            break;
+                        }
+                    }
+
+                    if (!stepFeasible) {
+                        permFeasible = false;
+                        if (step > bestScore) {
+                            bestScore = step;
+                            bestSeq = seq;
+                            worstFailReason = failReason;
+                        }
+                        break;
+                    }
+
+                    seq.push({
+                        bendIdx: bIdx,
+                        punchFlipped: chosenFlip,
+                        isAcute: dims.bends[bIdx].angle < 85,
+                        angleDeg: geom.bends[bIdx].bendAngleDeg
+                    });
+                    formedAngles[bIdx] = geom.bends[bIdx].bendAngleDeg;
+                }
+
+                if (permFeasible) {
+                    const seqStr = seq.map(s => (s.bendIdx + 1) + (s.punchFlipped ? '↷' : '')).join(' → ');
+                    return {
+                        isFeasible: true,
+                        sequence: seq,
+                        message: `Выполнима: ${seqStr}`
+                    };
+                }
+            }
+
+            return {
+                isFeasible: false,
+                sequence: bestSeq || [],
+                message: worstFailReason ? `Невыполнима (${worstFailReason})` : 'Коллизия инструмента'
+            };
+        }
+
+        // Обновление индикатора выполнимости в статус-панели
+        function updateBendSequenceSolver(geom, dims) {
+            if (!geom || !dims) return;
+            simSolverResult = solveBendSequence(geom, dims);
+            simSequence = simSolverResult.sequence;
+            window.simSolverResult = simSolverResult;
+
+            const dot = document.getElementById('simDot');
+            const statusText = document.getElementById('simStatusText');
+
+            if (dot && statusText) {
+                if (simSolverResult.isFeasible) {
+                    dot.className = 'status-dot status-ok';
+                    statusText.textContent = simSolverResult.message;
+                } else {
+                    dot.className = 'status-dot status-error';
+                    statusText.textContent = simSolverResult.message;
+                }
+            }
+        }
+
+        // 4. Интерактивный плеер симуляции процесса гибки
+        const simController = {
+            isPlaying: false,
+            currentStepIdx: -1, // -1 = режим готовой детали, 0..N-1 = активный шаг
+            progress: 1.0,      // 0.0..1.0 внутри активного шага
+            pauseCounter: 0,
+            speedMultiplier: 1.0,
+            baseSpeed: 0.007,   // ~2.4 сек на шаг при 1x и 60fps
+
+            init() {
+                const playBtn = document.getElementById('simPlayBtn');
+                const prevBtn = document.getElementById('simPrevBtn');
+                const nextBtn = document.getElementById('simNextBtn');
+                const resetBtn = document.getElementById('simResetBtn');
+                const doneBtn = document.getElementById('simDoneBtn');
+                const scrubber = document.getElementById('simScrubber');
+                const speedGroup = document.getElementById('simSpeedGroup');
+
+                if (playBtn) playBtn.addEventListener('click', () => this.togglePlay());
+                if (prevBtn) prevBtn.addEventListener('click', () => this.stepBackward());
+                if (nextBtn) nextBtn.addEventListener('click', () => this.stepForward());
+                if (resetBtn) resetBtn.addEventListener('click', () => this.reset());
+                if (doneBtn) doneBtn.addEventListener('click', () => this.showFinishedPart());
+
+                if (scrubber) {
+                    scrubber.addEventListener('input', (e) => {
+                        this.pause();
+                        if (this.currentStepIdx === -1) {
+                            this.currentStepIdx = 0;
+                        }
+                        this.progress = parseFloat(e.target.value) / 100;
+                        this.renderStep();
+                        this.updateUI();
+                    });
+                }
+
+                if (speedGroup) {
+                    speedGroup.querySelectorAll('.sim-speed-btn').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            const spd = parseFloat(btn.getAttribute('data-speed')) || 1.0;
+                            this.speedMultiplier = spd;
+                            speedGroup.querySelectorAll('.sim-speed-btn').forEach(b => b.classList.remove('active'));
+                            btn.classList.add('active');
+                        });
+                    });
+                }
+            },
+
+            togglePlay() {
+                if (!simSolverResult || !simSolverResult.sequence || simSolverResult.sequence.length === 0) return;
+                if (this.isPlaying) this.pause();
+                else this.play();
+            },
+
+            play() {
+                if (!simSolverResult || !simSolverResult.sequence || simSolverResult.sequence.length === 0) return;
+                // Если находились в режиме готовой детали — начинаем с плоского листа (Шаг 1, progress 0)
+                if (this.currentStepIdx === -1 || this.currentStepIdx >= simSolverResult.sequence.length) {
+                    this.currentStepIdx = 0;
+                    this.progress = 0.0;
+                }
+                this.isPlaying = true;
+                this.updateUI();
+            },
+
+            pause() {
+                this.isPlaying = false;
+                this.updateUI();
+            },
+
+            reset() {
+                this.pause();
+                // Сброс к плоской заготовке перед первым гибом
+                this.currentStepIdx = 0;
+                this.progress = 0.0;
+                simCurrentStep = 0;
+                simProgress = 0.0;
+                this.renderStep();
+                this.updateUI();
+            },
+
+            showFinishedPart() {
+                this.pause();
+                this.currentStepIdx = -1;
+                this.progress = 1.0;
+                simCurrentStep = -1;
+                simProgress = 1.0;
+                this.renderStep();
+                this.updateUI();
+            },
+
+            stepForward() {
+                this.pause();
+                if (!simSolverResult || !simSolverResult.sequence || simSolverResult.sequence.length === 0) return;
+                if (this.currentStepIdx === -1) {
+                    this.currentStepIdx = 0;
+                    this.progress = 0.0;
+                } else if (this.progress < 0.98) {
+                    this.progress = 1.0;
+                } else if (this.currentStepIdx < simSolverResult.sequence.length - 1) {
+                    this.currentStepIdx++;
+                    this.progress = 0.0;
+                } else {
+                    this.currentStepIdx = -1;
+                    this.progress = 1.0;
+                }
+                this.renderStep();
+                this.updateUI();
+            },
+
+            stepBackward() {
+                this.pause();
+                if (!simSolverResult || !simSolverResult.sequence || simSolverResult.sequence.length === 0) return;
+                if (this.currentStepIdx === -1) {
+                    this.currentStepIdx = simSolverResult.sequence.length - 1;
+                    this.progress = 1.0;
+                } else if (this.progress > 0.05) {
+                    this.progress = 0.0;
+                } else if (this.currentStepIdx > 0) {
+                    this.currentStepIdx--;
+                    this.progress = 1.0;
+                } else {
+                    this.progress = 0.0;
+                }
+                this.renderStep();
+                this.updateUI();
+            },
+
+            tick() {
+                if (!this.isPlaying) return;
+                if (!simSolverResult || !simSolverResult.sequence || simSolverResult.sequence.length === 0) {
+                    this.pause();
+                    return;
+                }
+
+                if (this.pauseCounter > 0) {
+                    this.pauseCounter--;
+                    return;
+                }
+
+                const stepSpeed = this.baseSpeed * this.speedMultiplier;
+                this.progress += stepSpeed;
+
+                if (this.progress >= 1.0) {
+                    this.progress = 1.0;
+                    this.renderStep();
+                    this.updateUI();
+
+                    // Пауза между шагами для осмотра выполненного гиба (~0.5 сек при 1x)
+                    this.pauseCounter = Math.max(10, Math.round(35 / this.speedMultiplier));
+
+                    if (this.currentStepIdx < simSolverResult.sequence.length - 1) {
+                        this.currentStepIdx++;
+                        this.progress = 0.0;
+                    } else {
+                        // Все шаги завершены — переход к готовой детали
+                        this.pause();
+                        this.currentStepIdx = -1;
+                        this.progress = 1.0;
+                        this.renderStep();
+                        this.updateUI();
+                        return;
+                    }
+                } else {
+                    this.renderStep();
+                    this.updateUI();
+                }
+            },
+
+            renderStep() {
+                const geom = calculateGeometry();
+                const dims = getProfileDims();
+                if (!geom || !dims) return;
+
+                simCurrentStep = this.currentStepIdx;
+                simProgress = this.progress;
+
+                // Режим просмотра готовой детали
+                if (this.currentStepIdx === -1) {
+                    build3DSheet(geom, dims);
+                    updatePunch();
+                    checkPunchCollision();
+                    return;
+                }
+
+                const seq = simSolverResult.sequence;
+                if (!seq || seq.length === 0) return;
+                if (this.currentStepIdx >= seq.length) {
+                    this.currentStepIdx = seq.length - 1;
+                }
+
+                const currentStepInfo = seq[this.currentStepIdx];
+                if (!currentStepInfo) return;
+
+                const curBIdx = currentStepInfo.bendIdx;
+                const targetAngleDeg = geom.bends[curBIdx].bendAngleDeg;
+                const p = Math.max(0, Math.min(1, this.progress));
+
+                // === 3 ФАЗЫ ДВИЖЕНИЯ В КАЖДОМ ШАГЕ ===
+                let punchOffset = 0;
+                let bendFrac = 0.0;
+                let phaseText = '';
+
+                if (p < 0.25) {
+                    // Фаза 1: Подвод пуансона (опускание с 35 мм до 0 мм)
+                    const frac = p / 0.25;
+                    punchOffset = (1.0 - frac) * 35.0;
+                    bendFrac = 0.0;
+                    phaseText = 'Подвод пуансона';
+                } else if (p < 0.75) {
+                    // Фаза 2: Рабочий ход (деформация листа 0° -> targetAngle)
+                    const frac = (p - 0.25) / 0.50;
+                    punchOffset = 0.0;
+                    bendFrac = frac;
+                    const formedDeg = Math.round(frac * targetAngleDeg);
+                    phaseText = `Гибка: ${formedDeg}° / ${Math.round(targetAngleDeg)}°`;
+                } else {
+                    // Фаза 3: Отвод пуансона (подъем с 0 мм до 35 мм)
+                    const frac = (p - 0.75) / 0.25;
+                    punchOffset = frac * 35.0;
+                    bendFrac = 1.0;
+                    phaseText = 'Отвод пуансона';
+                }
+
+                this.currentPhaseText = phaseText;
+
+                // === КИНЕМАТИКА: СТАРТ С ПЛОСКОГО ЛИСТА, БЕЗ БУДУЩИХ ГИБОВ ===
+                const customAngles = {};
+                // 1. Предыдущие гибы — согнуты на 100%
+                for (let s = 0; s < this.currentStepIdx; s++) {
+                    const prevB = seq[s].bendIdx;
+                    customAngles[prevB] = geom.bends[prevB].bendAngleDeg;
+                }
+                // 2. Текущий активный гиб
+                customAngles[curBIdx] = targetAngleDeg * bendFrac;
+                // 3. Все будущие гибы — строго ПЛОСКИЕ (0°)
+                for (let b = 0; b < geom.bends.length; b++) {
+                    if (customAngles[b] === undefined) {
+                        customAngles[b] = 0;
+                    }
+                }
+
+                build3DSheet(geom, dims, customAngles, curBIdx);
+                updatePunchAndDie(curBIdx, punchOffset, currentStepInfo.punchFlipped);
+                checkPunchCollision();
+            },
+
+            updateUI() {
+                const stepText = document.getElementById('simStepText');
+                const playLabel = document.getElementById('simPlayLabel');
+                const playIcon = document.getElementById('simPlayIcon');
+                const phaseEl = document.getElementById('simPhaseText');
+                const scrubber = document.getElementById('simScrubber');
+                const doneBtn = document.getElementById('simDoneBtn');
+
+                if (doneBtn) {
+                    doneBtn.classList.toggle('active', this.currentStepIdx === -1);
+                }
+
+                if (stepText) {
+                    if (this.currentStepIdx === -1) {
+                        stepText.textContent = 'Готовая';
+                    } else if (simSolverResult && simSolverResult.sequence) {
+                        const seq = simSolverResult.sequence;
+                        const cur = seq[this.currentStepIdx];
+                        if (cur) {
+                            const bIdx = cur.bendIdx;
+                            const flipIcon = cur.punchFlipped ? ' ↷' : '';
+                            stepText.textContent = `Шаг ${this.currentStepIdx + 1}/${seq.length} (Гиб ${bIdx + 1}${flipIcon})`;
+                        }
+                    }
+                }
+
+                if (phaseEl) {
+                    if (this.currentStepIdx === -1) {
+                        phaseEl.textContent = 'Готовая деталь';
+                    } else {
+                        phaseEl.textContent = this.currentPhaseText || 'Лист в матрице';
+                    }
+                }
+
+                if (scrubber) {
+                    if (this.currentStepIdx === -1) {
+                        scrubber.value = 100;
+                    } else {
+                        scrubber.value = Math.round(this.progress * 100);
+                    }
+                }
+
+                if (playLabel) playLabel.textContent = this.isPlaying ? 'Пауза' : 'Симуляция';
+                if (playIcon) {
+                    playIcon.innerHTML = this.isPlaying
+                        ? '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>'
+                        : '<path d="M8 5v14l11-7z"/>';
+                }
+            }
+        };
+        window.simController = simController;
 
         function updateExplanation(geom, dims, totalLen) {
             const expl = document.getElementById('explanation');
@@ -1573,25 +3264,32 @@
             const totalLen = computeFlatLength(geom, dims);
             if (!geom || totalLen <= 0) { alert("Нет данных для экспорта!"); return; }
             const L_mm = getBendLength();
-            let dxf = "0\nSECTION\n2\nENTITIES\n";
+
+            // Минимальный DXF-заголовок с единицами измерения (мм)
+            let dxf = "0\nSECTION\n2\nHEADER\n";
+            dxf += "9\n$INSUNITS\n70\n4\n";
+            dxf += "9\n$MEASUREMENT\n70\n1\n";
+            dxf += "0\nENDSEC\n";
+            dxf += "0\nSECTION\n2\nENTITIES\n";
+
             dxf += createDxfLine(0,0,totalLen,0,"OUTLINE");
             dxf += createDxfLine(totalLen,0,totalLen,L_mm,"OUTLINE");
             dxf += createDxfLine(totalLen,L_mm,0,L_mm,"OUTLINE");
             dxf += createDxfLine(0,L_mm,0,0,"OUTLINE");
 
-            const segs = [];
+            const flatSegs = [];
             const bendGeom = geom.bends;
             for (let i = 0; i < dims.segments.length; i++) {
                 let leftOSSB = 0, rightOSSB = 0;
                 if (i < bendGeom.length) leftOSSB = bendGeom[i].OSSB;
                 if (i > 0 && i - 1 < bendGeom.length) rightOSSB = bendGeom[i - 1].OSSB;
                 const netLen = Math.max(0, dims.segments[i].length - leftOSSB - rightOSSB);
-                segs.push({ t: 's', w: netLen });
-                if (i < bendGeom.length) segs.push({ t: 'b', w: bendGeom[i].BA });
+                flatSegs.push({ t: 's', w: netLen });
+                if (i < bendGeom.length) flatSegs.push({ t: 'b', w: bendGeom[i].BA });
             }
 
             let xPos = 0;
-            segs.forEach(s => {
+            flatSegs.forEach(s => {
                 if (s.t === 'b') {
                     dxf += createDxfLine(xPos,0,xPos,L_mm,"BEND_BOUNDARIES");
                     dxf += createDxfLine(xPos+s.w/2,0,xPos+s.w/2,L_mm,"BEND_CENTER");
@@ -1602,14 +3300,21 @@
             dxf += "0\nENDSEC\n0\nEOF\n";
             const blob = new Blob([dxf],{type:"application/dxf"});
             const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.download = `durma_flat_${totalLen.toFixed(1)}x${L_mm}.dxf`;
+            const url = URL.createObjectURL(blob);
+            link.href = url;
+            link.download = `kbend_flat_${totalLen.toFixed(1)}x${L_mm}.dxf`;
             document.body.appendChild(link); link.click(); document.body.removeChild(link);
+            URL.revokeObjectURL(url);
         }
 
-        const STORAGE_KEY = 'bender_profiles';
+        const STORAGE_KEY = 'kbend_profiles';
 
-        function getProfiles() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch(e) { return []; } }
+        function getProfiles() {
+            try {
+                const data = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('bender_profiles');
+                return JSON.parse(data) || [];
+            } catch(e) { return []; }
+        }
         function saveProfiles(profiles) { localStorage.setItem(STORAGE_KEY, JSON.stringify(profiles)); }
 
         function refreshProfilesList() {
@@ -1655,7 +3360,13 @@
             const profile = profiles.find(p => p.name === name);
             if (!profile) { alert('Деталь не найдена!'); return; }
 
-            document.getElementById('material').value = profile.material || 'steel';
+            const mat = profile.material || 'steel';
+            document.getElementById('material').value = mat;
+            // Синхронизация кнопок-пресетов материала
+            document.querySelectorAll('#materialPresets .mat-btn').forEach(b => {
+                b.classList.toggle('active-preset', b.dataset.material === mat);
+            });
+
             document.getElementById('thickness').value = profile.thickness || 2;
             document.getElementById('thicknessSlider').value = profile.thickness || 2;
             document.getElementById('bendLength').value = profile.bendLength || 100;
@@ -1680,6 +3391,14 @@
             saveProfiles(profiles);
             document.getElementById('profileName').value = '';
             refreshProfilesList();
+        }
+
+        // Throttled redraw через requestAnimationFrame
+        let redrawScheduled = false;
+        function scheduleRedraw() {
+            if (redrawScheduled) return;
+            redrawScheduled = true;
+            requestAnimationFrame(() => { redrawScheduled = false; redraw(); });
         }
 
         function redraw() {
@@ -1721,6 +3440,7 @@
 
             updateExplanation(geom, dims, totalLen);
             updateInnerIndicators(geom, dims);
+            updateBendSequenceSolver(geom, dims);
 
             const needFit = resetViewOnSwitch || !firstDrawDone;
             
@@ -1798,10 +3518,43 @@
             resetViewOnSwitch = true; redraw();
         });
 
-        document.getElementById('thickness').addEventListener('input', () => { let v = parseFloat(document.getElementById('thickness').value); if (v > 7) v = 7; if (v < 0.5) v = 0.5; document.getElementById('thickness').value = v; document.getElementById('thicknessSlider').value = v; resetManualDie(); redraw(); });
-        document.getElementById('thicknessSlider').addEventListener('input', () => { document.getElementById('thickness').value = parseFloat(document.getElementById('thicknessSlider').value).toFixed(1); resetManualDie(); redraw(); });
-        document.getElementById('bendLength').addEventListener('input', () => { let v = parseFloat(document.getElementById('bendLength').value); if (v > 4150) v = 4150; if (v < 10) v = 10; document.getElementById('bendLength').value = v; document.getElementById('bendLengthSlider').value = v; redraw(); });
-        document.getElementById('bendLengthSlider').addEventListener('input', () => { document.getElementById('bendLength').value = document.getElementById('bendLengthSlider').value; redraw(); });
+        document.getElementById('thickness').addEventListener('input', () => {
+            const raw = document.getElementById('thickness').value;
+            const v = parseFloat(raw);
+            if (!isNaN(v)) {
+                document.getElementById('thicknessSlider').value = Math.min(7, Math.max(0.5, v));
+            }
+            resetManualDie();
+            scheduleRedraw();
+        });
+        document.getElementById('thickness').addEventListener('change', () => {
+            let v = parseFloat(document.getElementById('thickness').value);
+            if (isNaN(v) || v < 0.5) v = 0.5;
+            if (v > 7) v = 7;
+            document.getElementById('thickness').value = v;
+            document.getElementById('thicknessSlider').value = v;
+            resetManualDie();
+            scheduleRedraw();
+        });
+        document.getElementById('thicknessSlider').addEventListener('input', () => { document.getElementById('thickness').value = parseFloat(document.getElementById('thicknessSlider').value).toFixed(1); resetManualDie(); scheduleRedraw(); });
+
+        document.getElementById('bendLength').addEventListener('input', () => {
+            const raw = document.getElementById('bendLength').value;
+            const v = parseFloat(raw);
+            if (!isNaN(v)) {
+                document.getElementById('bendLengthSlider').value = Math.min(4150, Math.max(10, v));
+            }
+            scheduleRedraw();
+        });
+        document.getElementById('bendLength').addEventListener('change', () => {
+            let v = parseFloat(document.getElementById('bendLength').value);
+            if (isNaN(v) || v < 10) v = 10;
+            if (v > 4150) v = 4150;
+            document.getElementById('bendLength').value = v;
+            document.getElementById('bendLengthSlider').value = v;
+            scheduleRedraw();
+        });
+        document.getElementById('bendLengthSlider').addEventListener('input', () => { document.getElementById('bendLength').value = document.getElementById('bendLengthSlider').value; scheduleRedraw(); });
         document.getElementById('material').addEventListener('change', () => { resetManualDie(); redraw(); });
         document.getElementById('resDieSelect').addEventListener('change', (e) => { manualDie = parseInt(e.target.value); redraw(); });
         document.getElementById('btnExportDxf').addEventListener('click', exportToDXF);
@@ -1829,6 +3582,16 @@
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
             if ((e.key === 'd' || e.key === 'D' || e.key === ' ') && selectedBendIdx >= 0 && selectedBendIdx < bends.length) {
                 e.preventDefault(); bends[selectedBendIdx].direction *= -1; updateBendEditor(); redraw();
+            }
+            // P — быстрый тогл пуансона
+            if (e.key === 'p' || e.key === 'P') {
+                e.preventDefault();
+                document.getElementById('viewPunchBtn').click();
+            }
+            // F — быстрый разворот пуансона на 180°
+            if ((e.key === 'f' || e.key === 'F' || e.key === 'а' || e.key === 'А') && punchEnabled) {
+                e.preventDefault();
+                document.getElementById('viewPunchFlipBtn').click();
             }
         });
 
@@ -1878,7 +3641,7 @@
             const size = bbox.getSize(new THREE.Vector3());
             const maxDim = Math.max(size.x, size.y, size.z, 50);
             animateCamera(new THREE.Vector3(maxDim * 1.2, maxDim * 0.8, maxDim * 1.2), new THREE.Vector3(0, size.y / 2, 0));
-            document.querySelectorAll('.view-controls .view-btn-3d').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.view-controls .view-btn-3d:not(.punch-btn):not(.help-btn)').forEach(b => b.classList.remove('active'));
             document.getElementById('viewReset').classList.add('active');
         });
 
@@ -1888,7 +3651,7 @@
             const size = bbox.getSize(new THREE.Vector3());
             const maxDim = Math.max(size.x, size.y, size.z, 50);
             animateCamera(new THREE.Vector3(0, maxDim * 1.5, 0), new THREE.Vector3(0, size.y / 2, 0));
-            document.querySelectorAll('.view-controls .view-btn-3d').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.view-controls .view-btn-3d:not(.punch-btn):not(.help-btn)').forEach(b => b.classList.remove('active'));
             document.getElementById('viewTop').classList.add('active');
         });
 
@@ -1898,25 +3661,32 @@
             const size = bbox.getSize(new THREE.Vector3());
             const maxDim = Math.max(size.x, size.y, size.z, 50);
             animateCamera(new THREE.Vector3(0, size.y / 2, maxDim * 1.5), new THREE.Vector3(0, size.y / 2, 0));
-            document.querySelectorAll('.view-controls .view-btn-3d').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.view-controls .view-btn-3d:not(.punch-btn):not(.help-btn)').forEach(b => b.classList.remove('active'));
             document.getElementById('viewSide').classList.add('active');
         });
 
+        // Пуансон — простой тогл ON/OFF, автопозиция по выбранному гибу
         document.getElementById('viewPunchBtn').addEventListener('click', () => {
-            punchState = (punchState + 1) % 3;
-            const label = document.getElementById('punchBtnLabel');
+            punchEnabled = !punchEnabled;
             const btn = document.getElementById('viewPunchBtn');
-            if (punchState === 0) {
-                label.textContent = 'Пуансон';
-                btn.classList.remove('active');
-            } else if (punchState === 1) {
-                label.textContent = 'Прямой';
-                btn.classList.add('active');
-            } else {
-                label.textContent = 'Развернут';
-                btn.classList.add('active');
+            btn.classList.toggle('active', punchEnabled);
+            
+            if (currentView === 'bent') {
+                updatePunch();
+                checkPunchCollision();
             }
-            updatePunch();
+        });
+
+        // Разворот пуансона на 180°
+        document.getElementById('viewPunchFlipBtn').addEventListener('click', () => {
+            punchFlipped = !punchFlipped;
+            const flipBtn = document.getElementById('viewPunchFlipBtn');
+            flipBtn.classList.toggle('active', punchFlipped);
+            
+            if (currentView === 'bent') {
+                updatePunch();
+                checkPunchCollision();
+            }
         });
 
         document.getElementById('viewLabelsBtn').addEventListener('click', () => {
@@ -1938,10 +3708,16 @@
             document.getElementById('viewHelp').classList.remove('active');
         });
 
+        window.redraw = redraw;
+        window.bends = bends;
+        window.segments = segments;
+
         refreshProfilesList();
         updateBendEditor();
+        simController.init();
         redraw();
     })();
+
 </script>
 </body>
 </html>
