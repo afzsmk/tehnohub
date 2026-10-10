@@ -12,21 +12,26 @@ select set_config(
   false
 );
 
+-- Use next month dynamically so test never expires when the calendar month rolls over
+select set_config('test.wf_month', to_char(now() + interval '1 month', 'YYYY-MM'), false);
+select set_config('test.wf_plan_id', 'E2E-WF-' || current_setting('test.wf_month'), false);
+select set_config('test.wf_idempotency', 'WF:' || current_setting('test.wf_plan_id') || ':1', false);
+select set_config('test.wf_order_id', current_setting('test.wf_plan_id') || ':1:' || current_setting('test.wf_month') || ':E2E-WF-PRODUCT', false);
+
 select ok(
   (mes_import_workforce_plan(
     jsonb_build_object(
       'contractVersion', '1.0',
-      'planId', 'E2E-WF-2026-09',
+      'planId', current_setting('test.wf_plan_id'),
       'version', 1,
       'status', 'PUBLISHED',
-      'idempotencyKey', 'WF:E2E-WF-2026-09:1',
-      'publishedAt', '2026-09-10T10:00:00Z',
-      'publishedBy', 'workforce:user:e2e',
+      'idempotencyKey', current_setting('test.wf_idempotency'),
+      'publishedAt', to_char(now(), 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
       'companyExternalId', 'zsmk',
       'siteExternalId', 'zsmk-main',
       'monthlyPlan', jsonb_build_array(
         jsonb_build_object(
-          'month', '2026-09',
+          'month', current_setting('test.wf_month'),
           'productExternalId', 'E2E-WF-PRODUCT',
           'quantity', 10
         )
@@ -47,19 +52,19 @@ select ok(
 );
 
 select is(
-  (select count(*) from operational_plans where id = 'WF:E2E-WF-2026-09:1'),
+  (select count(*) from operational_plans where id = current_setting('test.wf_idempotency')),
   1::bigint,
   'import creates one operational plan version'
 );
 
 select is(
-  (select count(*) from production_orders where external_id = 'E2E-WF-2026-09:1:2026-09:E2E-WF-PRODUCT'),
+  (select count(*) from production_orders where external_id = current_setting('test.wf_order_id')),
   1::bigint,
   'import creates one production order'
 );
 
 select is(
-  (select status from production_orders where external_id = 'E2E-WF-2026-09:1:2026-09:E2E-WF-PRODUCT'),
+  (select status from production_orders where external_id = current_setting('test.wf_order_id')),
   'IMPORTED',
   'imported order remains IMPORTED until explicit planning'
 );
@@ -69,15 +74,15 @@ select ok(
   (mes_import_workforce_plan(
     jsonb_build_object(
       'contractVersion', '1.0',
-      'planId', 'E2E-WF-2026-09',
+      'planId', current_setting('test.wf_plan_id'),
       'version', 1,
       'status', 'PUBLISHED',
-      'idempotencyKey', 'WF:E2E-WF-2026-09:1',
-      'publishedAt', '2026-09-10T10:00:00Z',
+      'idempotencyKey', current_setting('test.wf_idempotency'),
+      'publishedAt', to_char(now(), 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
       'publishedBy', 'workforce:user:e2e',
       'monthlyPlan', jsonb_build_array(
         jsonb_build_object(
-          'month', '2026-09',
+          'month', current_setting('test.wf_month'),
           'productExternalId', 'E2E-WF-PRODUCT',
           'quantity', 10
         )
@@ -97,12 +102,12 @@ select ok(
 );
 
 select is(
-  (select count(*) from production_orders where external_id = 'E2E-WF-2026-09:1:2026-09:E2E-WF-PRODUCT'),
+  (select count(*) from production_orders where external_id = current_setting('test.wf_order_id')),
   1::bigint,
   'idempotent re-delivery does not duplicate the production order'
 );
 select is(
-  (select count(*) from integration_messages where idempotency_key = 'WF:E2E-WF-2026-09:1'),
+  (select count(*) from integration_messages where idempotency_key = current_setting('test.wf_idempotency')),
   1::bigint,
   'idempotent re-delivery does not duplicate the integration message'
 );
@@ -127,21 +132,21 @@ insert into route_operations(
 );
 
 select (mes_plan_order(
-  'E2E-WF-2026-09:1:2026-09:E2E-WF-PRODUCT'
+  current_setting('test.wf_order_id')
 ))->'createdTasks';
 
 select is(
-  (select status from production_orders where external_id = 'E2E-WF-2026-09:1:2026-09:E2E-WF-PRODUCT'),
+  (select status from production_orders where external_id = current_setting('test.wf_order_id')),
   'PLANNED',
   'explicit MES planning moves imported order to PLANNED'
 );
 select is(
-  (select count(*) from production_tasks where order_id = 'E2E-WF-2026-09:1:2026-09:E2E-WF-PRODUCT'),
+  (select count(*) from production_tasks where order_id = current_setting('test.wf_order_id')),
   1::bigint,
   'explicit MES planning creates task graph from active route'
 );
 select is(
-  (select operation_id from production_tasks where order_id = 'E2E-WF-2026-09:1:2026-09:E2E-WF-PRODUCT' limit 1),
+  (select operation_id from production_tasks where order_id = current_setting('test.wf_order_id') limit 1),
   'E2E-WF-OP-10',
   'created task references the active MES route operation'
 );
