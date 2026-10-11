@@ -891,6 +891,7 @@
         let simRunning = false;
         let simCurrentStep = -1; // -1 = режим готовой детали, >=0 = шаг симуляции
         let simProgress = 1.0;   // прогресс сгибания на текущем шаге (0..1)
+        window.simBendFrac = 0.0; // доля деформации активного гиба (0.0 = лист плоский на матрице)
         let simSequence = [];    // рассчитанная последовательность шагов
         let simAnimFrame = null;
         let simSolverResult = null;
@@ -2010,8 +2011,13 @@
             });
 
             // 3. Проверка надежной опоры листа на плечи матрицы в 3D
+            // ВАЖНО: Проверка опоры листа на матрицу выполняется ТОЛЬКО когда лист лежит на матрице
+            // перед началом деформации (в фазе подвода пуансона: simBendFrac === 0.0, пока пуансон не приподнял край).
+            // Когда пуансон начинает рабочий ход и деформирует лист (simBendFrac > 0), края листа физически 
+            // поднимаются вверх — это естественный процесс гибки, а не ошибка опоры!
             let hasSupportError = false;
-            if (hasDie) {
+            const isSheetRestingOnDie = (simCurrentStep >= 0 && (typeof window.simBendFrac !== 'undefined' ? window.simBendFrac === 0.0 : simProgress < 0.25));
+            if (hasDie && isSheetRestingOnDie) {
                 let sheetMinX = Infinity, sheetMaxX = -Infinity;
                 let minChild = null, maxChild = null;
 
@@ -2019,8 +2025,8 @@
                     if (!child.isMesh) return;
                     if (child === punchMesh || child === dieMesh) return;
                     if (!child.userData || !child.userData.type) return;
-                    const uType = child.userData.type;
-                    if (uType !== 'segment' && uType !== 'bendArc' && uType !== 'bendFlat') return;
+                    // Проверяем только полки/сегменты детали, исключая сами гибы
+                    if (child.userData.type !== 'segment') return;
 
                     const g = child.geometry;
                     if (g && g.attributes && g.attributes.position) {
@@ -2028,10 +2034,8 @@
                         for (let k = 0; k < pos.count; k++) {
                             const wp = child.localToWorld(new THREE.Vector3(pos.getX(k), pos.getY(k), pos.getZ(k)));
                             const lp = dieMesh.worldToLocal(wp);
-                            if (lp.y >= -S - 4 && lp.y <= 25) {
-                                if (lp.x < sheetMinX) { sheetMinX = lp.x; minChild = child; }
-                                if (lp.x > sheetMaxX) { sheetMaxX = lp.x; maxChild = child; }
-                            }
+                            if (lp.x < sheetMinX) { sheetMinX = lp.x; minChild = child; }
+                            if (lp.x > sheetMaxX) { sheetMaxX = lp.x; maxChild = child; }
                         }
                     }
                 });
@@ -2841,23 +2845,33 @@
             if (progress === 0.0) {
                 let minX = Infinity, maxX = -Infinity;
                 let minXLabel = '', maxXLabel = '';
+                // Сначала ищем среди точек полок листа
                 for (const pt of testPoints) {
-                    if (pt.x < minX) { minX = pt.x; minXLabel = pt.label; }
-                    if (pt.x > maxX) { maxX = pt.x; maxXLabel = pt.label; }
+                    if (pt.label && pt.label.startsWith('Полка')) {
+                        if (pt.x < minX) { minX = pt.x; minXLabel = pt.label; }
+                        if (pt.x > maxX) { maxX = pt.x; maxXLabel = pt.label; }
+                    }
+                }
+                // Резервный поиск по всем точкам если полок нет
+                if (!minXLabel) {
+                    for (const pt of testPoints) {
+                        if (pt.x < minX) { minX = pt.x; minXLabel = pt.label; }
+                        if (pt.x > maxX) { maxX = pt.x; maxXLabel = pt.label; }
+                    }
                 }
                 const minSupport = halfV + 3.0; // минимум 3 мм после раскрытия V-паза матрицы
                 if (minX > -minSupport) {
                     return { 
                         collides: true, 
                         tool: 'die_support', 
-                        label: `${minXLabel} висит в воздухе (нет опоры на матрицу V${V})` 
+                        label: `${minXLabel || 'Полка'} висит в воздухе (нет опоры на матрицу V${V})` 
                     };
                 }
                 if (maxX < minSupport) {
                     return { 
                         collides: true, 
                         tool: 'die_support', 
-                        label: `${maxXLabel} висит в воздухе (нет опоры на матрицу V${V})` 
+                        label: `${maxXLabel || 'Полка'} висит в воздухе (нет опоры на матрицу V${V})` 
                     };
                 }
             }
@@ -3308,6 +3322,7 @@
 
                 // Режим просмотра готовой детали
                 if (this.currentStepIdx === -1) {
+                    window.simBendFrac = 1.0;
                     build3DSheet(geom, dims);
                     updatePunch();
                     checkPunchCollision();
@@ -3353,6 +3368,7 @@
                     phaseText = 'Отвод пуансона';
                 }
 
+                window.simBendFrac = bendFrac;
                 this.currentPhaseText = phaseText;
 
                 // === КИНЕМАТИКА: СТАРТ С ПЛОСКОГО ЛИСТА, БЕЗ БУДУЩИХ ГИБОВ ===
