@@ -105,6 +105,13 @@
         .label-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.3rem; }
         label { font-size: 0.85rem; font-weight: 500; letter-spacing: 0.3px; color: #d0ddf0; display: flex; align-items: center; gap: 6px; }
         .preset-group { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+        #thicknessPresets { display: flex; flex-wrap: nowrap; gap: 0.2rem; }
+        #thicknessPresets .preset-btn {
+            padding: 0.15rem 0.38rem;
+            font-size: 0.68rem;
+            min-width: 20px;
+            text-align: center;
+        }
         .preset-btn {
             background: rgba(100, 150, 200, 0.2);
             border: 1px solid rgba(100, 150, 200, 0.4);
@@ -178,8 +185,11 @@
         .view-toggle { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; }
         .view-btn { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #a0b3cc; padding: 0.45rem 0.9rem; border-radius: 0.6rem; cursor: pointer; font-size: 0.8rem; font-weight: 500; transition: 0.2s; }
         .view-btn.active { background: #2563eb; border-color: #2563eb; color: white; }
-        .canvas-wrapper { flex: 1; position: relative; background: #060d16; border-radius: 0.8rem; overflow: hidden; cursor: grab; min-height: 200px; }
-        .canvas-wrapper:active { cursor: grabbing; }
+        .canvas-wrapper { flex: 1; position: relative; background: #060d16; border-radius: 0.8rem; overflow: hidden; min-height: 200px; }
+        #webglCanvas { cursor: grab; }
+        #webglCanvas:active { cursor: grabbing; }
+        .sim-bar { cursor: default; user-select: none; -webkit-user-select: none; }
+        .sim-bar button, .sim-bar input[type=range] { cursor: pointer; }
         .canvas-wrapper svg#flatSvg { width: 100%; height: 100%; display: block; position: absolute; top:0; left:0; }
         .view-controls {
             position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
@@ -788,26 +798,21 @@
             </div>
 
             <div class="view-controls">
-                <button class="view-btn-3d active" id="viewReset" title="Дом (Вписать/Изометрия)">
+                <button class="view-btn-3d" id="viewReset" title="Изо (Изометрия 45°)">
                     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                        <line x1="12" y1="22.08" x2="12" y2="12"></line>
                     </svg>
-                    <span>Дом</span>
+                    <span>Изо</span>
                 </button>
-                <button class="view-btn-3d" id="viewTop" title="Вид сверху">
+                <button class="view-btn-3d active" id="viewTop" title="Вид сверху (по умолчанию)">
                     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
                         <line x1="4" y1="12" x2="20" y2="12"></line>
                         <line x1="12" y1="4" x2="12" y2="20"></line>
                     </svg>
                     <span>Сверху</span>
-                </button>
-                <button class="view-btn-3d" id="viewSide" title="Вид сбоку">
-                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="3 16 12 16 12 6 21 6"></polyline>
-                    </svg>
-                    <span>Сбоку</span>
                 </button>
                 
                 <button class="view-btn-3d punch-btn" id="viewPunchBtn" title="Показать/скрыть пуансон (P)">
@@ -942,8 +947,8 @@
         }
 
         function getMinFlange(V, S, externalAngleDeg) {
-            const halfAngleRad = Math.max(0.01, (180 - externalAngleDeg) / 2) * Math.PI / 180;
-            return (V / 2) * Math.tan(halfAngleRad) + S;
+            // Опора листа на плечо матрицы: минимум 3 мм после раскрытия V-паза матрицы (V/2 + 3 мм)
+            return (V / 2) + 3;
         }
 
         function autoSelectDie(matKey, S) {
@@ -1019,7 +1024,7 @@
             for (let i = 0; i < segs.length; i++) {
                 const extAngle = (i < bd.length) ? bd[i].angle : (i > 0 ? bd[i-1].angle : 90);
                 const minF = getMinFlange(V, S, extAngle);
-                if (segs[i].length < minF) {
+                if (segs[i].length < minF - 0.001) {
                     const label = (i === 0 || i === segs.length - 1) ? `Полка ${i + 1}` : `Сегмент ${i + 1}`;
                     messages.push({
                         text: `⚠️ ${label} (${segs[i].length} мм) меньше мин. полки (${minF.toFixed(1)} мм)`,
@@ -1028,13 +1033,13 @@
                 }
             }
 
-            for (let i = 0; i < bd.length; i++) {
+            for (let i = 0; i < bd.length - 1; i++) {
                 const leftOSSB = geom.bends[i] ? geom.bends[i].OSSB : 0;
-                const rightOSSB = geom.bends[i] ? geom.bends[i].OSSB : 0;
+                const rightOSSB = geom.bends[i + 1] ? geom.bends[i + 1].OSSB : 0;
                 const midSeg = segs[i + 1];
                 if (midSeg) {
                     const minWeb = leftOSSB + rightOSSB + 1;
-                    if (midSeg.length < minWeb) {
+                    if (midSeg.length < minWeb - 0.001) {
                         messages.push({
                             text: `⚠️ Сегмент ${i + 2} (${midSeg.length} мм) слишком узкий (min ${minWeb.toFixed(1)} мм)`,
                             fixes: [{ match: `${minWeb.toFixed(1)} мм`, field: `seg_${i + 1}`, target: parseFloat(minWeb.toFixed(1)) }]
@@ -1276,7 +1281,8 @@
                 const spriteMaterial = new THREE.SpriteMaterial({ map: texture, depthTest: false });
                 const sprite = new THREE.Sprite(spriteMaterial);
                 
-                sprite.scale.set(16, 4, 1); 
+                sprite.scale.set(18, 4.5, 1); 
+                sprite.userData = { type: 'label', baseScale: { x: 18, y: 4.5 } };
                 sprite.renderOrder = 999;
                 return sprite;
             } catch(e) {
@@ -1284,10 +1290,34 @@
             }
         }
 
+        const _spriteWorldPos = new THREE.Vector3();
+        function updateSpriteScales() {
+            if (!sheetGroup || !camera) return;
+            const baseDist = 180;
+            sheetGroup.traverse(child => {
+                if (child.isSprite && child.userData && child.userData.baseScale) {
+                    child.getWorldPosition(_spriteWorldPos);
+                    const dist = camera.position.distanceTo(_spriteWorldPos);
+                    const factor = Math.max(0.15, dist / baseDist);
+                    const bs = child.userData.baseScale;
+                    child.scale.set(bs.x * factor, bs.y * factor, 1);
+                }
+            });
+        }
+
         // Рекурсивная очистка Three.js объектов для предотвращения утечек памяти
         function disposeGroup(group) {
             while (group.children.length > 0) {
                 const child = group.children[0];
+                // Защищаем пуансон, матрицу и балки от удаления и уничтожения геометрии
+                if (child === punchMesh || child === dieMesh) {
+                    group.remove(child);
+                    continue;
+                }
+                if (child.name === 'upperRamMesh' || child.name === 'lowerBedMesh') {
+                    group.remove(child);
+                    continue;
+                }
                 if (child.children && child.children.length > 0) disposeGroup(child);
                 if (child.geometry) child.geometry.dispose();
                 if (child.material) {
@@ -1533,6 +1563,25 @@
 
                 currentPunchKey = key;
                 currentPunchLength = length;
+            } else {
+                if (!punchMesh.getObjectByName('upperRamMesh')) {
+                    const ramWidth = 70;
+                    const ramHeight = 160;
+                    const ramDepth = length + 40;
+                    const ramGeom = new THREE.BoxGeometry(ramWidth, ramHeight, ramDepth);
+                    ramGeom.translate(0, 145 + ramHeight / 2, 0);
+                    const ramMat = new THREE.MeshStandardMaterial({
+                        color: 0x1e293b,
+                        metalness: 0.8,
+                        roughness: 0.3,
+                        side: THREE.DoubleSide,
+                        transparent: true,
+                        opacity: 0.85
+                    });
+                    const ramMesh = new THREE.Mesh(ramGeom, ramMat);
+                    ramMesh.name = 'upperRamMesh';
+                    punchMesh.add(ramMesh);
+                }
             }
             return punchMesh;
         }
@@ -1544,7 +1593,7 @@
                 dieMesh.geometry.dispose();
             }
             
-            if (!dieMesh || currentDieKey !== key) {
+            if (!dieMesh || currentDieKey !== key || currentDieLength !== length) {
                 const shape = getDieShape(V, isAcute);
                 const extrudeSettings = { depth: length, bevelEnabled: false };
                 const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
@@ -1591,6 +1640,26 @@
 
                 currentDieKey = key;
                 currentDieLength = length;
+            } else {
+                if (!dieMesh.getObjectByName('lowerBedMesh')) {
+                    const dieBaseY = (V <= 10 && !isAcute) ? -120 : -60;
+                    const bedWidth = 70;
+                    const bedHeight = 150;
+                    const bedDepth = length + 60;
+                    const bedGeom = new THREE.BoxGeometry(bedWidth, bedHeight, bedDepth);
+                    bedGeom.translate(0, dieBaseY - bedHeight / 2, 0);
+                    const bedMat = new THREE.MeshStandardMaterial({
+                        color: 0x0f172a,
+                        metalness: 0.6,
+                        roughness: 0.5,
+                        side: THREE.DoubleSide,
+                        transparent: true,
+                        opacity: 0.88
+                    });
+                    const bedMesh = new THREE.Mesh(bedGeom, bedMat);
+                    bedMesh.name = 'lowerBedMesh';
+                    dieMesh.add(bedMesh);
+                }
             }
             return dieMesh;
         }
@@ -1645,7 +1714,12 @@
                 const L = getBendLength();
                 const bendAngle = bends[bIdx] ? bends[bIdx].angle : 90;
                 const isAcute = bendAngle < 85;
-                const punchType = isAcute ? 'acute' : 'gooseneck';
+                let punchType = isAcute ? 'acute' : 'gooseneck';
+                if (simCurrentStep >= 0 && simSolverResult && simSolverResult.sequence && simSolverResult.sequence[simCurrentStep]) {
+                    if (simSolverResult.sequence[simCurrentStep].punchType) {
+                        punchType = simSolverResult.sequence[simCurrentStep].punchType;
+                    }
+                }
                 const V = parseInt(document.getElementById('resDieSelect').value) || 16;
                 const S = getThickness();
 
@@ -1731,7 +1805,13 @@
                 : selectedBendIdx;
             const bendAngle = (curBIdx >= 0 && bends[curBIdx]) ? bends[curBIdx].angle : 90;
             const isAcute = bendAngle < 85;
-            const punchPoly = getPunchPolygon(isAcute ? 'acute' : 'gooseneck');
+            let punchType = isAcute ? 'acute' : 'gooseneck';
+            if (simCurrentStep >= 0 && simSolverResult && simSolverResult.sequence && simSolverResult.sequence[simCurrentStep]) {
+                if (simSolverResult.sequence[simCurrentStep].punchType) {
+                    punchType = simSolverResult.sequence[simCurrentStep].punchType;
+                }
+            }
+            const punchPoly = getPunchPolygon(punchType);
             const V = parseInt(document.getElementById('resDieSelect').value) || 16;
             const hasDie = dieMesh && dieMesh.parent;
             const diePoly = hasDie ? getDiePolygon(V, isAcute) : null;
@@ -1994,7 +2074,7 @@
             scene.add(fillLight);
 
             camera = new THREE.PerspectiveCamera(40, wrapper.clientWidth / wrapper.clientHeight, 1, 5000);
-            camera.position.set(150, 120, 150);
+            camera.position.set(0.001, 260, 0.001);
 
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(wrapper.clientWidth, wrapper.clientHeight);
@@ -2061,14 +2141,23 @@
         }
 
         // Управление рендер-циклом — останавливаем когда 3D не виден
+        let lastRenderTime = performance.now();
         function startRenderLoop() {
             if (renderLoopRunning) return;
             renderLoopRunning = true;
+            lastRenderTime = performance.now();
             function animate() {
                 if (!renderLoopRunning) return;
                 requestAnimationFrame(animate);
+                const now = performance.now();
+                const dt = Math.min((now - lastRenderTime) / 1000, 0.1);
+                lastRenderTime = now;
+
                 if (typeof simController !== 'undefined' && simController.isPlaying) {
-                    simController.tick();
+                    simController.tick(dt);
+                }
+                if (showLabels && sheetGroup) {
+                    updateSpriteScales();
                 }
                 controls.update();
                 renderer.render(scene, camera);
@@ -2081,7 +2170,9 @@
         }
 
         function build3DSheet(geom, dims, customAnglesMap = null, alignBendIdx = -1) {
-            // Очистка с освобождением ресурсов
+            // Безопасно отсоединяем пуансон и матрицу перед очисткой геометрии листа
+            if (punchMesh && punchMesh.parent) punchMesh.parent.remove(punchMesh);
+            if (dieMesh && dieMesh.parent) dieMesh.parent.remove(dieMesh);
             disposeGroup(sheetGroup);
 
             if (!geom || dims.segments.length === 0) return;
@@ -2135,7 +2226,7 @@
                         const flangeLabel = createTextSprite(`Полка ${i+1}`, 'rgba(59, 130, 246, 0.9)');
                         if (flangeLabel) {
                             flangeLabel.position.set(netLen/2, S/2 + 6, 0);
-                            flangeLabel.userData = { type: 'label' };
+                            flangeLabel.userData = { type: 'label', baseScale: { x: 18, y: 4.5 } };
                             currentParent.add(flangeLabel);
                         }
                     }
@@ -2208,7 +2299,7 @@
                             if (bendLabel) {
                                 const yOffset = dir > 0 ? (Ri + S) + 6 : -(Ri + S) - 6;
                                 bendLabel.position.set(netLen, yOffset, 0);
-                                bendLabel.userData = { type: 'label' };
+                                bendLabel.userData = { type: 'label', baseScale: { x: 18, y: 4.5 } };
                                 currentParent.add(bendLabel);
                             }
                         }
@@ -2681,12 +2772,13 @@
         }
 
         // 2. Проверка коллизий 2D профиля с пуансоном, матрицей и рамой станка
-        function checkKinematicCollision(geom, dims, formedAngles, activeBendIdx, progress, punchFlipped) {
+        function checkKinematicCollision(geom, dims, formedAngles, activeBendIdx, progress, punchFlipped, punchTypeOverride = null) {
             const { testPoints, outlineSegments, contactSafeDist } = getKinematicProfile2D(geom, dims, formedAngles, activeBendIdx, progress);
             const S = geom.S;
             const V = geom.V;
             const isAcute = dims.bends[activeBendIdx].angle < 85;
-            const punchPoly = getPunchPolygon(isAcute ? 'acute' : 'gooseneck');
+            const punchType = punchTypeOverride || (isAcute ? 'acute' : 'gooseneck');
+            const punchPoly = getPunchPolygon(punchType);
             const diePoly = getDiePolygon(V, isAcute);
             const halfV = V / 2;
             const dieBaseY = (V <= 10 && !isAcute) ? -120 : -60;
@@ -2831,25 +2923,35 @@
                     const bIdx = perm[step];
                     let stepFeasible = false;
                     let chosenFlip = false;
+                    let chosenPunchType = (dims.bends[bIdx].angle < 85) ? 'acute' : 'gooseneck';
 
-                    // Пробуем ориентацию пуансона: прямой монтаж, затем разворот 180°
-                    for (const flip of [false, true]) {
-                        let flipOk = true;
-                        // Проверка 3 контрольных положений хода: 0% (укладка), 50% (деформация), 100% (дожим)
-                        for (const prog of [0.0, 0.5, 1.0]) {
-                            const res = checkKinematicCollision(geom, dims, formedAngles, bIdx, prog, flip);
-                            if (res.collides) {
-                                flipOk = false;
-                                const tName = (res.tool === 'ram') ? 'с верхней балкой' : (res.tool === 'bed' ? 'со столом пресса' : (res.tool === 'die' ? 'с матрицей' : 'с пуансоном'));
-                                failReason = `Гиб ${bIdx + 1}: коллизия ${tName} (${res.label})`;
+                    // Пробуем штатный пуансон (гусек или острый), а если гусек вызывает коллизию — пробуем прямой острый (26°)
+                    const punchTypesToTry = [chosenPunchType];
+                    if (chosenPunchType === 'gooseneck') {
+                        punchTypesToTry.push('acute');
+                    }
+
+                    for (const pType of punchTypesToTry) {
+                        for (const flip of [false, true]) {
+                            let flipOk = true;
+                            // Проверка 3 контрольных положений хода: 0% (укладка), 50% (деформация), 100% (дожим)
+                            for (const prog of [0.0, 0.5, 1.0]) {
+                                const res = checkKinematicCollision(geom, dims, formedAngles, bIdx, prog, flip, pType);
+                                if (res.collides) {
+                                    flipOk = false;
+                                    const tName = (res.tool === 'ram') ? 'с верхней балкой' : (res.tool === 'bed' ? 'со столом пресса' : (res.tool === 'die' ? 'с матрицей' : 'с пуансоном'));
+                                    failReason = `Гиб ${bIdx + 1}: коллизия ${tName} (${res.label})`;
+                                    break;
+                                }
+                            }
+                            if (flipOk) {
+                                stepFeasible = true;
+                                chosenFlip = flip;
+                                chosenPunchType = pType;
                                 break;
                             }
                         }
-                        if (flipOk) {
-                            stepFeasible = true;
-                            chosenFlip = flip;
-                            break;
-                        }
+                        if (stepFeasible) break;
                     }
 
                     if (!stepFeasible) {
@@ -2865,14 +2967,21 @@
                     seq.push({
                         bendIdx: bIdx,
                         punchFlipped: chosenFlip,
-                        isAcute: dims.bends[bIdx].angle < 85,
+                        punchType: chosenPunchType,
+                        isAcute: (chosenPunchType === 'acute'),
                         angleDeg: geom.bends[bIdx].bendAngleDeg
                     });
                     formedAngles[bIdx] = geom.bends[bIdx].bendAngleDeg;
                 }
 
                 if (permFeasible) {
-                    const seqStr = seq.map(s => (s.bendIdx + 1) + (s.punchFlipped ? '↷' : '')).join(' → ');
+                    const seqStr = seq.map(s => {
+                        let str = (s.bendIdx + 1) + (s.punchFlipped ? '↷' : '');
+                        if (s.punchType === 'acute' && dims.bends[s.bendIdx].angle >= 85) {
+                            str += ' [Прямой]';
+                        }
+                        return str;
+                    }).join(' → ');
                     return {
                         isFeasible: true,
                         sequence: seq,
@@ -2914,9 +3023,11 @@
             isPlaying: false,
             currentStepIdx: -1, // -1 = режим готовой детали, 0..N-1 = активный шаг
             progress: 1.0,      // 0.0..1.0 внутри активного шага
-            pauseCounter: 0,
+            pauseTimer: 0,
+            stepDuration: 2.4,  // секунд на шаг при 1x
+            pauseDuration: 0.7, // секунды паузы между шагами для осмотра детали
             speedMultiplier: 1.0,
-            baseSpeed: 0.007,   // ~2.4 сек на шаг при 1x и 60fps
+            isUserScrubbing: false,
 
             init() {
                 const playBtn = document.getElementById('simPlayBtn');
@@ -2926,6 +3037,13 @@
                 const doneBtn = document.getElementById('simDoneBtn');
                 const scrubber = document.getElementById('simScrubber');
                 const speedGroup = document.getElementById('simSpeedGroup');
+                const simBar = document.getElementById('simBar');
+
+                if (simBar) {
+                    ['pointerdown', 'mousedown', 'touchstart'].forEach(evt => {
+                        simBar.addEventListener(evt, e => e.stopPropagation());
+                    });
+                }
 
                 if (playBtn) playBtn.addEventListener('click', () => this.togglePlay());
                 if (prevBtn) prevBtn.addEventListener('click', () => this.stepBackward());
@@ -2934,12 +3052,23 @@
                 if (doneBtn) doneBtn.addEventListener('click', () => this.showFinishedPart());
 
                 if (scrubber) {
+                    scrubber.addEventListener('pointerdown', () => {
+                        this.isUserScrubbing = true;
+                        this.pause();
+                        if (this.currentStepIdx === -1) {
+                            this.currentStepIdx = 0;
+                        }
+                    });
+                    window.addEventListener('pointerup', () => {
+                        this.isUserScrubbing = false;
+                    });
+
                     scrubber.addEventListener('input', (e) => {
                         this.pause();
                         if (this.currentStepIdx === -1) {
                             this.currentStepIdx = 0;
                         }
-                        this.progress = parseFloat(e.target.value) / 100;
+                        this.progress = Math.max(0, Math.min(1, parseFloat(e.target.value) / 100));
                         this.renderStep();
                         this.updateUI();
                     });
@@ -2970,6 +3099,7 @@
                     this.currentStepIdx = 0;
                     this.progress = 0.0;
                 }
+                this.pauseTimer = 0;
                 this.isPlaying = true;
                 this.updateUI();
             },
@@ -2981,6 +3111,7 @@
 
             reset() {
                 this.pause();
+                this.pauseTimer = 0;
                 // Сброс к плоской заготовке перед первым гибом
                 this.currentStepIdx = 0;
                 this.progress = 0.0;
@@ -2992,6 +3123,7 @@
 
             showFinishedPart() {
                 this.pause();
+                this.pauseTimer = 0;
                 this.currentStepIdx = -1;
                 this.progress = 1.0;
                 simCurrentStep = -1;
@@ -3002,6 +3134,7 @@
 
             stepForward() {
                 this.pause();
+                this.pauseTimer = 0;
                 if (!simSolverResult || !simSolverResult.sequence || simSolverResult.sequence.length === 0) return;
                 if (this.currentStepIdx === -1) {
                     this.currentStepIdx = 0;
@@ -3021,6 +3154,7 @@
 
             stepBackward() {
                 this.pause();
+                this.pauseTimer = 0;
                 if (!simSolverResult || !simSolverResult.sequence || simSolverResult.sequence.length === 0) return;
                 if (this.currentStepIdx === -1) {
                     this.currentStepIdx = simSolverResult.sequence.length - 1;
@@ -3037,41 +3171,44 @@
                 this.updateUI();
             },
 
-            tick() {
+            tick(dt = 0.016) {
                 if (!this.isPlaying) return;
                 if (!simSolverResult || !simSolverResult.sequence || simSolverResult.sequence.length === 0) {
                     this.pause();
                     return;
                 }
 
-                if (this.pauseCounter > 0) {
-                    this.pauseCounter--;
+                if (this.pauseTimer > 0) {
+                    this.pauseTimer -= dt * this.speedMultiplier;
+                    if (this.pauseTimer <= 0) {
+                        this.pauseTimer = 0;
+                        if (this.currentStepIdx < simSolverResult.sequence.length - 1) {
+                            this.currentStepIdx++;
+                            this.progress = 0.0;
+                            this.renderStep();
+                            this.updateUI();
+                        } else {
+                            // Все гибы выполнены — переход к готовой детали
+                            this.pause();
+                            this.currentStepIdx = -1;
+                            this.progress = 1.0;
+                            this.renderStep();
+                            this.updateUI();
+                        }
+                    }
                     return;
                 }
 
-                const stepSpeed = this.baseSpeed * this.speedMultiplier;
-                this.progress += stepSpeed;
+                const dProgress = (dt / this.stepDuration) * this.speedMultiplier;
+                this.progress += dProgress;
 
                 if (this.progress >= 1.0) {
                     this.progress = 1.0;
                     this.renderStep();
                     this.updateUI();
 
-                    // Пауза между шагами для осмотра выполненного гиба (~0.5 сек при 1x)
-                    this.pauseCounter = Math.max(10, Math.round(35 / this.speedMultiplier));
-
-                    if (this.currentStepIdx < simSolverResult.sequence.length - 1) {
-                        this.currentStepIdx++;
-                        this.progress = 0.0;
-                    } else {
-                        // Все шаги завершены — переход к готовой детали
-                        this.pause();
-                        this.currentStepIdx = -1;
-                        this.progress = 1.0;
-                        this.renderStep();
-                        this.updateUI();
-                        return;
-                    }
+                    // Пауза между шагами для осмотра выполненного гиба (~0.7 сек при 1x)
+                    this.pauseTimer = this.pauseDuration;
                 } else {
                     this.renderStep();
                     this.updateUI();
@@ -3177,7 +3314,8 @@
                         if (cur) {
                             const bIdx = cur.bendIdx;
                             const flipIcon = cur.punchFlipped ? ' ↷' : '';
-                            stepText.textContent = `Шаг ${this.currentStepIdx + 1}/${seq.length} (Гиб ${bIdx + 1}${flipIcon})`;
+                            const punchLabel = (cur.punchType === 'acute' && dims && dims.bends[bIdx] && dims.bends[bIdx].angle >= 85) ? ' [Прямой]' : '';
+                            stepText.textContent = `Шаг ${this.currentStepIdx + 1}/${seq.length} (Гиб ${bIdx + 1}${flipIcon}${punchLabel})`;
                         }
                     }
                 }
@@ -3190,7 +3328,7 @@
                     }
                 }
 
-                if (scrubber) {
+                if (scrubber && !this.isUserScrubbing) {
                     if (this.currentStepIdx === -1) {
                         scrubber.value = 100;
                     } else {
@@ -3640,7 +3778,8 @@
             const bbox = new THREE.Box3().setFromObject(sheetGroup);
             const size = bbox.getSize(new THREE.Vector3());
             const maxDim = Math.max(size.x, size.y, size.z, 50);
-            animateCamera(new THREE.Vector3(maxDim * 1.2, maxDim * 0.8, maxDim * 1.2), new THREE.Vector3(0, size.y / 2, 0));
+            // Изометрия с наклоном 45 градусов
+            animateCamera(new THREE.Vector3(maxDim * 1.3, maxDim * 1.3, maxDim * 1.3), new THREE.Vector3(0, size.y / 2, 0));
             document.querySelectorAll('.view-controls .view-btn-3d:not(.punch-btn):not(.help-btn)').forEach(b => b.classList.remove('active'));
             document.getElementById('viewReset').classList.add('active');
         });
@@ -3650,19 +3789,10 @@
             const bbox = new THREE.Box3().setFromObject(sheetGroup);
             const size = bbox.getSize(new THREE.Vector3());
             const maxDim = Math.max(size.x, size.y, size.z, 50);
-            animateCamera(new THREE.Vector3(0, maxDim * 1.5, 0), new THREE.Vector3(0, size.y / 2, 0));
+            // Вид сверху по умолчанию
+            animateCamera(new THREE.Vector3(0.001, maxDim * 1.8, 0.001), new THREE.Vector3(0, size.y / 2, 0));
             document.querySelectorAll('.view-controls .view-btn-3d:not(.punch-btn):not(.help-btn)').forEach(b => b.classList.remove('active'));
             document.getElementById('viewTop').classList.add('active');
-        });
-
-        document.getElementById('viewSide').addEventListener('click', () => {
-            if (!sheetGroup) return;
-            const bbox = new THREE.Box3().setFromObject(sheetGroup);
-            const size = bbox.getSize(new THREE.Vector3());
-            const maxDim = Math.max(size.x, size.y, size.z, 50);
-            animateCamera(new THREE.Vector3(0, size.y / 2, maxDim * 1.5), new THREE.Vector3(0, size.y / 2, 0));
-            document.querySelectorAll('.view-controls .view-btn-3d:not(.punch-btn):not(.help-btn)').forEach(b => b.classList.remove('active'));
-            document.getElementById('viewSide').classList.add('active');
         });
 
         // Пуансон — простой тогл ON/OFF, автопозиция по выбранному гибу
