@@ -1389,9 +1389,9 @@
             const yTangent = noseCy - r * Math.cos(halfAngle);
             
             const xRight = 7.0;
-            const yRight = noseCy + (xRight - xTangent) / tanHalf; // ~30.2 мм
+            const yRight = yTangent + (xRight - xTangent) / tanHalf; // ~29.6 мм
             
-            shape.moveTo(0, 0); // вершина носика
+            shape.moveTo(xTangent, yTangent);
             shape.lineTo(xRight, yRight);
             shape.lineTo(xRight, 117);
             shape.lineTo(xRight, 147);
@@ -1404,8 +1404,7 @@
             shape.lineTo(-7, 117);
             shape.lineTo(-7, yRight);
             shape.lineTo(-xTangent, yTangent);
-            const startA = -Math.PI / 2 - halfAngle;
-            shape.absarc(0, noseCy, r, startA, -Math.PI / 2, false);
+            shape.absarc(0, noseCy, r, -Math.PI / 2 - halfAngle, -Math.PI / 2 + halfAngle, false);
             shape.closePath();
             
             return shape;
@@ -3294,6 +3293,7 @@
             },
 
             updateUI() {
+                const dims = getProfileDims();
                 const stepText = document.getElementById('simStepText');
                 const playLabel = document.getElementById('simPlayLabel');
                 const playIcon = document.getElementById('simPlayIcon');
