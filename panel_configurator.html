@@ -56,6 +56,7 @@ body { display: flex; }
 /* ================= SIDEBAR (TECHNOHUB STYLE) ================= */
 .sidebar {
     width: 420px; min-width: 420px; max-width: 420px;
+    transition: margin-left 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease;
     background: var(--bg-sidebar);
     border-right: 1px solid var(--border-strong);
     display: flex; flex-direction: column;
@@ -357,6 +358,62 @@ select:focus { border-color: var(--accent-cyan); }
 #canvas3d { display: block; flex: 1; width: 100%; cursor: grab; }
 #canvas3d:active { cursor: grabbing; }
 
+/* HIGH-PRECISION RESPONSIVE LAYER HUD CALLOUTS (GUARANTEED NO OVERFLOW) */
+.layer-callouts-svg {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 14;
+}
+.layer-callouts-container {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 15;
+}
+.layer-hud-badge {
+    position: absolute;
+    display: flex; flex-direction: column; gap: 2px;
+    background: rgba(15, 23, 42, 0.92);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(14, 165, 233, 0.45);
+    border-left: 3.5px solid #0ea5e9;
+    border-radius: 6px;
+    padding: 6px 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6), 0 0 14px rgba(14, 165, 233, 0.2);
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    white-space: nowrap;
+    opacity: 0;
+    font-family: var(--font-sans);
+}
+.layer-hud-badge.visible { opacity: 1; }
+.layer-hud-badge .badge-title {
+    font-size: 11px; font-weight: 700; color: #f8fafc;
+    display: flex; align-items: center; gap: 6px; letter-spacing: 0.3px;
+}
+.layer-hud-badge .badge-desc {
+    font-size: 9.5px; color: #94a3b8; font-family: var(--font-mono);
+}
+
+.sidebar.demo-hidden {
+    margin-left: -420px !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+/* CINEMATIC CHAPTER TRANSITION — masks scene swaps, not the controls */
+.demo-transition {
+    position: absolute; inset: 0; z-index: 13; pointer-events: none; display: none;
+    overflow: hidden; opacity: 0;
+    background: linear-gradient(105deg, rgba(2,6,23,.99) 0%, rgba(7,17,34,.99) 48%, rgba(8,25,46,.96) 100%);
+    --transition-accent: #38bdf8;
+}
+.demo-transition.run { display: flex; flex-direction: column; justify-content: center; padding: 8% 10%; animation: chapterCurtain 760ms cubic-bezier(.22,.7,.2,1) both; }
+.demo-transition::before { content: "TECHNOHUB  /  ЗСМК"; color: var(--transition-accent); font: 700 11px var(--font-mono); letter-spacing: 2.5px; margin-bottom: 12px; }
+.demo-transition::after { content: ""; position: absolute; top: 0; bottom: 0; left: -22%; width: 14%; transform: skewX(-18deg); background: linear-gradient(90deg, transparent, var(--transition-accent), rgba(255,255,255,.9), transparent); opacity: .85; animation: chapterSweep 760ms cubic-bezier(.2,.7,.2,1) both; }
+.demo-transition-title { max-width: 740px; color: #fff; font-size: clamp(19px, 3.1vw, 42px); font-weight: 800; letter-spacing: -.7px; line-height: 1.08; text-shadow: 0 8px 35px rgba(0,0,0,.6); }
+.demo-transition-subtitle { color: #a9c5dd; font: 11px var(--font-mono); letter-spacing: 1.2px; margin-top: 16px; text-transform: uppercase; }
+@keyframes chapterCurtain { 0%, 30% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes chapterSweep { 0% { left: -22%; opacity: 0; } 16% { opacity: .92; } 100% { left: 125%; opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .demo-transition.run::after { animation-duration: 1ms; } .demo-transition.run { animation-duration: 250ms; } }
+
 /* TELEMETRY HUD */
 .hud-panel {
     position: absolute; top: 82px; right: 20px;
@@ -477,6 +534,36 @@ select:focus { border-color: var(--accent-cyan); }
     height: 100%; width: 0%;
     background: linear-gradient(90deg, var(--accent), var(--accent-cyan));
     transition: width 0.1s linear;
+}
+
+.demo-controls {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 5px;
+    margin-top: 9px; pointer-events: auto;
+}
+.demo-pause-btn, .demo-act-btn {
+    border: 1px solid rgba(148,163,184,.28); color: #e2e8f0;
+    background: rgba(30,41,59,.84); cursor: pointer; border-radius: 6px;
+    min-height: 25px; font: 700 10px var(--font-mono); transition: .16s ease;
+}
+.demo-pause-btn { padding: 4px 8px; white-space: nowrap; }
+.demo-act-list { display: flex; gap: 4px; flex-wrap: wrap; }
+.demo-act-btn { width: 25px; padding: 3px 0; }
+.demo-pause-btn:hover, .demo-act-btn:hover { border-color: var(--accent-cyan); color: #fff; }
+.demo-act-btn.active { color: #fff; border-color: var(--accent-cyan); background: var(--accent); box-shadow: 0 0 9px rgba(14,165,233,.25); }
+.demo-pause-btn.paused { background: rgba(245,158,11,.22); border-color: rgba(245,158,11,.6); color: #fde68a; }
+.weather-btn.active { background: rgba(14,165,233,.22); border-color: var(--accent-cyan); color: #fff; box-shadow: 0 0 10px rgba(14,165,233,.18); }
+.layer-hud-badge {
+    width: 258px; height: 44px; max-width: calc(100% - 28px); overflow: hidden;
+    white-space: normal; justify-content: center;
+}
+.layer-hud-badge .badge-title, .layer-hud-badge .badge-desc {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
+}
+@media (max-width: 760px) {
+    .demo-banner { left: 10px; top: 10px; min-width: 0; width: min(460px, calc(100% - 20px)); padding: 10px 12px; }
+    .hud-panel { top: auto; bottom: 82px; right: 10px; width: min(270px, calc(100% - 20px)); }
+    .demo-act-btn { width: 23px; }
+    .layer-hud-badge { width: min(248px, calc(100% - 28px)); }
 }
 
 /* FLOATING GLASS BOTTOM DOCK */
@@ -919,13 +1006,31 @@ select:focus { border-color: var(--accent-cyan); }
     <div class="demo-banner hidden" id="demoBanner">
         <div class="demo-badge-row">
             <span class="demo-live-pill"><span class="demo-live-dot"></span> ДЕМОНСТРАЦИОННЫЙ РЕЖИМ ЗСМК</span>
-            <span class="demo-step-counter" id="demoStepCounter">СЦЕНА 1 / 5</span>
+            <span class="demo-step-counter" id="demoStepCounter">АКТ 1 / 8</span>
         </div>
         <div class="demo-title" id="demoTitle">Панель УНИКОР — Алюминиевый сотопакет</div>
         <div class="demo-subtitle" id="demoSubtitle">Идеальная плоскостность при кассетном и открытом монтаже • Класс КМ0 (НГ)</div>
+        <div class="demo-controls" aria-label="Управление кино-туром ЗСМК">
+            <button type="button" class="demo-pause-btn" id="demoPauseBtn" aria-pressed="false">Ⅱ Пауза</button>
+            <div class="demo-act-list" aria-label="Выбрать сцену">
+                <button type="button" class="demo-act-btn active" data-demo-act="0" title="Акт 1 — Анатомия сотопакета">1</button>
+                <button type="button" class="demo-act-btn" data-demo-act="1" title="Акт 2 — Высотный вентфасад">2</button>
+                <button type="button" class="demo-act-btn" data-demo-act="2" title="Акт 3 — Автотоннель Хардволл">3</button>
+                <button type="button" class="demo-act-btn" data-demo-act="3" title="Акт 4 — Керамогранит Калакатта Оро">4</button>
+                <button type="button" class="demo-act-btn" data-demo-act="4" title="Акт 5 — Резиденция под грозовым дождём">5</button>
+                <button type="button" class="demo-act-btn" data-demo-act="5" title="Акт 6 — Интерьер бизнес-класса">6</button>
+                <button type="button" class="demo-act-btn" data-demo-act="6" title="Акт 7 — Метро AISI N4">7</button>
+                <button type="button" class="demo-act-btn" data-demo-act="7" title="Акт 8 — Терм фасад">8</button>
+            </div>
+        </div>
         <div class="demo-progress-track">
             <div class="demo-progress-bar" id="demoProgressBar"></div>
         </div>
+    </div>
+
+    <div class="demo-transition" id="demoTransition" aria-hidden="true">
+        <div class="demo-transition-title" id="demoTransitionTitle">Инженерные системы ЗСМК</div>
+        <div class="demo-transition-subtitle" id="demoTransitionSubtitle">Материал • Архитектура • Инженерия</div>
     </div>
 
     <!-- TELEMETRY HUD -->
@@ -1016,6 +1121,13 @@ select:focus { border-color: var(--accent-cyan); }
 
         <div class="toolbar-divider"></div>
 
+        <div class="weather-hud" aria-label="Погода в 3D-сцене">
+            <button type="button" class="dock-btn weather-btn" id="weatherRainBtn" title="Включить / выключить дождь и грозовые вспышки">🌧 Дождь</button>
+            <button type="button" class="dock-btn weather-btn" id="weatherSnowBtn" title="Включить / выключить снегопад">❄ Снег</button>
+        </div>
+
+        <div class="toolbar-divider"></div>
+
         <div class="light-hud">
             <button class="dock-btn light-btn active" data-scene="d65" title="Эталонный нейтральный свет D65 (100% точный цвет RAL)">🔬 Эталон D65</button>
             <button class="dock-btn light-btn" data-scene="daylight" title="Естественный уличный свет 5500K">☀ Фасад День</button>
@@ -1023,6 +1135,10 @@ select:focus { border-color: var(--accent-cyan); }
             <button class="dock-btn light-btn" data-scene="metro" title="Архитектурное освещение станций метро и залов 4000K">🚇 Метро LED</button>
         </div>
     </div>
+
+    <!-- RESPONSIVE LAYER CALLOUTS (NO OVERFLOW) -->
+    <svg id="layerCalloutsSvg" class="layer-callouts-svg"></svg>
+    <div id="layerCalloutsContainer" class="layer-callouts-container"></div>
 
     <canvas id="canvas3d"></canvas>
 </div>
@@ -1579,7 +1695,7 @@ function createViewportBackdrop(topHex, midHex, botHex) {
 // ============================================================
 const canvas3d = document.getElementById('canvas3d');
 const renderer = new THREE.WebGLRenderer({ canvas: canvas3d, antialias: true, powerPreference: "high-performance" });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5)); // Lower fill-rate cost on HiDPI displays
 renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.physicallyCorrectLights = false;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -2161,28 +2277,13 @@ function updateLayerPositions() {
     if (backMesh) backMesh.visible = document.getElementById('showBack').checked;
     edgeFlangeMeshes.forEach(m => m.visible = showFace);
 
-    const lineStartX = currentVisualWX / 2;
-    const labelOffsetX = lineStartX + 65;
+    // Sprites are replaced by screen-space HUD callouts updated on every render frame.
+    ['face', 'glue1', 'core', 'glue2', 'back'].forEach(k => {
+        if (annotations[k]) annotations[k].visible = false;
+        if (annotationLines[k]) annotationLines[k].visible = false;
+    });
 
-    const updateAnnot = (key, targetY, visible) => {
-        if (visible && explodeFactor > 8) {
-            annotations[key].visible = true;
-            annotationLines[key].visible = true;
-            annotations[key].position.set(labelOffsetX + 75, targetY, 0);
-            const points = [new THREE.Vector3(lineStartX, targetY, 0), new THREE.Vector3(labelOffsetX, targetY, 0)];
-            annotationLines[key].geometry.dispose();
-            annotationLines[key].geometry = new THREE.BufferGeometry().setFromPoints(points);
-            annotationLines[key].material.opacity = Math.min(1, (explodeFactor - 8) / 35);
-        } else {
-            annotations[key].visible = false;
-            annotationLines[key].visible = false;
-        }
-    };
-    updateAnnot('face', faceY, showFace);
-    updateAnnot('glue1', glue1Y, document.getElementById('showGlue1').checked);
-    updateAnnot('core', coreY, document.getElementById('showCore').checked);
-    updateAnnot('glue2', glue2Y, document.getElementById('showGlue2').checked);
-    updateAnnot('back', backY, document.getElementById('showBack').checked);
+    updateHudCallouts();
 }
 
 // ============================================================
@@ -2802,6 +2903,7 @@ setupSimpleSlider('faceEnamel', 'faceEnamelVal', 'мм');
 setupSimpleSlider('backEnamel', 'backEnamelVal', 'мм');
 
 document.getElementById('explodeSlider').addEventListener('input', (e) => {
+    explodeAnimationToken++;
     document.getElementById('explodeVal').innerText = `${Math.round(e.target.value)}%`;
     updateLayerPositions();
 });
@@ -2866,14 +2968,20 @@ const cameraViews = {
     'side': { pos: [680, 75, 0],    target: [0, 0, 0] }
 };
 
+let cameraAnimationToken = 0;
 function animateCamera(targetPos, targetLookAt, duration = 850) {
+    const token = ++cameraAnimationToken;
     const startPos = camera.position.clone();
     const startTarget = controls.target.clone();
     const endPos = new THREE.Vector3(...targetPos);
     const endTarget = new THREE.Vector3(...targetLookAt);
     const startTime = performance.now();
+    const pauseTotalAtStart = demoPausedTotalMs;
     function step(now) {
-        const t = Math.min(1, (now - startTime) / duration);
+        if (token !== cameraAnimationToken) return;
+        if (demoActive && demoPaused) { requestAnimationFrame(step); return; }
+        const activeElapsed = now - startTime - (demoPausedTotalMs - pauseTotalAtStart);
+        const t = Math.min(1, Math.max(0, activeElapsed / duration));
         const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
         camera.position.lerpVectors(startPos, endPos, ease);
         controls.target.lerpVectors(startTarget, endTarget, ease);
@@ -2937,12 +3045,18 @@ document.querySelectorAll('.light-btn').forEach(btn => {
     });
 });
 
+let explodeAnimationToken = 0;
 function animateExplodeValue(targetVal, duration = 1100) {
+    const token = ++explodeAnimationToken;
     const slider = document.getElementById('explodeSlider');
     const startVal = parseFloat(slider.value);
     const startTime = performance.now();
+    const pauseTotalAtStart = demoPausedTotalMs;
     function step(now) {
-        const t = Math.min(1, (now - startTime) / duration);
+        if (token !== explodeAnimationToken) return;
+        if (demoActive && demoPaused) { requestAnimationFrame(step); return; }
+        const activeElapsed = now - startTime - (demoPausedTotalMs - pauseTotalAtStart);
+        const t = Math.min(1, Math.max(0, activeElapsed / duration));
         const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
         const val = startVal + (targetVal - startVal) * ease;
         slider.value = val;
@@ -2965,27 +3079,383 @@ document.getElementById('animateAssembly').addEventListener('click', () => {
 });
 
 // ============================================================
-// КИНЕМАТОГРАФИЧНЫЙ РЕЖИССЕРСКИЙ ДЕМО-РЕЖИМ («🎬 ШОУРУМ ЗСМК»)
+// КИНЕМАТОГРАФИЧНЫЙ РЕЖИССЕРСКИЙ ДЕМО-РЕЖИМ («🎬 РОЛИК-ФИЛЬМ ЗСМК»)
 // ============================================================
+
+// ПРЕЦИЗИОННЫЕ ВЫНОСКИ СЛОЕВ (HUD CALLOUTS БЕЗ ВЫЛЕТА ЗА ЭКРАН)
+// Умные выноски: координаты якорей вращаются вместе с панелью, а подписи остаются в safe-area экрана.
+let annotationHudNodes = new Map();
+let annotationHudSignature = '';
+function updateAnnotationsScreenSafe() {
+    const explodeFactor = parseFloat(document.getElementById('explodeSlider').value) || 0;
+    const stage = document.querySelector('.stage-container');
+    const svg = document.getElementById('layerCalloutsSvg');
+    const badgesContainer = document.getElementById('layerCalloutsContainer');
+    if (!stage || !svg || !badgesContainer) return;
+    const width = stage.clientWidth, height = stage.clientHeight;
+    if (!panelGroup.visible || explodeFactor < 8 || width < 1 || height < 1) {
+        if (svg.childElementCount || badgesContainer.childElementCount) {
+            svg.replaceChildren(); badgesContainer.replaceChildren();
+            annotationHudNodes.clear(); annotationHudSignature = '';
+        }
+        return;
+    }
+
+    const visible = {
+        face: document.getElementById('showFace').checked,
+        glue1: document.getElementById('showGlue1').checked,
+        core: document.getElementById('showCore').checked,
+        glue2: document.getElementById('showGlue2').checked,
+        back: document.getElementById('showBack').checked
+    };
+    const faceMat = document.getElementById('faceMat').value;
+    const backMat = document.getElementById('backMat').value;
+    const coreType = document.getElementById('coreType').value;
+    const faceDecorId = document.getElementById('faceDecor').value;
+    const tCore = getCoreThickness();
+
+    let faceTitle = '1. Лицевой лист';
+    let faceDesc = `Al 3003 PVDF (${document.getElementById('faceThickness').value} мм)`;
+    if (faceMat === 'ceramic') {
+        const decor = ceramicDecorPalette.find(d => d.id === faceDecorId) || ceramicDecorPalette[0];
+        faceTitle = '1. Лицевой керамогранит'; faceDesc = `${decor.name} (${document.getElementById('faceThickness').value} мм)`;
+    } else if (faceMat === 'hpl') {
+        const decorId = document.getElementById('faceDecor').value;
+        const decor = hplDecorPalette.find(d => d.id === decorId) || hplDecorPalette[0];
+        faceTitle = '1. Лицевой декор HPL'; faceDesc = `${decor.name} (${document.getElementById('faceThickness').value} мм)`;
+    } else if (faceMat === 'enameled') {
+        faceTitle = '1. Архитектурная стеклоэмаль';
+        faceDesc = `Хардволл 820°C • сталь ${document.getElementById('faceThickness').value} мм + эмаль`;
+    } else if (faceMat === 'steel') {
+        faceTitle = '1. Нержавеющая сталь'; faceDesc = `AISI • ${document.getElementById('faceSSFinish').value} (${document.getElementById('faceThickness').value} мм)`;
+    } else if (faceMat === 'galvanized') {
+        faceTitle = '1. Оцинкованная сталь'; faceDesc = `Полимерное покрытие (${document.getElementById('faceThickness').value} мм)`;
+    }
+    const coreDef = coreTypes[coreType];
+    const backDef = materialSpecs[backMat];
+    const layers = [
+        { key: 'face', mesh: faceMesh, visible: visible.face, title: faceTitle, desc: faceDesc, color: '#38bdf8' },
+        { key: 'glue1', mesh: glue1Mesh, visible: visible.glue1, title: '2. Клеевой слой', desc: 'Двухкомпонентный PUR • 0,3 мм', color: '#22c55e' },
+        { key: 'core', mesh: coreMesh, visible: visible.core, title: '3. Ядро панели', desc: `${coreDef ? coreDef.name : 'Заполнитель'} (${tCore} мм)`, color: '#f59e0b' },
+        { key: 'glue2', mesh: glue2Mesh, visible: visible.glue2, title: '4. Клеевой слой', desc: 'Двухкомпонентный PUR • 0,3 мм', color: '#22c55e' },
+        { key: 'back', mesh: backMesh, visible: visible.back, title: '5. Тыльный лист', desc: `${backDef ? backDef.label : 'Материал тыла'} (${document.getElementById('backThickness').value} мм)`, color: '#94a3b8' }
+    ].filter(item => item.visible && item.mesh && item.mesh.visible);
+
+    const signature = layers.map(x => `${x.key}|${x.title}|${x.desc}|${x.color}`).join('~');
+    if (signature !== annotationHudSignature) {
+        badgesContainer.replaceChildren(); annotationHudNodes.clear();
+        layers.forEach(layer => {
+            const badge = document.createElement('div');
+            badge.className = 'layer-hud-badge visible';
+            badge.style.borderLeftColor = layer.color;
+            const title = document.createElement('div'); title.className = 'badge-title';
+            const dot = document.createElement('span'); dot.textContent = '●'; dot.style.color = layer.color;
+            const titleText = document.createElement('span'); titleText.textContent = layer.title;
+            title.append(dot, titleText);
+            const desc = document.createElement('div'); desc.className = 'badge-desc'; desc.textContent = layer.desc;
+            badge.append(title, desc); badgesContainer.appendChild(badge);
+            annotationHudNodes.set(layer.key, { badge, titleText, desc });
+        });
+        annotationHudSignature = signature;
+    }
+
+    // Matrix refresh is essential when panelGroup rotates or the camera is in a macro close-up.
+    panelGroup.updateMatrixWorld(true);
+    camera.updateMatrixWorld(true);
+    const stageRect = stage.getBoundingClientRect();
+    const hud = document.getElementById('calcHud');
+    const hudRectRaw = hud && !hud.classList.contains('hidden') ? hud.getBoundingClientRect() : null;
+    const hudLeft = hudRectRaw ? hudRectRaw.left - stageRect.left : width;
+    const safeLeft = 14;
+    // Reserve a right-side lane for telemetry; on very narrow viewports use the full width and avoid its rectangle vertically.
+    let safeRight = Math.min(width - 14, hudRectRaw ? hudLeft - 14 : width - 14);
+    if (safeRight - safeLeft < 205) safeRight = width - 14;
+    const banner = document.getElementById('demoBanner');
+    const bannerRect = banner && !banner.classList.contains('hidden') ? banner.getBoundingClientRect() : null;
+    const safeTop = Math.min(height - 76, Math.max(72, bannerRect ? bannerRect.bottom - stageRect.top + 8 : 72));
+    const safeBottom = Math.max(safeTop + 46, height - 82);
+    const badgeWidth = Math.max(185, Math.min(258, safeRight - safeLeft));
+    const badgeHeight = 44;
+    const minVerticalGap = Math.max(badgeHeight + 4, Math.min(52, (safeBottom - safeTop) / Math.max(1, layers.length)));
+
+    const activeItems = [];
+    layers.forEach(layer => {
+        const anchorLocal = new THREE.Vector3(currentVisualWX * 0.47, layer.mesh.position.y, currentVisualLZ * 0.47);
+        const anchorWorld = panelGroup.localToWorld(anchorLocal);
+        const projected = anchorWorld.project(camera);
+        if (!Number.isFinite(projected.x) || !Number.isFinite(projected.y) || projected.z < -1 || projected.z > 1) return;
+        const rawX = (projected.x * 0.5 + 0.5) * width;
+        const rawY = (-projected.y * 0.5 + 0.5) * height;
+        // Screen-space clamp keeps leaders and badges visible even when the anchor rotates beyond the viewport edge.
+        const sx = Math.max(safeLeft, Math.min(safeRight, rawX));
+        const sy = Math.max(safeTop + badgeHeight / 2, Math.min(safeBottom - badgeHeight / 2, rawY));
+        const node = annotationHudNodes.get(layer.key);
+        if (node) node.badge.style.width = `${badgeWidth}px`;
+        const desiredX = rawX <= (safeLeft + safeRight) / 2 ? sx + 24 : sx - badgeWidth - 24;
+        const badgeX = Math.max(safeLeft, Math.min(safeRight - badgeWidth, desiredX));
+        activeItems.push({ layer, sx, sy, rawY, badgeX, badgeY: sy - badgeHeight / 2, badgeWidth });
+    });
+
+    activeItems.sort((a, b) => a.rawY - b.rawY);
+    if (activeItems.length) {
+        const available = Math.max(badgeHeight, safeBottom - safeTop);
+        const gap = Math.min(minVerticalGap, available / activeItems.length);
+        activeItems.forEach((item, i) => {
+            const ideal = Math.max(safeTop, Math.min(safeBottom - badgeHeight, item.rawY - badgeHeight / 2));
+            item.badgeY = i === 0 ? ideal : Math.max(ideal, activeItems[i - 1].badgeY + gap);
+        });
+        const overflow = activeItems[activeItems.length - 1].badgeY + badgeHeight - safeBottom;
+        if (overflow > 0) activeItems.forEach(item => item.badgeY -= overflow);
+        if (activeItems[0].badgeY < safeTop) {
+            const underflow = safeTop - activeItems[0].badgeY;
+            activeItems.forEach(item => item.badgeY += underflow);
+        }
+        // Compact labels if the full stack is taller than the available viewport.
+        if (activeItems[activeItems.length - 1].badgeY + badgeHeight > safeBottom + 0.5) {
+            const step = activeItems.length > 1 ? (safeBottom - safeTop - badgeHeight) / (activeItems.length - 1) : 0;
+            activeItems.forEach((item, i) => item.badgeY = safeTop + i * Math.max(0, step));
+        }
+    }
+
+    svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    svg.setAttribute('width', String(width)); svg.setAttribute('height', String(height));
+    let paths = '';
+    activeItems.forEach(item => {
+        const node = annotationHudNodes.get(item.layer.key);
+        if (!node) return;
+        node.badge.style.left = `${item.badgeX}px`;
+        node.badge.style.top = `${item.badgeY}px`;
+        node.badge.style.borderLeftColor = item.layer.color;
+        const badgeMidY = item.badgeY + badgeHeight / 2;
+        const badgeEdgeX = item.badgeX > item.sx ? item.badgeX : item.badgeX + item.badgeWidth;
+        const elbowX = item.sx + (badgeEdgeX - item.sx) * 0.55;
+        paths += `<circle cx="${item.sx.toFixed(1)}" cy="${item.sy.toFixed(1)}" r="3.3" fill="${item.layer.color}"/><polyline points="${item.sx.toFixed(1)},${item.sy.toFixed(1)} ${elbowX.toFixed(1)},${badgeMidY.toFixed(1)} ${badgeEdgeX.toFixed(1)},${badgeMidY.toFixed(1)}" fill="none" stroke="${item.layer.color}" stroke-width="1.35" stroke-opacity=".9" stroke-dasharray="3,2"/>`;
+    });
+    svg.innerHTML = paths;
+}
+function updateHudCallouts() { updateAnnotationsScreenSafe(); }
+
+// ============================================================
+// АТМОСФЕРНАЯ ПОГОДА И ЧАСТИЦЫ («WEATHER ENGINE»)
+// ============================================================
+let weatherParticles = null;
+let weatherMode = 'none';
+const WEATHER_COUNT = 900;
+const weatherTextureCache = Object.create(null);
+let weatherFlashLight = null;
+let weatherAmbientFlash = null;
+let lightningNextAt = 0;
+let lightningFlashUntil = 0;
+
+function makeWeatherTexture(kind) {
+    if (weatherTextureCache[kind]) return weatherTextureCache[kind];
+    const canvas = document.createElement('canvas'); canvas.width = 64; canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    if (kind === 'rain') {
+        const grad = ctx.createLinearGradient(24, 0, 42, 64);
+        grad.addColorStop(0, 'rgba(226,242,255,0)');
+        grad.addColorStop(0.25, 'rgba(226,242,255,.45)');
+        grad.addColorStop(1, 'rgba(255,255,255,.92)');
+        ctx.strokeStyle = grad; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(22, 2); ctx.lineTo(40, 62); ctx.stroke();
+        ctx.strokeStyle = 'rgba(186,220,255,.36)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(8, 18); ctx.lineTo(17, 48); ctx.stroke();
+    } else if (kind === 'snow') {
+        ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.lineWidth = 2.1; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(32, 12); ctx.lineTo(32, 52); ctx.moveTo(13, 22); ctx.lineTo(51, 42); ctx.moveTo(13, 42); ctx.lineTo(51, 22); ctx.stroke();
+        for (let a = 0; a < 6; a++) {
+            const angle = a * Math.PI / 3;
+            const x = 32 + Math.cos(angle) * 17, y = 32 + Math.sin(angle) * 17;
+            ctx.beginPath(); ctx.arc(x, y, 2.2, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
+        }
+    } else {
+        const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+        grad.addColorStop(0, 'rgba(255,255,255,1)');
+        grad.addColorStop(.35, 'rgba(255,255,255,.55)');
+        grad.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = grad; ctx.fillRect(0, 0, 64, 64);
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.needsUpdate = true;
+    weatherTextureCache[kind] = tex;
+    return tex;
+}
+
+function initWeatherSystem() {
+    if (weatherParticles) {
+        scene.remove(weatherParticles);
+        weatherParticles.geometry.dispose(); weatherParticles.material.dispose();
+        weatherParticles = null;
+    }
+    if (!weatherFlashLight) {
+        weatherFlashLight = new THREE.PointLight('#dbeafe', 0, 2600, 1.25);
+        weatherFlashLight.position.set(-260, 520, 0);
+        scene.add(weatherFlashLight);
+    }
+    if (!weatherAmbientFlash) {
+        weatherAmbientFlash = new THREE.AmbientLight('#c7d2fe', 0);
+        scene.add(weatherAmbientFlash);
+    }
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(WEATHER_COUNT * 3);
+    const velocities = new Float32Array(WEATHER_COUNT * 3);
+    for (let i = 0; i < WEATHER_COUNT; i++) {
+        positions[i * 3] = (Math.random() - .5) * 1500;
+        positions[i * 3 + 1] = Math.random() * 660 - 130;
+        positions[i * 3 + 2] = (Math.random() - .5) * 2600;
+        velocities[i * 3] = (Math.random() - .5) * .7;
+        velocities[i * 3 + 1] = -(Math.random() * 1.1 + .45);
+        velocities[i * 3 + 2] = (Math.random() - .5) * .7;
+    }
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('velocity', new THREE.BufferAttribute(velocities, 3));
+    const material = new THREE.PointsMaterial({
+        size: 8, map: makeWeatherTexture('soft'), color: '#ffffff', transparent: true,
+        opacity: 0, depthWrite: false, sizeAttenuation: true, blending: THREE.NormalBlending
+    });
+    weatherParticles = new THREE.Points(geometry, material);
+    weatherParticles.frustumCulled = false;
+    scene.add(weatherParticles);
+    setWeatherMode(weatherMode || 'none');
+}
+
+function syncWeatherButtons() {
+    const rain = document.getElementById('weatherRainBtn');
+    const snow = document.getElementById('weatherSnowBtn');
+    if (rain) rain.classList.toggle('active', weatherMode === 'rain_storm');
+    if (snow) snow.classList.toggle('active', weatherMode === 'snow' || weatherMode === 'winter_frost');
+}
+
+function setWeatherMode(mode) {
+    weatherMode = mode || 'none';
+    if (weatherParticles && weatherMode === 'tunnel_glow') {
+        const pos = weatherParticles.geometry.attributes.position.array;
+        for (let i = 0; i < WEATHER_COUNT; i++) {
+            const i3 = i * 3;
+            pos[i3] = (Math.random() - .5) * 460;
+            pos[i3 + 1] = 25 + Math.random() * 150;
+            pos[i3 + 2] = (Math.random() - .5) * 6800;
+        }
+        weatherParticles.geometry.attributes.position.needsUpdate = true;
+    }
+    if (weatherParticles) {
+        const mat = weatherParticles.material;
+        const isRain = weatherMode === 'rain_storm';
+        const isSnow = weatherMode === 'snow' || weatherMode === 'winter_frost';
+        const textureKind = isRain ? 'rain' : isSnow ? 'snow' : 'soft';
+        mat.map = makeWeatherTexture(textureKind);
+        mat.needsUpdate = true;
+        if (weatherMode === 'none') {
+            mat.opacity = 0; weatherParticles.visible = false;
+        } else {
+            weatherParticles.visible = true;
+            mat.blending = isRain ? THREE.NormalBlending : THREE.AdditiveBlending;
+            if (isRain) { mat.opacity = .78; mat.color.set('#dbeafe'); mat.size = 17; }
+            else if (isSnow) { mat.opacity = .92; mat.color.set('#ffffff'); mat.size = weatherMode === 'snow' ? 10 : 8; }
+            else if (weatherMode === 'sun_dust') { mat.opacity = .55; mat.color.set('#fef08a'); mat.size = 8; }
+            else if (weatherMode === 'dusk_mist') { mat.opacity = .32; mat.color.set('#bae6fd'); mat.size = 19; }
+            else if (weatherMode === 'tunnel_glow') { mat.opacity = .30; mat.color.set('#fed7aa'); mat.size = 6; }
+            else { mat.opacity = 0; weatherParticles.visible = false; }
+        }
+    }
+    if (weatherMode !== 'rain_storm') {
+        if (weatherFlashLight) weatherFlashLight.intensity = 0;
+        if (weatherAmbientFlash) weatherAmbientFlash.intensity = 0;
+        lightningFlashUntil = 0;
+    } else if (lightningNextAt < performance.now()) {
+        lightningNextAt = performance.now() + 1800 + Math.random() * 2500;
+    }
+    syncWeatherButtons();
+}
+
+function updateWeatherSystem() {
+    if (demoActive && demoPaused) return;
+    if (!weatherParticles || weatherMode === 'none' || !weatherParticles.visible) return;
+    const now = performance.now();
+    const positionAttr = weatherParticles.geometry.attributes.position;
+    const velocityAttr = weatherParticles.geometry.attributes.velocity;
+    const pos = positionAttr.array, vel = velocityAttr.array;
+    const rain = weatherMode === 'rain_storm';
+    const snow = weatherMode === 'snow' || weatherMode === 'winter_frost';
+    for (let i = 0; i < WEATHER_COUNT; i++) {
+        const i3 = i * 3;
+        if (rain) {
+            pos[i3] += vel[i3] - 1.25;
+            pos[i3 + 1] -= 7.5 + Math.abs(vel[i3 + 1]) * 2.4;
+            pos[i3 + 2] += vel[i3 + 2] + .55;
+            if (pos[i3 + 1] < -180 || pos[i3 + 2] > 1350) {
+                pos[i3] = (Math.random() - .5) * 1500; pos[i3 + 1] = 430 + Math.random() * 260;
+                pos[i3 + 2] = -1350 + Math.random() * 2700;
+            }
+        } else if (snow) {
+            pos[i3] += Math.sin(now * .0006 + i * .17) * .65 + vel[i3] * .25;
+            pos[i3 + 1] -= weatherMode === 'snow' ? .85 + Math.abs(vel[i3 + 1]) * .6 : .55;
+            pos[i3 + 2] += Math.cos(now * .00045 + i * .11) * .45 + vel[i3 + 2] * .15;
+            if (pos[i3 + 1] < -180) { pos[i3 + 1] = 470 + Math.random() * 180; pos[i3] = (Math.random() - .5) * 1500; }
+        } else if (weatherMode === 'sun_dust') {
+            pos[i3] += Math.sin(now * .0008 + i) * .25;
+            pos[i3 + 1] += Math.cos(now * .0006 + i * 2) * .20;
+            pos[i3 + 2] += Math.sin(now * .0005 + i * 3) * .25;
+            if (pos[i3 + 1] > 530) pos[i3 + 1] = -120;
+        } else if (weatherMode === 'dusk_mist') {
+            pos[i3] += .3; pos[i3 + 1] += Math.sin(now * .0005 + i) * .15;
+            if (pos[i3] > 760) pos[i3] = -760;
+        } else if (weatherMode === 'tunnel_glow') {
+            pos[i3 + 1] += Math.sin(now * .0007 + i * 2) * .12;
+            pos[i3 + 2] -= .22;
+            if (pos[i3 + 2] < -3500) pos[i3 + 2] = 3500;
+        }
+    }
+    positionAttr.needsUpdate = true;
+
+    if (rain && weatherFlashLight && weatherAmbientFlash) {
+        if (now >= lightningNextAt) {
+            lightningFlashUntil = now + 180 + Math.random() * 100;
+            lightningNextAt = now + 3800 + Math.random() * 6500;
+            weatherFlashLight.position.set((Math.random() - .5) * 500, 400 + Math.random() * 300, (Math.random() - .5) * 1600);
+        }
+        if (now < lightningFlashUntil) {
+            const phase = Math.sin((lightningFlashUntil - now) * .075);
+            weatherFlashLight.intensity = 20 + Math.max(0, phase) * 34;
+            weatherAmbientFlash.intensity = .14 + Math.max(0, phase) * .24;
+        } else {
+            weatherFlashLight.intensity = 0; weatherAmbientFlash.intensity = 0;
+        }
+    }
+}
+
+const weatherRainBtn = document.getElementById('weatherRainBtn');
+const weatherSnowBtn = document.getElementById('weatherSnowBtn');
+if (weatherRainBtn) weatherRainBtn.addEventListener('click', () => setWeatherMode(weatherMode === 'rain_storm' ? 'none' : 'rain_storm'));
+if (weatherSnowBtn) weatherSnowBtn.addEventListener('click', () => setWeatherMode((weatherMode === 'snow' || weatherMode === 'winter_frost') ? 'none' : 'snow'));
+
 // 1. Модульный фасад здания (Бизнес-центр / Терминал)
 const buildingFacadeGroup = new THREE.Group();
 scene.add(buildingFacadeGroup);
 buildingFacadeGroup.visible = false;
 
-// 2. Длинный арочный тоннель метро (2000 мм, Хардволл + AISI N4)
+// 2. Скоростной автомагистральный тоннель (2400 мм, Хардволл + AISI N4)
 const metroTunnelGroup = new THREE.Group();
 scene.add(metroTunnelGroup);
 metroTunnelGroup.visible = false;
 
-// 3. Вентфасад из крупноформатного Керамогранита (Графит 3.5 мм + Каррара)
+// 3. Вентфасад из крупноформатного Керамогранита (Калакатта Оро & Неро Марквина)
 const stoneWallGroup = new THREE.Group();
 scene.add(stoneWallGroup);
 stoneWallGroup.visible = false;
 
-// 4. Облицовка интерьерного атриума HPL (Натуральный Дуб + Венге)
+// 4. Облицовка интерьерного атриума HPL (Орех Американский + Венге + Патина)
 const interiorAtriumGroup = new THREE.Group();
 scene.add(interiorAtriumGroup);
 interiorAtriumGroup.visible = false;
+
+// The station is a separate environment, not another static material board.
+const metroStationGroup = new THREE.Group();
+scene.add(metroStationGroup);
+metroStationGroup.visible = false;
+let metroTrainGroup = null;
+let metroStationBuilt = false;
+let facadeBuilt = false, tunnelBuilt = false, stoneBuilt = false, interiorBuilt = false;
 
 let facadePanels = [];
 let facadeAnimationStartTime = 0;
@@ -2998,17 +3468,14 @@ function buildBuildingFacadeScene() {
     }
     facadePanels = [];
 
-    // Белые кассеты Уникор RAL 9003
     const whiteCassetteMat = new THREE.MeshPhysicalMaterial({
         color: new THREE.Color('#F6F8F7').convertSRGBToLinear(),
         metalness: 0.0, roughness: 0.48, clearcoat: 0.0
     });
-    // Графитовые антрацитовые кассеты RAL 7016
     const darkCassetteMat = new THREE.MeshPhysicalMaterial({
         color: new THREE.Color('#353C42').convertSRGBToLinear(),
         metalness: 0.0, roughness: 0.45, clearcoat: 0.0
     });
-    // Витражное тонированное остекление
     const glassMat = new THREE.MeshPhysicalMaterial({
         color: new THREE.Color('#162233').convertSRGBToLinear(),
         metalness: 0.1, roughness: 0.04, clearcoat: 1.0, clearcoatRoughness: 0.02, reflectivity: 0.95
@@ -3019,14 +3486,47 @@ function buildBuildingFacadeScene() {
     const totalW = cols * (pW + gap) - gap;
     const totalH = rows * (pH + gap) - gap;
 
-    // Несущая стена подконструкции
     const buildingWallGeom = new THREE.BoxGeometry(totalW + 100, totalH + 160, 40);
     const buildingWallMat = new THREE.MeshStandardMaterial({ color: '#090e17', roughness: 0.9 });
     const buildingWall = new THREE.Mesh(buildingWallGeom, buildingWallMat);
     buildingWall.position.set(0, 0, -30);
     buildingFacadeGroup.add(buildingWall);
 
-    // Парапетный фриз здания сверху
+    // Ground plane and adjacent volume give the cladding a real urban scale and a readable vanishing plane.
+    const plazaMat = new THREE.MeshPhysicalMaterial({ color: '#252d37', metalness: .18, roughness: .28, clearcoat: .38, clearcoatRoughness: .2 });
+    const plaza = new THREE.Mesh(new THREE.BoxGeometry(totalW + 1150, 16, 1900), plazaMat);
+    plaza.position.set(0, -totalH / 2 - 88, 430); plaza.receiveShadow = true; buildingFacadeGroup.add(plaza);
+    const approach = new THREE.Mesh(new THREE.BoxGeometry(totalW + 520, 2, 560), new THREE.MeshStandardMaterial({ color: '#343d47', roughness: .38 }));
+    approach.position.set(0, -totalH / 2 - 79, 820); buildingFacadeGroup.add(approach);
+    const approachJointMat = new THREE.MeshBasicMaterial({ color: '#687482', transparent: true, opacity: .36 });
+    const approachJointGeom = new THREE.BoxGeometry(2, 1, 560);
+    for (let x = -Math.floor((totalW + 420) / 120) * 60; x <= (totalW + 420) / 2; x += 120) {
+        const joint = new THREE.Mesh(approachJointGeom, approachJointMat);
+        joint.position.set(x, -totalH / 2 - 77.7, 820); buildingFacadeGroup.add(joint);
+    }
+    const podium = new THREE.Mesh(new THREE.BoxGeometry(totalW + 180, 42, 118), darkCassetteMat);
+    podium.position.set(0, -totalH / 2 - 28, 18); podium.castShadow = false; buildingFacadeGroup.add(podium);
+    const canopy = new THREE.Mesh(new THREE.BoxGeometry(230, 13, 115), darkCassetteMat);
+    canopy.position.set(0, -totalH / 2 + 94, 68); buildingFacadeGroup.add(canopy);
+    const canopyLed = new THREE.Mesh(new THREE.BoxGeometry(190, 2, 4), new THREE.MeshBasicMaterial({ color: '#f0c47c' }));
+    canopyLed.position.set(0, -totalH / 2 + 85, 128); buildingFacadeGroup.add(canopyLed);
+    const entryFrameMat = new THREE.MeshStandardMaterial({ color: '#101c2b', metalness: .72, roughness: .24 });
+    const entryGlassMat = new THREE.MeshPhysicalMaterial({ color: '#14283b', metalness: .25, roughness: .12, clearcoat: 1, emissive: '#163450', emissiveIntensity: .3 });
+    const entryFrame = new THREE.Mesh(new THREE.BoxGeometry(132, 116, 13), entryFrameMat);
+    entryFrame.position.set(0, -totalH / 2 + 28, 30); buildingFacadeGroup.add(entryFrame);
+    const entryGlass = new THREE.Mesh(new THREE.BoxGeometry(116, 101, 5), entryGlassMat);
+    entryGlass.position.set(0, -totalH / 2 + 28, 38); buildingFacadeGroup.add(entryGlass);
+    [-1, 1].forEach(side => {
+        const planter = new THREE.Mesh(new THREE.BoxGeometry(135, 32, 82), new THREE.MeshStandardMaterial({ color: '#1a252b', roughness: .74 }));
+        planter.position.set(side * (totalW / 2 + 78), -totalH / 2 - 61, 330); buildingFacadeGroup.add(planter);
+        for (let i = 0; i < 4; i++) {
+            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(2, 3, 48 + (i % 2) * 12, 5), new THREE.MeshStandardMaterial({ color: '#514a3b', roughness: .95 }));
+            trunk.position.set(planter.position.x + (i - 1.5) * 25, planter.position.y + 40, 330); buildingFacadeGroup.add(trunk);
+            const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(17 + (i % 2) * 5, 1), new THREE.MeshStandardMaterial({ color: '#27433d', roughness: .92 }));
+            crown.position.set(trunk.position.x, trunk.position.y + 26, 330); buildingFacadeGroup.add(crown);
+        }
+    });
+
     const parapetGeom = new THREE.BoxGeometry(totalW + 80, 45, 25);
     const parapet = new THREE.Mesh(parapetGeom, darkCassetteMat);
     parapet.position.set(0, totalH / 2 + 35, -5);
@@ -3045,12 +3545,11 @@ function buildBuildingFacadeScene() {
             if (isGlass) mat = glassMat;
             else if (isAccent) mat = darkCassetteMat;
 
-            // Выступающий архитектурный эркер (колонки 1 и 2 выступают на 22 мм)
             const zExt = (c === 1 || c === 2) ? 22 : 0;
 
             const mesh = new THREE.Mesh(boxGeom, mat);
-            mesh.castShadow = true;
-            mesh.receiveShadow = true;
+            mesh.castShadow = false;
+            mesh.receiveShadow = false;
 
             const idx = r * cols + c;
             const angle = idx * 0.72;
@@ -3070,309 +3569,692 @@ function buildBuildingFacadeScene() {
     facadeAnimationStartTime = performance.now();
 }
 
-let tunnelTrainLight;
+let tunnelCars = [];
 function buildMetroTunnelScene() {
-    while (metroTunnelGroup.children.length > 0) {
-        let obj = metroTunnelGroup.children[0];
+    while (metroTunnelGroup.children.length) {
+        const obj = metroTunnelGroup.children[0];
         if (obj.geometry) obj.geometry.dispose();
         metroTunnelGroup.remove(obj);
     }
+    tunnelCars = [];
+    const tunnelW = 420, tunnelH = 220, tunnelL = 7200;
+    const roadY = -tunnelH / 2 + 4;
 
-    const tunnelRadius = 260;
-    const tunnelLength = 2000; // Протяженный реалистичный тоннель 2000 мм!
-    const rings = 20;
-    const segments = 7;
-    const ringSpacing = tunnelLength / rings;
-    const angleStart = -Math.PI * 0.46;
-    const angleEnd = Math.PI * 0.46;
-    const angleStep = (angleEnd - angleStart) / (segments - 1);
-
-    // Материал 1: Сатинированная сталь AISI N4
-    const steelMat = new THREE.MeshStandardMaterial({
-        color: new THREE.Color('#c8cfd9').convertSRGBToLinear(),
-        metalness: 0.90, roughness: 0.22, normalMap: brushedNormals
+    // Wet mirror asphalt and double yellow center separation.
+    const roadMat = new THREE.MeshPhysicalMaterial({
+        color: new THREE.Color('#141923').convertSRGBToLinear(), roughness: .12,
+        metalness: .10, clearcoat: 1, clearcoatRoughness: .035, reflectivity: 1
     });
-
-    // Материал 2: Стеклоэмаль Хардволл — глубокий синий Ультрамарин RAL 5002
-    const enamelBlueMat = new THREE.MeshPhysicalMaterial({
-        color: new THREE.Color('#162A7A').convertSRGBToLinear(),
-        metalness: 0.0, roughness: 0.06, clearcoat: 1.0, clearcoatRoughness: 0.03, envMapIntensity: 0.85
+    const road = new THREE.Mesh(new THREE.BoxGeometry(tunnelW, 10, tunnelL), roadMat);
+    road.position.set(0, -tunnelH / 2, 0); road.receiveShadow = true; metroTunnelGroup.add(road);
+    const yellow = new THREE.MeshBasicMaterial({ color: '#ffd21f' });
+    const white = new THREE.MeshBasicMaterial({ color: '#f8fafc' });
+    [-3.5, 3.5].forEach(x => {
+        const line = new THREE.Mesh(new THREE.BoxGeometry(3.5, 1.2, tunnelL), yellow);
+        line.position.set(x, roadY + 1.2, 0); metroTunnelGroup.add(line);
     });
-
-    // Материал 3: Стеклоэмаль Хардволл — чистый белый RAL 9003
-    const enamelWhiteMat = new THREE.MeshPhysicalMaterial({
-        color: new THREE.Color('#F6F8F7').convertSRGBToLinear(),
-        metalness: 0.0, roughness: 0.06, clearcoat: 1.0, clearcoatRoughness: 0.03, envMapIntensity: 0.85
+    [-tunnelW / 2 + 28, tunnelW / 2 - 28].forEach(x => {
+        const line = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.1, tunnelL), white);
+        line.position.set(x, roadY + 1.1, 0); metroTunnelGroup.add(line);
     });
+    const dashPositions = [];
+    for (let z = -tunnelL / 2 + 45; z < tunnelL / 2; z += 88) [-tunnelW / 4, tunnelW / 4].forEach(x => dashPositions.push([x, roadY + 1.05, z]));
+    const dashGeom = new THREE.BoxGeometry(2.5, 1.1, 38);
+    const dashes = new THREE.InstancedMesh(dashGeom, white, dashPositions.length);
+    const dashDummy = new THREE.Object3D();
+    dashPositions.forEach((pos, i) => { dashDummy.position.set(pos[0], pos[1], pos[2]); dashDummy.updateMatrix(); dashes.setMatrixAt(i, dashDummy.matrix); });
+    dashes.instanceMatrix.needsUpdate = true; metroTunnelGroup.add(dashes);
 
-    const panelGeom = new THREE.BoxGeometry(110, 10, ringSpacing - 6);
+    const enamelBlue = new THREE.MeshPhysicalMaterial({ color: '#162a7a', roughness: .045, clearcoat: 1, clearcoatRoughness: .025, metalness: .08 });
+    const enamelWhite = new THREE.MeshPhysicalMaterial({ color: '#f6f8f7', roughness: .04, clearcoat: 1, clearcoatRoughness: .02, metalness: .04 });
+    const enamelRed = new THREE.MeshPhysicalMaterial({ color: '#c82032', roughness: .045, clearcoat: 1, clearcoatRoughness: .02, metalness: .06 });
+    const enamelYellow = new THREE.MeshPhysicalMaterial({ color: '#e59e1a', roughness: .05, clearcoat: 1, clearcoatRoughness: .025 });
+    const steel = new THREE.MeshStandardMaterial({ color: '#cbd5e1', metalness: .92, roughness: .22, normalMap: brushedNormals });
 
-    for (let i = 0; i < rings; i++) {
-        const z = -tunnelLength / 2 + i * ringSpacing + ringSpacing / 2;
-        const isSteelRing = (i % 2 === 0);
-
-        for (let j = 0; j < segments; j++) {
-            const angle = angleStart + j * angleStep;
-            let mat = steelMat;
-            if (!isSteelRing) {
-                mat = (j === 0 || j === segments - 1 || j === 3) ? enamelBlueMat : enamelWhiteMat;
-            }
-
-            const p = new THREE.Mesh(panelGeom, mat);
-            p.position.set(
-                Math.sin(angle) * tunnelRadius,
-                Math.cos(angle) * tunnelRadius - 55,
-                z
-            );
-            p.rotation.z = -angle;
-            metroTunnelGroup.add(p);
+    // Deep wall backing and repeated enamel panels on both sides of the road.
+    const wallBackingMat = new THREE.MeshStandardMaterial({ color: '#111824', roughness: .82, metalness: .12 });
+    [-1, 1].forEach(side => {
+        const backing = new THREE.Mesh(new THREE.BoxGeometry(12, 205, tunnelL), wallBackingMat);
+        backing.position.set(side * (tunnelW / 2 + 5), -4, 0); metroTunnelGroup.add(backing);
+    });
+    const panelLen = 138, gap = 4, count = Math.floor(tunnelL / (panelLen + gap));
+    const panelPlacements = { lowerBlue: [], lowerRed: [], midWhite: [], topSteel: [], topRed: [], topYellow: [] };
+    for (let side = -1; side <= 1; side += 2) {
+        const wallX = side * (tunnelW / 2 - 4);
+        for (let c = 0; c < count; c++) {
+            const z = -tunnelL / 2 + c * (panelLen + gap) + panelLen / 2;
+            const x = wallX;
+            panelPlacements[c % 5 === 0 ? 'lowerRed' : 'lowerBlue'].push([x, -tunnelH / 2 + 39, z]);
+            panelPlacements.midWhite.push([x, -tunnelH / 2 + 113, z]);
+            panelPlacements[c % 6 === 0 ? 'topRed' : (c % 4 === 0 ? 'topYellow' : 'topSteel')].push([x, -tunnelH / 2 + 180, z]);
         }
     }
+    const panelDummy = new THREE.Object3D();
+    const addPanelInstances = (key, h, material) => {
+        const placements = panelPlacements[key];
+        if (!placements.length) return;
+        const inst = new THREE.InstancedMesh(new THREE.BoxGeometry(7, h, panelLen), material, placements.length);
+        placements.forEach((pos, i) => { panelDummy.position.set(pos[0], pos[1], pos[2]); panelDummy.updateMatrix(); inst.setMatrixAt(i, panelDummy.matrix); });
+        inst.instanceMatrix.needsUpdate = true; metroTunnelGroup.add(inst);
+    };
+    addPanelInstances('lowerBlue', 58, enamelBlue); addPanelInstances('lowerRed', 58, enamelRed);
+    addPanelInstances('midWhite', 90, enamelWhite); addPanelInstances('topSteel', 42, steel);
+    addPanelInstances('topRed', 42, enamelRed); addPanelInstances('topYellow', 42, enamelYellow);
 
-    // Пол тоннеля
-    const floorGeom = new THREE.BoxGeometry(tunnelRadius * 1.85, 10, tunnelLength);
-    const floorMat = new THREE.MeshStandardMaterial({
-        color: new THREE.Color('#0c1017').convertSRGBToLinear(), roughness: 0.85
+    // Curved vault ribs are instanced too: a long tunnel stays visually rich without hundreds of draw calls.
+    const ribZs = [];
+    for (let z = -tunnelL / 2 + 10, rib = 0; z <= tunnelL / 2; z += 135, rib++) ribZs.push({ z, red: rib % 4 === 0 });
+    const ribPts = [];
+    for (let i = 0; i <= 24; i++) { const a = Math.PI - (i / 24) * Math.PI; ribPts.push(new THREE.Vector3(Math.cos(a) * (tunnelW / 2 - 2), -8 + Math.sin(a) * 112, 0)); }
+    const ribGeom = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(ribPts), 40, 2.6, 7, false);
+    const redRibs = ribZs.filter(r => r.red), whiteRibs = ribZs.filter(r => !r.red);
+    function addRibInstances(list, material) {
+        const inst = new THREE.InstancedMesh(ribGeom, material, list.length), d = new THREE.Object3D();
+        list.forEach((r, i) => { d.position.set(0, 0, r.z); d.updateMatrix(); inst.setMatrixAt(i, d.matrix); });
+        inst.instanceMatrix.needsUpdate = true; metroTunnelGroup.add(inst);
+    }
+    addRibInstances(whiteRibs, enamelWhite); addRibInstances(redRibs, enamelRed);
+    const ceiling = new THREE.Mesh(new THREE.BoxGeometry(tunnelW + 14, 9, tunnelL), new THREE.MeshStandardMaterial({ color: '#0a1019', roughness: .88 }));
+    ceiling.position.set(0, tunnelH / 2 + 7, 0); metroTunnelGroup.add(ceiling);
+
+    // Light portals set a visible destination at either end; the tunnel itself continues well past the camera path.
+    const exitGlowMat = new THREE.MeshBasicMaterial({ color: '#c5e4ff', transparent: true, opacity: .19, side: THREE.DoubleSide, depthWrite: false });
+    const exitFrameMat = new THREE.MeshBasicMaterial({ color: '#f4f7fb' });
+    const exitRedMat = new THREE.MeshBasicMaterial({ color: '#d51f35' });
+    [-1, 1].forEach(end => {
+        const z = end * (tunnelL / 2 - 24);
+        const glow = new THREE.Mesh(new THREE.PlaneGeometry(tunnelW - 80, tunnelH - 48), exitGlowMat);
+        glow.position.set(0, 2, z); metroTunnelGroup.add(glow);
+        [-1, 1].forEach(side => {
+            const jamb = new THREE.Mesh(new THREE.BoxGeometry(12, tunnelH - 30, 12), exitRedMat);
+            jamb.position.set(side * (tunnelW / 2 - 28), -8, z - end * 8); metroTunnelGroup.add(jamb);
+        });
+        const lintel = new THREE.Mesh(new THREE.BoxGeometry(tunnelW - 38, 12, 12), exitFrameMat);
+        lintel.position.set(0, tunnelH / 2 - 15, z - end * 8); metroTunnelGroup.add(lintel);
     });
-    const floor = new THREE.Mesh(floorGeom, floorMat);
-    floor.position.set(0, -55, 0);
-    metroTunnelGroup.add(floor);
 
-    // Световые светодиодные полосы по своду тоннеля
-    const lightTrackGeom = new THREE.BoxGeometry(6, 4, tunnelLength);
-    const lightTrackMat = new THREE.MeshBasicMaterial({ color: '#7dd3fc' });
-    const leftTrack = new THREE.Mesh(lightTrackGeom, lightTrackMat);
-    leftTrack.position.set(-tunnelRadius * 0.55, tunnelRadius * 0.72 - 55, 0);
-    const rightTrack = new THREE.Mesh(lightTrackGeom, lightTrackMat);
-    rightTrack.position.set(tunnelRadius * 0.55, tunnelRadius * 0.72 - 55, 0);
-    metroTunnelGroup.add(leftTrack, rightTrack);
+    // Many visible sodium fixtures share two instanced meshes; only every fourth fixture needs a real light source.
+    const sodiumMat = new THREE.MeshStandardMaterial({ color: '#ffbd58', emissive: '#ff9d27', emissiveIntensity: 1.8, roughness: .3 });
+    const housingGeom = new THREE.BoxGeometry(27, 5, 20);
+    const bulbGeom = new THREE.BoxGeometry(21, 1.6, 15);
+    const lampPositions = [];
+    for (let z = -tunnelL / 2 + 100; z < tunnelL / 2; z += 285) lampPositions.push(z);
+    const housings = new THREE.InstancedMesh(housingGeom, new THREE.MeshStandardMaterial({ color: '#242c36', metalness: .65, roughness: .35 }), lampPositions.length);
+    const bulbs = new THREE.InstancedMesh(bulbGeom, sodiumMat, lampPositions.length);
+    const lampDummy = new THREE.Object3D();
+    lampPositions.forEach((z, i) => {
+        lampDummy.position.set(0, tunnelH / 2 + 1, z); lampDummy.updateMatrix(); housings.setMatrixAt(i, lampDummy.matrix);
+        lampDummy.position.set(0, tunnelH / 2 - 2, z); lampDummy.updateMatrix(); bulbs.setMatrixAt(i, lampDummy.matrix);
+        if (i % 4 === 0) {
+            const glow = new THREE.PointLight('#ffb347', 1.65, 320, 1.7);
+            glow.position.set(0, tunnelH / 2 - 13, z); metroTunnelGroup.add(glow);
+        }
+    });
+    housings.instanceMatrix.needsUpdate = true; bulbs.instanceMatrix.needsUpdate = true;
+    metroTunnelGroup.add(housings, bulbs);
 
-    // Динамический прожектор поезда метро
-    tunnelTrainLight = new THREE.PointLight('#fff3d6', 2.0, 750, 1.2);
-    tunnelTrainLight.position.set(0, 0, -900);
-    metroTunnelGroup.add(tunnelTrainLight);
+    // Six vehicle groups continuously circulate in both directions. Real point/spot lights illuminate nearby surfaces.
+    const carBodyMaterials = [
+        new THREE.MeshPhysicalMaterial({ color: '#263648', metalness: .72, roughness: .25, clearcoat: .8 }),
+        new THREE.MeshPhysicalMaterial({ color: '#6b7280', metalness: .68, roughness: .24, clearcoat: .85 }),
+        new THREE.MeshPhysicalMaterial({ color: '#7c2935', metalness: .62, roughness: .26, clearcoat: .8 })
+    ];
+    function makeCar(direction, laneX, phase, speed, matIndex) {
+        const group = new THREE.Group();
+        const bodyMat = carBodyMaterials[matIndex % carBodyMaterials.length];
+        const body = new THREE.Mesh(new THREE.BoxGeometry(48, 17, 76), bodyMat);
+        body.position.set(laneX, -tunnelH / 2 + 18, 0); body.castShadow = true; group.add(body);
+        const cabin = new THREE.Mesh(new THREE.BoxGeometry(31, 11, 35), new THREE.MeshPhysicalMaterial({ color: '#172638', metalness: .3, roughness: .12, clearcoat: 1 }));
+        cabin.position.set(laneX, -tunnelH / 2 + 31, -2); group.add(cabin);
+        const lampMat = new THREE.MeshBasicMaterial({ color: '#fff7d6' });
+        const tailMat = new THREE.MeshBasicMaterial({ color: '#ef233c' });
+        const noseZ = direction > 0 ? 39 : -39;
+        const rearZ = -noseZ;
+        const headlights = [];
+        const taillights = [];
+        [-13, 13].forEach(dx => {
+            const head = new THREE.Mesh(new THREE.BoxGeometry(7, 4, 2), lampMat);
+            head.position.set(laneX + dx, -tunnelH / 2 + 19, noseZ); group.add(head); headlights.push(head);
+            const tail = new THREE.Mesh(new THREE.BoxGeometry(7, 4, 2), tailMat);
+            tail.position.set(laneX + dx, -tunnelH / 2 + 19, rearZ); group.add(tail); taillights.push(tail);
+        });
+        const headLight = new THREE.PointLight('#fff0b8', 3.2, 330, 1.55);
+        headLight.position.set(laneX, -tunnelH / 2 + 30, noseZ); group.add(headLight);
+        // Emissive tail lamps remain vivid without six extra dynamic lights.
+        metroTunnelGroup.add(group);
+        tunnelCars.push({ group, direction, phase, speed, baseZ: 0 });
+    }
+    // Right-hand traffic with two marked lanes per direction: cars never sit on the dashed lane separators.
+    makeCar(-1, tunnelW / 8, 0, .17, 0);
+    makeCar(-1, tunnelW * .375, 760, .145, 1);
+    makeCar(-1, tunnelW / 8, 1510, .19, 2);
+    makeCar(1, -tunnelW / 8, 280, .16, 1);
+    makeCar(1, -tunnelW * .375, 1040, .185, 0);
+    makeCar(1, -tunnelW / 8, 1800, .15, 2);
 }
 
 function buildStoneWallScene() {
-    while (stoneWallGroup.children.length > 0) {
-        let obj = stoneWallGroup.children[0];
+    while (stoneWallGroup.children.length) {
+        const obj = stoneWallGroup.children[0];
         if (obj.geometry) obj.geometry.dispose();
         stoneWallGroup.remove(obj);
     }
+    const calacattaPbr = getOrCreatePBRDecor(ceramicDecorPalette.find(d => d.id === 'cer_calacatta'));
+    const neroPbr = getOrCreatePBRDecor(ceramicDecorPalette.find(d => d.id === 'cer_nero'));
+    const labradoritePbr = getOrCreatePBRDecor(ceramicDecorPalette.find(d => d.id === 'cer_labradorite'));
+    const calacattaMat = new THREE.MeshPhysicalMaterial({ map: calacattaPbr.map, bumpMap: calacattaPbr.bumpMap, bumpScale: .16, roughnessMap: calacattaPbr.roughnessMap, roughness: .15, clearcoat: .88, clearcoatRoughness: .05, envMapIntensity: .95 });
+    const neroMat = new THREE.MeshPhysicalMaterial({ map: neroPbr.map, bumpMap: neroPbr.bumpMap, bumpScale: .18, roughnessMap: neroPbr.roughnessMap, roughness: .12, clearcoat: .92, clearcoatRoughness: .04, envMapIntensity: .9 });
+    const labradoriteMat = new THREE.MeshPhysicalMaterial({ map: labradoritePbr.map, bumpMap: labradoritePbr.bumpMap, bumpScale: .22, roughnessMap: labradoritePbr.roughnessMap, roughness: .2, metalness: .14, clearcoat: .78, clearcoatRoughness: .07, envMapIntensity: 1.1 });
+    const concreteMat = new THREE.MeshStandardMaterial({ color: '#303843', roughness: .9, metalness: .05 });
+    const glassMat = new THREE.MeshPhysicalMaterial({ color: '#10263a', metalness: .42, roughness: .14, clearcoat: 1, clearcoatRoughness: .04, emissive: '#142c45', emissiveIntensity: .22 });
+    const frameMat = new THREE.MeshStandardMaterial({ color: '#121820', metalness: .82, roughness: .25 });
+    const brassMat = new THREE.MeshStandardMaterial({ color: '#b9a06a', metalness: .86, roughness: .22 });
 
-    const graphitePbr = getOrCreatePBRDecor(ceramicDecorPalette.find(d => d.id === 'cer_monocolor'));
-    const carraraPbr = getOrCreatePBRDecor(ceramicDecorPalette.find(d => d.id === 'cer_carrara'));
+    const cols = 4, rows = 3, pW = 260, pH = 180, pD = 18, gap = 8;
+    const totalW = cols * (pW + gap) - gap, totalH = rows * (pH + gap) - gap;
+    // Main residential mass, wing, recessed entrance and balcony slabs ground the cladding in architecture.
+    const residence = new THREE.Mesh(new THREE.BoxGeometry(totalW + 210, totalH + 190, 90), concreteMat);
+    residence.position.set(0, 18, -78); residence.castShadow = true; residence.receiveShadow = true; stoneWallGroup.add(residence);
+    const wing = new THREE.Mesh(new THREE.BoxGeometry(145, totalH + 110, 170), new THREE.MeshStandardMaterial({ color: '#222a34', roughness: .76 }));
+    wing.position.set(totalW / 2 + 92, 0, -10); stoneWallGroup.add(wing);
+    const parapet = new THREE.Mesh(new THREE.BoxGeometry(totalW + 240, 26, 130), concreteMat);
+    parapet.position.set(0, totalH / 2 + 106, -15); stoneWallGroup.add(parapet);
 
-    const graphiteMat = new THREE.MeshPhysicalMaterial({
-        map: graphitePbr.map, bumpMap: graphitePbr.bumpMap, bumpScale: 0.28,
-        roughnessMap: graphitePbr.roughnessMap, roughness: 0.62,
-        clearcoat: 0.08, clearcoatRoughness: 0.25, envMapIntensity: 0.45
-    });
-    const carraraMat = new THREE.MeshPhysicalMaterial({
-        map: carraraPbr.map, bumpMap: carraraPbr.bumpMap, bumpScale: 0.15,
-        roughnessMap: carraraPbr.roughnessMap, roughness: 0.16,
-        clearcoat: 0.65, clearcoatRoughness: 0.08, envMapIntensity: 0.65
-    });
-
-    const cols = 4, rows = 3;
-    const pW = 260, pH = 180, pD = 18, gap = 8;
-    const totalW = cols * (pW + gap) - gap;
-    const totalH = rows * (pH + gap) - gap;
-
-    const baseGeom = new THREE.BoxGeometry(totalW + 60, totalH + 60, 30);
-    const baseMat = new THREE.MeshStandardMaterial({ color: '#090e17', roughness: 0.9 });
-    const baseWall = new THREE.Mesh(baseGeom, baseMat);
-    baseWall.position.set(0, 0, -pD / 2 - 15);
-    stoneWallGroup.add(baseWall);
-
-    const slabGeom = new THREE.BoxGeometry(pW, pH, pD);
-
+    const panelGeom = new THREE.BoxGeometry(pW, pH, pD);
+    const windowSlots = new Set(['0:1', '1:2', '2:0']);
     for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
-            const x = (c * (pW + gap)) - totalW / 2 + pW / 2;
-            const y = (r * (pH + gap)) - totalH / 2 + pH / 2;
-            const isCarrara = (c === 2 && r > 0) || (c === 1 && r === 0);
-            const mat = isCarrara ? carraraMat : graphiteMat;
-
-            const mesh = new THREE.Mesh(slabGeom, mat);
-            mesh.position.set(x, y, 0);
-            mesh.castShadow = true;
-            mesh.receiveShadow = true;
-            stoneWallGroup.add(mesh);
+            const x = c * (pW + gap) - totalW / 2 + pW / 2;
+            const y = r * (pH + gap) - totalH / 2 + pH / 2;
+            if (windowSlots.has(`${r}:${c}`)) {
+                const pane = new THREE.Mesh(new THREE.BoxGeometry(pW - 22, pH - 20, 5), glassMat);
+                pane.position.set(x, y, -15); stoneWallGroup.add(pane);
+                const frameParts = [
+                    [pW - 14, 5, 7, x, y + (pH - 20) / 2, -11],
+                    [pW - 14, 5, 7, x, y - (pH - 20) / 2, -11],
+                    [5, pH - 15, 7, x - (pW - 20) / 2, y, -11],
+                    [5, pH - 15, 7, x + (pW - 20) / 2, y, -11]
+                ];
+                frameParts.forEach(a => { const m = new THREE.Mesh(new THREE.BoxGeometry(a[0],a[1],a[2]), frameMat); m.position.set(a[3],a[4],a[5]); stoneWallGroup.add(m); });
+                const mullion = new THREE.Mesh(new THREE.BoxGeometry(3, pH - 20, 8), frameMat); mullion.position.set(x, y, -10); stoneWallGroup.add(mullion);
+                continue;
+            }
+            let mat = calacattaMat;
+            if ((r === 1 && c === 1) || (r === 2 && c === 3)) mat = neroMat;
+            else if ((c === 0 && r > 0) || (c === 3 && r === 0) || (r === 0 && c === 2)) mat = labradoriteMat;
+            const slab = new THREE.Mesh(panelGeom, mat);
+            slab.position.set(x, y, 0); slab.castShadow = true; slab.receiveShadow = true; stoneWallGroup.add(slab);
+            // Narrow metal joints emphasize the large-format rainscreen grid.
+            const trim = new THREE.Mesh(new THREE.BoxGeometry(2.5, pH, pD + 2), brassMat);
+            trim.position.set(x + pW / 2 + gap / 2, y, 1); stoneWallGroup.add(trim);
         }
     }
+    // Entry portal, steps and low landscape planters make this read as a residence rather than a sample board.
+    const entryPortal = new THREE.Mesh(new THREE.BoxGeometry(190, 230, 28), frameMat);
+    entryPortal.position.set(-totalW / 2 + 118, -totalH / 2 + 33, 4); stoneWallGroup.add(entryPortal);
+    const entryGlass = new THREE.Mesh(new THREE.BoxGeometry(156, 198, 8), glassMat);
+    entryGlass.position.set(entryPortal.position.x, entryPortal.position.y + 5, 20); stoneWallGroup.add(entryGlass);
+    for (let i = 0; i < 3; i++) {
+        const step = new THREE.Mesh(new THREE.BoxGeometry(240 + i * 28, 12, 45), concreteMat);
+        step.position.set(entryPortal.position.x, -totalH / 2 - 70 + i * 12, 65 + i * 30); stoneWallGroup.add(step);
+    }
+    [-1, 1].forEach(side => {
+        const planter = new THREE.Mesh(new THREE.BoxGeometry(170, 48, 105), new THREE.MeshStandardMaterial({ color: '#1e293b', roughness: .78 }));
+        planter.position.set(side * (totalW / 2 + 38), -totalH / 2 - 64, 65); stoneWallGroup.add(planter);
+        for (let i = 0; i < 5; i++) {
+            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(2, 4, 54 + (i % 3) * 8, 6), new THREE.MeshStandardMaterial({ color: '#353b32', roughness: .95 }));
+            trunk.position.set(planter.position.x + (i - 2) * 23, planter.position.y + 44, planter.position.z); stoneWallGroup.add(trunk);
+            const foliage = new THREE.Mesh(new THREE.IcosahedronGeometry(14 + (i % 2) * 5, 1), new THREE.MeshStandardMaterial({ color: '#253b38', roughness: .88 }));
+            foliage.position.set(trunk.position.x, trunk.position.y + 28, trunk.position.z); stoneWallGroup.add(foliage);
+        }
+    });
+    const ground = new THREE.Mesh(new THREE.BoxGeometry(totalW + 850, 12, 1000), new THREE.MeshStandardMaterial({ color: '#111a24', roughness: .24, metalness: .15, clearcoat: .6 }));
+    ground.position.set(0, -totalH / 2 - 88, 180); ground.receiveShadow = true; stoneWallGroup.add(ground);
+    for (let i = 0; i < 4; i++) {
+        const uplight = new THREE.SpotLight('#fed7aa', 2.6, 650, Math.PI / 3.5, .45, 1.15);
+        const x = -totalW / 2 + (i + .5) * (totalW / 4);
+        uplight.position.set(x, -totalH / 2 - 218, 105);
+        uplight.target.position.set(x, totalH / 4, 0);
+        stoneWallGroup.add(uplight); stoneWallGroup.add(uplight.target);
+    }
+    const lightningRim = new THREE.DirectionalLight('#a8d8ff', .35);
+    lightningRim.position.set(-500, 450, 380); stoneWallGroup.add(lightningRim);
 }
 
 function buildInteriorAtriumScene() {
-    while (interiorAtriumGroup.children.length > 0) {
-        let obj = interiorAtriumGroup.children[0];
+    while (interiorAtriumGroup.children.length) {
+        const obj = interiorAtriumGroup.children[0];
         if (obj.geometry) obj.geometry.dispose();
         interiorAtriumGroup.remove(obj);
     }
-
-    const oakPbr = getOrCreatePBRDecor(hplDecorPalette.find(d => d.id === 'hpl_oak_nat'));
+    const walnutPbr = getOrCreatePBRDecor(hplDecorPalette.find(d => d.id === 'hpl_walnut'));
     const wengePbr = getOrCreatePBRDecor(hplDecorPalette.find(d => d.id === 'hpl_wenge'));
+    const patinaPbr = getOrCreatePBRDecor(hplDecorPalette.find(d => d.id === 'hpl_patina'));
+    const concretePbr = getOrCreatePBRDecor(hplDecorPalette.find(d => d.id === 'hpl_concrete') || hplDecorPalette.find(d => d.cat === 'stone'));
+    const walnutMat = new THREE.MeshPhysicalMaterial({ map: walnutPbr.map, bumpMap: walnutPbr.bumpMap, bumpScale: .18, roughnessMap: walnutPbr.roughnessMap, roughness: .38, clearcoat: .22, clearcoatRoughness: .2, envMapIntensity: .72 });
+    const wengeMat = new THREE.MeshPhysicalMaterial({ map: wengePbr.map, bumpMap: wengePbr.bumpMap, bumpScale: .22, roughnessMap: wengePbr.roughnessMap, roughness: .46, clearcoat: .16, clearcoatRoughness: .22, envMapIntensity: .6 });
+    const patinaMat = new THREE.MeshPhysicalMaterial({ map: patinaPbr.map, bumpMap: patinaPbr.bumpMap, bumpScale: .2, roughnessMap: patinaPbr.roughnessMap, roughness: .34, metalness: .58, clearcoat: .34, clearcoatRoughness: .17, envMapIntensity: .8 });
+    const concreteMat = new THREE.MeshStandardMaterial({ color: '#656b72', roughness: .87, map: concretePbr ? concretePbr.map : null });
+    const floorMat = new THREE.MeshPhysicalMaterial({ color: '#151922', metalness: .28, roughness: .17, clearcoat: .75, clearcoatRoughness: .12, envMapIntensity: .8 });
+    const brassMat = new THREE.MeshStandardMaterial({ color: '#c7a46b', metalness: .9, roughness: .22 });
+    const ledMat = new THREE.MeshStandardMaterial({ color: '#e3f5ff', emissive: '#8bdcff', emissiveIntensity: 2.4, roughness: .22 });
+    const warmLedMat = new THREE.MeshStandardMaterial({ color: '#fff1d0', emissive: '#ffbd70', emissiveIntensity: 2.0, roughness: .25 });
+    const wallMat = new THREE.MeshStandardMaterial({ color: '#242a32', roughness: .9 });
 
-    const oakMat = new THREE.MeshPhysicalMaterial({
-        map: oakPbr.map, bumpMap: oakPbr.bumpMap, bumpScale: 0.18,
-        roughnessMap: oakPbr.roughnessMap, roughness: 0.48,
-        clearcoat: 0.05, clearcoatRoughness: 0.3, envMapIntensity: 0.50
+    const pW = 200, pH = 180, pD = 15, gap = 8, cols = 5, rows = 3;
+    const totalW = cols * (pW + gap) - gap, totalH = rows * (pH + gap) - gap;
+    const roomW = totalW + 360, roomH = totalH + 290, roomD = 760;
+    // Room shell: dark polished slab, architectural-concrete walls and dropped ceiling.
+    const floor = new THREE.Mesh(new THREE.BoxGeometry(roomW + 150, 14, roomD + 120), floorMat);
+    floor.position.set(0, -roomH / 2 - 7, 180); floor.receiveShadow = true; interiorAtriumGroup.add(floor);
+    const rearWall = new THREE.Mesh(new THREE.BoxGeometry(roomW, roomH, 38), wallMat);
+    rearWall.position.set(0, 12, -65); rearWall.receiveShadow = true; interiorAtriumGroup.add(rearWall);
+    const sideWallMat = new THREE.MeshStandardMaterial({ color: '#303943', roughness: .82 });
+    [-1, 1].forEach(side => {
+        const sideWall = new THREE.Mesh(new THREE.BoxGeometry(28, roomH, roomD), sideWallMat);
+        sideWall.position.set(side * (roomW / 2), 12, 300); interiorAtriumGroup.add(sideWall);
+        const column = new THREE.Mesh(new THREE.BoxGeometry(50, roomH - 25, 58), concreteMat);
+        column.position.set(side * (roomW / 2 - 68), 12, 135); column.castShadow = true; interiorAtriumGroup.add(column);
+        const columnCap = new THREE.Mesh(new THREE.BoxGeometry(65, 16, 72), brassMat);
+        columnCap.position.set(column.position.x, roomH / 2 - 10, 135); interiorAtriumGroup.add(columnCap);
     });
-    const wengeMat = new THREE.MeshPhysicalMaterial({
-        map: wengePbr.map, bumpMap: wengePbr.bumpMap, bumpScale: 0.22,
-        roughnessMap: wengePbr.roughnessMap, roughness: 0.55,
-        clearcoat: 0.05, clearcoatRoughness: 0.3, envMapIntensity: 0.45
-    });
-
-    const cols = 5, rows = 3;
-    const pW = 200, pH = 180, pD = 15, gap = 8;
-    const totalW = cols * (pW + gap) - gap;
-    const totalH = rows * (pH + gap) - gap;
-
-    const baseGeom = new THREE.BoxGeometry(totalW + 60, totalH + 60, 30);
-    const baseMat = new THREE.MeshStandardMaterial({ color: '#13110e', roughness: 0.9 });
-    const baseWall = new THREE.Mesh(baseGeom, baseMat);
-    baseWall.position.set(0, 0, -pD / 2 - 15);
-    interiorAtriumGroup.add(baseWall);
-
-    const slabGeom = new THREE.BoxGeometry(pW, pH, pD);
-
-    for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-            const x = (c * (pW + gap)) - totalW / 2 + pW / 2;
-            const y = (r * (pH + gap)) - totalH / 2 + pH / 2;
-            const isWenge = (c === 0 || c === cols - 1);
-            const mat = isWenge ? wengeMat : oakMat;
-
-            const mesh = new THREE.Mesh(slabGeom, mat);
-            mesh.position.set(x, y, 0);
-            mesh.castShadow = true;
-            mesh.receiveShadow = true;
-            interiorAtriumGroup.add(mesh);
-        }
+    const ceiling = new THREE.Mesh(new THREE.BoxGeometry(roomW + 30, 18, roomD + 30), new THREE.MeshStandardMaterial({ color: '#1a2028', roughness: .68 }));
+    ceiling.position.set(0, roomH / 2 + 2, 170); interiorAtriumGroup.add(ceiling);
+    // Long luminous ceiling lines with a brushed-metal recess.
+    for (let i = -2; i <= 2; i++) {
+        const recess = new THREE.Mesh(new THREE.BoxGeometry(12, 3, roomD - 80), frameMatFallback());
+        recess.position.set(i * 145, roomH / 2 - 8, 170); interiorAtriumGroup.add(recess);
+        const strip = new THREE.Mesh(new THREE.BoxGeometry(5, 2, roomD - 100), i === 0 ? warmLedMat : ledMat);
+        strip.position.set(i * 145, roomH / 2 - 5.5, 170); interiorAtriumGroup.add(strip);
     }
 
-    const corniceGeom = new THREE.BoxGeometry(totalW + 40, 12, 40);
-    const corniceMat = new THREE.MeshStandardMaterial({ color: '#241a12', roughness: 0.6 });
-    const cornice = new THREE.Mesh(corniceGeom, corniceMat);
-    cornice.position.set(0, totalH / 2 + 15, 0);
-    interiorAtriumGroup.add(cornice);
+    // Material showroom wall: American walnut, dark wenge and a central patinated-copper insert.
+    const backing = new THREE.Mesh(new THREE.BoxGeometry(totalW + 75, totalH + 75, 28), new THREE.MeshStandardMaterial({ color: '#171a1f', roughness: .82 }));
+    backing.position.set(0, 15, -36); interiorAtriumGroup.add(backing);
+    const panelGeom = new THREE.BoxGeometry(pW, pH, pD);
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+            const x = c * (pW + gap) - totalW / 2 + pW / 2;
+            const y = r * (pH + gap) - totalH / 2 + pH / 2 + 15;
+            let mat = walnutMat;
+            if (c === 0 || c === cols - 1) mat = wengeMat;
+            if (c === 2 && r === 1) mat = patinaMat;
+            const panel = new THREE.Mesh(panelGeom, mat);
+            panel.position.set(x, y, -14); panel.castShadow = true; panel.receiveShadow = true; interiorAtriumGroup.add(panel);
+            const joint = new THREE.Mesh(new THREE.BoxGeometry(2.2, pH, pD + 2), brassMat);
+            joint.position.set(x + pW / 2 + gap / 2, y, -12); interiorAtriumGroup.add(joint);
+        }
+    }
+    // Suspended sign rail with a glowing perimeter, rather than a flat floating sample board.
+    const topRail = new THREE.Mesh(new THREE.BoxGeometry(totalW + 90, 13, 35), brassMat);
+    topRail.position.set(0, totalH / 2 + 45, -2); interiorAtriumGroup.add(topRail);
+    const topGlow = new THREE.Mesh(new THREE.BoxGeometry(totalW + 80, 3, 5), warmLedMat);
+    topGlow.position.set(0, totalH / 2 + 36, 18); interiorAtriumGroup.add(topGlow);
+
+    // Reception desk in the foreground, with stone top and continuous LED contour lighting.
+    const deskZ = 210;
+    const deskBody = new THREE.Mesh(new THREE.BoxGeometry(330, 88, 92), wengeMat);
+    deskBody.position.set(0, -roomH / 2 + 53, deskZ); deskBody.castShadow = true; interiorAtriumGroup.add(deskBody);
+    const deskFront = new THREE.Mesh(new THREE.BoxGeometry(305, 61, 4), walnutMat);
+    deskFront.position.set(0, deskBody.position.y - 7, deskZ + 48); interiorAtriumGroup.add(deskFront);
+    const deskTop = new THREE.Mesh(new THREE.BoxGeometry(356, 12, 112), new THREE.MeshPhysicalMaterial({ color: '#313943', metalness: .12, roughness: .22, clearcoat: .8 }));
+    deskTop.position.set(0, deskBody.position.y + 50, deskZ); deskTop.castShadow = true; interiorAtriumGroup.add(deskTop);
+    const ledFront = new THREE.Mesh(new THREE.BoxGeometry(310, 3.5, 5), ledMat);
+    ledFront.position.set(0, deskBody.position.y - 40, deskZ + 51); interiorAtriumGroup.add(ledFront);
+    const ledBase = new THREE.Mesh(new THREE.BoxGeometry(285, 2.5, 5), warmLedMat);
+    ledBase.position.set(0, deskBody.position.y - 37, deskZ + 51); interiorAtriumGroup.add(ledBase);
+    const deskToe = new THREE.Mesh(new THREE.BoxGeometry(315, 7, 78), frameMatFallback());
+    deskToe.position.set(0, -roomH / 2 + 19, deskZ); interiorAtriumGroup.add(deskToe);
+
+    // Lounging furniture silhouettes and tall planters create human scale and depth.
+    const sofaMat = new THREE.MeshStandardMaterial({ color: '#243342', roughness: .82 });
+    [-1, 1].forEach(side => {
+        const seat = new THREE.Mesh(new THREE.BoxGeometry(145, 28, 65), sofaMat);
+        seat.position.set(side * 360, -roomH / 2 + 30, 300); interiorAtriumGroup.add(seat);
+        const back = new THREE.Mesh(new THREE.BoxGeometry(145, 48, 15), sofaMat);
+        back.position.set(side * 360, -roomH / 2 + 61, 327); interiorAtriumGroup.add(back);
+        const planter = new THREE.Mesh(new THREE.BoxGeometry(58, 42, 58), new THREE.MeshStandardMaterial({ color: '#171d23', roughness: .65 }));
+        planter.position.set(side * 470, -roomH / 2 + 22, 80); interiorAtriumGroup.add(planter);
+        for (let i = 0; i < 5; i++) {
+            const leaf = new THREE.Mesh(new THREE.ConeGeometry(7, 75 + (i % 3) * 12, 5), new THREE.MeshStandardMaterial({ color: i % 2 ? '#35594d' : '#27483f', roughness: .88 }));
+            leaf.position.set(planter.position.x + (i - 2) * 9, planter.position.y + 58, planter.position.z + (i % 2) * 8); leaf.rotation.z = (i - 2) * .13; interiorAtriumGroup.add(leaf);
+        }
+    });
+    // Warm downlights and cool wall wash reveal the real grain and the copper patina.
+    for (let i = -2; i <= 2; i++) {
+        const spot = new THREE.SpotLight(i === 0 ? '#ffe3b0' : '#eff8ff', i === 0 ? 3.1 : 2.1, 780, Math.PI / 4.8, .48, 1.2);
+        spot.position.set(i * 155, roomH / 2 - 16, 210);
+        spot.target.position.set(i * 125, -20, -15);
+        interiorAtriumGroup.add(spot); interiorAtriumGroup.add(spot.target);
+    }
+    const receptionFill = new THREE.PointLight('#7dd3fc', 1.6, 520, 1.7);
+    receptionFill.position.set(0, -roomH / 2 + 145, 250); interiorAtriumGroup.add(receptionFill);
+
+    function frameMatFallback() { return new THREE.MeshStandardMaterial({ color: '#141b24', metalness: .76, roughness: .28 }); }
+}
+
+function buildMetroStationScene() {
+    while (metroStationGroup.children.length) {
+        const obj = metroStationGroup.children[0];
+        if (obj.geometry) obj.geometry.dispose();
+        metroStationGroup.remove(obj);
+    }
+    const wallMat = new THREE.MeshStandardMaterial({ color: '#151f2a', roughness: .78, metalness: .18 });
+    const concreteMat = new THREE.MeshStandardMaterial({ color: '#343d47', roughness: .78 });
+    const steelMat = new THREE.MeshStandardMaterial({ color: '#b5c4ce', metalness: .9, roughness: .24, normalMap: brushedNormals });
+    const whiteEnamel = new THREE.MeshPhysicalMaterial({ color: '#e9eff2', roughness: .12, clearcoat: .8, clearcoatRoughness: .08 });
+    const blueEnamel = new THREE.MeshPhysicalMaterial({ color: '#153c8b', roughness: .12, clearcoat: .8, clearcoatRoughness: .07 });
+    const redEnamel = new THREE.MeshPhysicalMaterial({ color: '#b82032', roughness: .15, clearcoat: .75 });
+    const glassMat = new THREE.MeshPhysicalMaterial({ color: '#122637', metalness: .38, roughness: .1, clearcoat: 1, emissive: '#0c2940', emissiveIntensity: .25 });
+    const ledBlue = new THREE.MeshStandardMaterial({ color: '#d9f5ff', emissive: '#39bdf8', emissiveIntensity: 2.2, roughness: .25 });
+    const ledWarm = new THREE.MeshStandardMaterial({ color: '#fff0ce', emissive: '#ffba62', emissiveIntensity: 1.8, roughness: .28 });
+    const length = 3000, width = 720, floorY = -150, wallH = 380;
+
+    const floor = new THREE.Mesh(new THREE.BoxGeometry(width, 18, length), new THREE.MeshPhysicalMaterial({ color: '#1b242d', metalness: .35, roughness: .22, clearcoat: .65 }));
+    floor.position.set(0, floorY, 0); floor.receiveShadow = true; metroStationGroup.add(floor);
+    const ceiling = new THREE.Mesh(new THREE.BoxGeometry(width, 20, length), wallMat);
+    ceiling.position.set(0, 175, 0); metroStationGroup.add(ceiling);
+    [-1, 1].forEach(side => {
+        const backing = new THREE.Mesh(new THREE.BoxGeometry(18, wallH, length), wallMat);
+        backing.position.set(side * 345, 8, 0); metroStationGroup.add(backing);
+        const platform = new THREE.Mesh(new THREE.BoxGeometry(170, 22, length), concreteMat);
+        platform.position.set(side * 195, floorY + 12, 0); platform.receiveShadow = true; metroStationGroup.add(platform);
+        const tactile = new THREE.Mesh(new THREE.BoxGeometry(10, 2, length), new THREE.MeshBasicMaterial({ color: '#eab308' }));
+        tactile.position.set(side * 115, floorY + 24, 0); metroStationGroup.add(tactile);
+    });
+    // Large enamel tiles are batched by finish so this long set costs a handful of draw calls.
+    const tileLen = 138, tileGap = 5, tileCount = Math.floor(length / (tileLen + tileGap));
+    const panels = { white: [], blue: [], red: [], steel: [] };
+    for (let side of [-1, 1]) for (let i = 0; i < tileCount; i++) {
+        const z = -length / 2 + i * (tileLen + tileGap) + tileLen / 2;
+        const x = side * 333;
+        panels[i % 6 === 0 ? 'red' : (i % 3 === 0 ? 'blue' : (i % 4 === 0 ? 'steel' : 'white'))].push([x, -42, z]);
+    }
+    const d = new THREE.Object3D();
+    Object.entries(panels).forEach(([key, positions]) => {
+        const mat = ({ white: whiteEnamel, blue: blueEnamel, red: redEnamel, steel: steelMat })[key];
+        const inst = new THREE.InstancedMesh(new THREE.BoxGeometry(8, 132, tileLen), mat, positions.length);
+        positions.forEach((pos, i) => { d.position.set(pos[0], pos[1], pos[2]); d.updateMatrix(); inst.setMatrixAt(i, d.matrix); });
+        inst.instanceMatrix.needsUpdate = true; metroStationGroup.add(inst);
+    });
+    // Columns and copper-colored collars create scale, rhythm, and foreground parallax.
+    const columnGeom = new THREE.BoxGeometry(34, 285, 40);
+    const collarGeom = new THREE.BoxGeometry(42, 7, 48);
+    const collarMat = new THREE.MeshStandardMaterial({ color: '#a7834f', metalness: .75, roughness: .25 });
+    for (let z = -length / 2 + 120; z < length / 2; z += 300) for (let side of [-1, 1]) {
+        const column = new THREE.Mesh(columnGeom, steelMat); column.position.set(side * 155, -3, z); metroStationGroup.add(column);
+        const collar = new THREE.Mesh(collarGeom, collarMat);
+        collar.position.set(side * 155, 110, z); metroStationGroup.add(collar);
+    }
+    // Ceiling ribs and luminous wayfinding strips.
+    const ribGeom = new THREE.BoxGeometry(width - 30, 5, 9);
+    const ribCount = Math.floor(length / 150);
+    const ribs = new THREE.InstancedMesh(ribGeom, steelMat, ribCount); let ri = 0;
+    for (let z = -length / 2 + 30; z < length / 2; z += 150) { d.position.set(0, 160, z); d.updateMatrix(); ribs.setMatrixAt(ri++, d.matrix); }
+    ribs.instanceMatrix.needsUpdate = true; metroStationGroup.add(ribs);
+    [-1, 1].forEach(side => {
+        const strip = new THREE.Mesh(new THREE.BoxGeometry(7, 3, length - 80), ledBlue);
+        strip.position.set(side * 255, 160, 0); metroStationGroup.add(strip);
+    });
+    const centerStrip = new THREE.Mesh(new THREE.BoxGeometry(4, 3, length - 80), ledWarm); centerStrip.position.set(0, 160, 0); metroStationGroup.add(centerStrip);
+    // Recessed track trench, rails and instanced sleepers under the moving train.
+    const trench = new THREE.Mesh(new THREE.BoxGeometry(200, 26, length), new THREE.MeshStandardMaterial({ color: '#080d13', roughness: .9 }));
+    trench.position.set(0, floorY + 4, 0); metroStationGroup.add(trench);
+    const railMat = new THREE.MeshStandardMaterial({ color: '#8e9ba5', metalness: .95, roughness: .22 });
+    [-35, 35].forEach(x => { const rail = new THREE.Mesh(new THREE.BoxGeometry(5, 5, length), railMat); rail.position.set(x, floorY + 20, 0); metroStationGroup.add(rail); });
+    const sleeperCount = Math.floor(length / 55);
+    const sleepers = new THREE.InstancedMesh(new THREE.BoxGeometry(116, 5, 15), concreteMat, sleeperCount); let si = 0;
+    for (let z = -length / 2 + 15; z < length / 2; z += 55) { d.position.set(0, floorY + 15, z); d.updateMatrix(); sleepers.setMatrixAt(si++, d.matrix); }
+    sleepers.instanceMatrix.needsUpdate = true; metroStationGroup.add(sleepers);
+
+    // Four linked train cars, repeated window geometry instanced on both sides.
+    metroTrainGroup = new THREE.Group(); metroStationGroup.add(metroTrainGroup);
+    const trainBodyMat = new THREE.MeshPhysicalMaterial({ color: '#c2ced7', metalness: .72, roughness: .24, clearcoat: .65 });
+    const trainBandMat = new THREE.MeshStandardMaterial({ color: '#0f3c83', metalness: .55, roughness: .28 });
+    const trainFrontMat = new THREE.MeshPhysicalMaterial({ color: '#172938', metalness: .35, roughness: .12, clearcoat: 1, emissive: '#071b2a', emissiveIntensity: .35 });
+    for (let car = 0; car < 4; car++) {
+        const z = -465 + car * 310;
+        const body = new THREE.Mesh(new THREE.BoxGeometry(142, 84, 290), trainBodyMat); body.position.set(0, -81, z); metroTrainGroup.add(body);
+        const band = new THREE.Mesh(new THREE.BoxGeometry(144, 15, 286), trainBandMat); band.position.set(0, -92, z); metroTrainGroup.add(band);
+        const roof = new THREE.Mesh(new THREE.BoxGeometry(130, 6, 278), steelMat); roof.position.set(0, -36, z); metroTrainGroup.add(roof);
+    }
+    const windowPositions = [];
+    for (let car = 0; car < 4; car++) for (let win = 0; win < 5; win++) {
+        const z = -465 + car * 310 - 104 + win * 50;
+        [-1, 1].forEach(side => windowPositions.push([side * 72, -71, z]));
+    }
+    const windowInst = new THREE.InstancedMesh(new THREE.BoxGeometry(3, 38, 34), glassMat, windowPositions.length);
+    windowPositions.forEach((pos, i) => { d.position.set(pos[0], pos[1], pos[2]); d.updateMatrix(); windowInst.setMatrixAt(i, d.matrix); });
+    windowInst.instanceMatrix.needsUpdate = true; metroTrainGroup.add(windowInst);
+    const front = new THREE.Mesh(new THREE.BoxGeometry(130, 68, 8), trainFrontMat); front.position.set(0, -79, 614); metroTrainGroup.add(front);
+    [-1, 1].forEach(side => {
+        const head = new THREE.Mesh(new THREE.BoxGeometry(12, 7, 2), new THREE.MeshBasicMaterial({ color: '#fff4ce' })); head.position.set(side * 43, -98, 619); metroTrainGroup.add(head);
+    });
+    // Sparse local lights preserve reflective depth without a per-fixture light explosion.
+    [-900, 0, 900].forEach(z => {
+        const light = new THREE.PointLight('#9fdcff', 1.8, 620, 1.8); light.position.set(0, 125, z); metroStationGroup.add(light);
+    });
+    metroTrainGroup.position.z = -1800;
 }
 
 let demoActive = false;
+let demoPaused = false;
+let demoPauseStartedAt = 0;
+let demoPausedTotalMs = 0;
+let demoPausedAccumForStage = 0;
 let demoStepIndex = 0;
 let demoStageTimer = null;
 let demoStartTime = 0;
 let demoCurrentStage = null;
-const DEMO_STAGE_DURATION = 8500; // 8.5 сек на каждый зрелищный коммерческий акт
+let demoSubTimers = [];
+const DEMO_STAGE_DURATION = 8700; // 8 актов ≈ 69,6 секунды — целевой хронометраж фильма
+
+function createDemoTimer(callback, delay) {
+    const task = { callback, remaining: Math.max(0, delay), startedAt: 0, id: null, active: true };
+    const arm = () => {
+        if (!task.active || task.id !== null) return;
+        task.startedAt = performance.now();
+        task.id = setTimeout(() => {
+            task.id = null;
+            if (!task.active) return;
+            task.active = false;
+            callback();
+        }, task.remaining);
+    };
+    task.pause = () => {
+        if (!task.active || task.id === null) return;
+        clearTimeout(task.id); task.id = null;
+        task.remaining = Math.max(0, task.remaining - (performance.now() - task.startedAt));
+    };
+    task.resume = () => arm();
+    task.cancel = () => {
+        task.active = false;
+        if (task.id !== null) clearTimeout(task.id);
+        task.id = null;
+    };
+    arm();
+    return task;
+}
+function cancelDemoTimer(task) {
+    if (!task) return;
+    if (typeof task.cancel === 'function') task.cancel(); else clearTimeout(task);
+}
+function syncDemoSceneButtons() {
+    document.querySelectorAll('[data-demo-act]').forEach(btn => {
+        btn.classList.toggle('active', Number(btn.dataset.demoAct) === demoStepIndex);
+    });
+    const pauseBtn = document.getElementById('demoPauseBtn');
+    if (pauseBtn) {
+        pauseBtn.textContent = demoPaused ? '▶ Продолжить' : 'Ⅱ Пауза';
+        pauseBtn.classList.toggle('paused', demoPaused);
+        pauseBtn.setAttribute('aria-pressed', demoPaused ? 'true' : 'false');
+    }
+}
+function toggleDemoPause() {
+    if (!demoActive) return;
+    const now = performance.now();
+    if (!demoPaused) {
+        demoPaused = true; demoPauseStartedAt = now;
+        if (demoStageTimer && typeof demoStageTimer.pause === 'function') demoStageTimer.pause();
+        demoSubTimers.forEach(timer => timer && typeof timer.pause === 'function' && timer.pause());
+    } else {
+        const pausedFor = now - demoPauseStartedAt;
+        demoPausedTotalMs += pausedFor;
+        demoPausedAccumForStage += pausedFor;
+        demoPaused = false;
+        if (demoStageTimer && typeof demoStageTimer.resume === 'function') demoStageTimer.resume();
+        demoSubTimers.forEach(timer => timer && typeof timer.resume === 'function' && timer.resume());
+    }
+    syncDemoSceneButtons();
+}
+function selectDemoAct(index) {
+    const next = Math.max(0, Math.min(demoStoryboard.length - 1, Number(index) || 0));
+    demoStepIndex = next;
+    if (!demoActive) {
+        startDemoMode();
+        return;
+    }
+    if (demoPaused) {
+        const pausedFor = performance.now() - demoPauseStartedAt;
+        demoPausedTotalMs += pausedFor;
+        demoPausedAccumForStage += pausedFor;
+        demoPaused = false;
+    }
+    runDemoStage(next);
+}
+
 
 const demoStoryboard = [
     {
         type: "single_explode",
         presetId: "unikor",
-        title: "1/10. УНИКОР СТАНДАРТ • АНАТОМИЯ СОТОПАКЕТА",
+        title: "1/8. УНИКОР СТАНДАРТ • АНАТОМИЯ СОТОПАКЕТА",
         subtitle: "Аэрокосмический сотопакет Al 3003 • 100% плоскостность без остаточной деформации • КМ0 (НГ)",
         light: "d65",
-        camStart: [440, 310, 480],
-        camMacro: [340, 160, 310]
+        weather: "none",
+        camStart: [420, 270, 440],
+        camMacro: [380, 230, 410]
     },
     {
         type: "building_facade",
         presetId: "unikor",
-        title: "2/10. УНИКОР • ОБЛИЦОВКА ФАСАДА ЗДАНИЯ",
-        subtitle: "Модульный фасад 5×3 с рустами 12 мм, эркером и парапетом • Идеальная плоскостность без волнистости",
+        title: "2/8. ДЕЛОВОЙ КВАРТАЛ • ВЫСОТНЫЙ ВЕНТФАСАД УНИКОР",
+        subtitle: "Кинетическая сборка кассет 5×3 с эркером и парапетом • Атмосферный солнечный свет и частицы",
         light: "daylight",
-        camStart: [-440, -120, 540],
-        camEnd: [360, 220, 560]
+        weather: "sun_dust",
+        camStart: [-560, 190, 1040],
+        camMid: [-170, 125, 930],
+        camEnd: [520, 145, 820]
+    },
+    {
+        type: "auto_tunnel",
+        presetId: "hardwall",
+        title: "3/8. СКОРОСТНОЙ АВТОТОННЕЛЬ • ХАРДВОЛЛ СТЕКЛОЭМАЛЬ",
+        subtitle: "Антивандальная облицовка стен автотоннеля • Стеклоэмаль 820°C RAL 5002/9003 и сталь AISI N4 в свете фар",
+        light: "metro",
+        weather: "tunnel_glow",
+        camStart: [-28, 23, -1850],
+        camMid: [0, 25, 0],
+        camEnd: [28, 27, 1850]
     },
     {
         type: "single_explode",
-        presetId: "hardwall",
-        title: "3/10. ХАРДВОЛЛ • АРХИТЕКТУРНАЯ СТЕКЛОЭМАЛЬ",
-        subtitle: "Стекловидная эмаль двухстороннего обжига при 820°C + негорючее ядро ХЦП • Антивандальная защита",
-        light: "metro",
-        camStart: [460, 280, 450],
-        camMacro: [370, 150, 310]
-    },
-    {
-        type: "metro_tunnel",
-        presetId: "hardwall",
-        title: "4/10. ХАРДВОЛЛ И НЕРЖ. СТАЛЬ В ТОННЕЛЕ МЕТРО",
-        subtitle: "Глубокий сводчатый тоннель (2000 мм) • Чередование глянцевой эмали и сатинированной стали AISI N4",
-        light: "metro",
-        camStart: [0, 25, -750],
-        camEnd: [0, 30, 650]
-    },
-    {
-        type: "single_beauty",
         presetId: "unikor_ceramic",
-        title: "5/10. УНИКОР КЕРАМИК • КЕРАМОГРАНИТ ГРАФИТ 3.5 ММ",
-        subtitle: "Бесшовный ультратонкий керамогранит на сотовой основе • Снижение веса фасада в 3 раза по сравнению с плитой 20 мм",
+        faceDecor: "cer_calacatta",
+        title: "4/8. УНИКОР КЕРАМИК • КАЛАКАТТА ОРО GOLD",
+        subtitle: "Золотые прожилки керамогранита • Разнесение лицевого камня, PUR-клея и алюминиевого сотопакета",
         light: "grazing",
-        camStart: [420, 260, 450],
-        camMacro: [350, 140, 330]
+        weather: "none",
+        camStart: [410, 250, 430],
+        camMacro: [310, 125, 285]
     },
     {
         type: "stone_wall",
         presetId: "unikor_ceramic",
-        title: "6/10. КЕРАМОГРАНИТ • ВЕНТФАСАД РЕЗИДЕНЦИИ",
-        subtitle: "Крупноформатные каменные слябы Графит и Мрамор Каррара с тонкими теневыми швами 8 мм",
+        title: "5/8. РЕЗИДЕНЦИЯ LUXURY • КАЛАКАТТА ОРО + ЛАБРАДОРИТ СИНИЙ",
+        subtitle: "Крупноформатный камень на фасаде современной резиденции • Проливной дождь, отражения и грозовые вспышки",
         light: "grazing",
-        camStart: [-380, -90, 520],
-        camEnd: [320, 180, 520]
-    },
-    {
-        type: "single_beauty",
-        presetId: "hpl_decor",
-        title: "7/10. ИНТЕРЬЕР HPL • ШПОН НАТУРАЛЬНОГО ДУБА",
-        subtitle: "Премиальная отделка интерьеров натуральной фактурой дуба на легком сотовом каркасе",
-        light: "d65",
-        camStart: [410, 310, 460],
-        camMacro: [340, 160, 310]
+        weather: "rain_storm",
+        camStart: [-540, 75, 900],
+        camMid: [-100, 112, 790],
+        camEnd: [460, 180, 720]
     },
     {
         type: "interior_atrium",
         presetId: "hpl_decor",
-        title: "8/10. HPL В ИНТЕРЬЕРАХ • АТРИУМ БИЗНЕС-ЦЕНТРА",
-        subtitle: "Стеновые кассеты из Дуба и темного Венге для холлов, атриумов и конференц-залов",
+        title: "6/8. БИЗНЕС-КЛАСС • HPL ОРЕХ, ПАТИНИРОВАННАЯ МЕДЬ И БЕТОН",
+        subtitle: "Полированный тёмный пол, стойка ресепшн с контурным LED, колонны и встроенные потолочные световые линии",
         light: "d65",
-        camStart: [-380, -60, 480],
-        camEnd: [300, 140, 500]
+        weather: "none",
+        camStart: [-500, 65, 720],
+        camMid: [-80, 92, 625],
+        camEnd: [430, 110, 580]
     },
     {
-        type: "single_explode",
+        type: "metro_station",
         presetId: "metro",
-        title: "9/10. СЕРИЯ МЕТРО • НЕРЖАВЕЮЩАЯ СТАЛЬ AISI N4",
-        subtitle: "Направленное сатинирование N4 + вибростойкая плита СМЛ • Выдерживает динамические ветровые удары",
-        light: "grazing",
-        camStart: [450, 240, 440],
-        camMacro: [360, 130, 300]
+        title: "7/8. МЕТРО • AISI N4, СТЕКЛОЭМАЛЬ И ДВИЖУЩИЙСЯ ПОЕЗД",
+        subtitle: "Полноценная станционная среда: платформы, колонны, световые линии и поезд в движении",
+        light: "metro",
+        weather: "none",
+        camStart: [-225, 72, 930],
+        camMid: [-190, 78, 360],
+        camEnd: [220, 84, 690]
     },
     {
-        type: "single_beauty",
+        type: "thermo_showcase",
         presetId: "thermo",
-        title: "10/10. ТЕРМОФАСАД PIR • ЭНЕРГОСБЕРЕГАЮЩИЙ ХАБ",
-        subtitle: "Сэндвич-панели 62 мм в антраците RAL 7016 • Сопротивление теплопередаче R=2.7 м²·°C/Вт",
+        title: "8/8. ТЕРМОФАСАД PIR • АРКТИЧЕСКИЙ ЭНЕРГОСБЕРЕГАЮЩИЙ ХАБ",
+        subtitle: "Толщина 62 мм в антраците RAL 7016 • Сопротивление теплопередаче R=2.7 м²·°C/Вт • Зимняя атмосфера",
         light: "daylight",
-        camStart: [430, 290, 470],
-        camMacro: [360, 170, 340]
+        weather: "winter_frost",
+        camStart: [410, 270, 450],
+        camMacro: [350, 170, 330]
     }
 ];
+
+function playCinematicTransition(stage) {
+    const layer = document.getElementById('demoTransition');
+    const title = document.getElementById('demoTransitionTitle');
+    const subtitle = document.getElementById('demoTransitionSubtitle');
+    if (!layer) return;
+    const accent = stage.type === 'stone_wall' ? '#7dd3fc' : stage.weather === 'winter_frost' ? '#dbeafe' : stage.type === 'interior_atrium' ? '#f0c47c' : stage.type === 'auto_tunnel' || stage.type === 'metro_station' ? '#38bdf8' : '#60a5fa';
+    layer.style.setProperty('--transition-accent', accent);
+    if (title) title.textContent = stage.title.replace(/^\d+\/\d+\.\s*/, '').split('•')[0].trim();
+    if (subtitle) subtitle.textContent = stage.type === 'auto_tunnel' ? 'ПЕРЕХОД • В СВЕТ ФАР И ЭМАЛИ' : stage.type === 'stone_wall' ? 'ПЕРЕХОД • МАТЕРИАЛЫ ПОД ДОЖДЁМ' : stage.type === 'interior_atrium' ? 'ПЕРЕХОД • ОТ ФАСАДА К ИНТЕРЬЕРУ' : stage.type === 'metro_station' ? 'ПЕРЕХОД • МЕТАЛЛ И СВЕТ' : 'ПЕРЕХОД • ИНЖЕНЕРНЫЕ СИСТЕМЫ';
+    layer.classList.remove('run');
+    // Force a style boundary so repeated manual act selection also replays the curtain.
+    void layer.offsetWidth;
+    layer.classList.add('run');
+    layer.onanimationend = event => { if (event.animationName === 'chapterCurtain') layer.classList.remove('run'); };
+}
+
+function resetFacadeReveal() {
+    facadeAnimationStartTime = performance.now();
+    facadePanels.forEach(p => {
+        p.position.set(p.userData.xStart, p.userData.yStart, p.userData.zStart);
+    });
+}
 
 function hideAllShowcaseGroups() {
     buildingFacadeGroup.visible = false;
     metroTunnelGroup.visible = false;
     stoneWallGroup.visible = false;
     interiorAtriumGroup.visible = false;
+    metroStationGroup.visible = false;
 }
 
 function runDemoStage(idx) {
     if (!demoActive) return;
+    if (demoStageTimer) cancelDemoTimer(demoStageTimer);
+    demoSubTimers.forEach(cancelDemoTimer);
+    demoSubTimers = [];
     const stage = demoStoryboard[idx % demoStoryboard.length];
     demoCurrentStage = stage;
+    playCinematicTransition(stage);
     const presetObj = presets.find(p => p.id === stage.presetId);
 
-    document.getElementById('demoStepCounter').textContent = `СЦЕНА ${(idx % demoStoryboard.length) + 1} / ${demoStoryboard.length}`;
+    document.getElementById('demoStepCounter').textContent = `АКТ ${(idx % demoStoryboard.length) + 1} / ${demoStoryboard.length}`;
     document.getElementById('demoTitle').textContent = stage.title;
     document.getElementById('demoSubtitle').textContent = stage.subtitle;
 
@@ -3381,84 +4263,131 @@ function runDemoStage(idx) {
     if (presetObj && presetObj.config) {
         applyConfig(presetObj.config);
     }
+    if (stage.faceDecor) {
+        const decorSelect = document.getElementById('faceDecor');
+        decorSelect.value = stage.faceDecor;
+        renderDecorSwatches('face', ceramicDecorPalette, 'all');
+        updateMaterials();
+        rebuildPanelGeometry();
+    }
+    syncDemoSceneButtons();
     setLightingScenario(stage.light);
+    setWeatherMode(stage.weather || 'none');
     hideAllShowcaseGroups();
 
     if (stage.type === 'single_explode') {
         panelGroup.visible = true;
+        panelGroup.position.set(0, 0, 0);
+        panelGroup.rotation.set(0, 0, 0);
         animateExplodeValue(0, 500);
         animateCamera(stage.camStart, [0, 0, 0], 1200);
 
-        setTimeout(() => {
+        demoSubTimers.push(createDemoTimer(() => {
             if (!demoActive || demoCurrentStage !== stage) return;
-            animateExplodeValue(72, 1600);
-            animateCamera(stage.camMacro, [35, 0, 0], 1700);
-        }, 2000);
+            animateExplodeValue(65, 1700);
+            animateCamera(stage.camMacro, [0, 0, 0], 1800);
+        }, 1900));
 
-        setTimeout(() => {
+        demoSubTimers.push(createDemoTimer(() => {
             if (!demoActive || demoCurrentStage !== stage) return;
             animateExplodeValue(0, 1400);
             animateCamera(stage.camStart, [0, 0, 0], 1400);
-        }, 6200);
+        }, 6600));
     }
-    else if (stage.type === 'single_beauty') {
+    else if (stage.type === 'single_beauty' || stage.type === 'thermo_showcase') {
         panelGroup.visible = true;
+        panelGroup.position.set(0, 0, 0);
         animateExplodeValue(0, 600);
         animateCamera(stage.camStart, [0, 0, 0], 1200);
 
-        setTimeout(() => {
+        demoSubTimers.push(createDemoTimer(() => {
             if (!demoActive || demoCurrentStage !== stage) return;
             animateCamera(stage.camMacro, [0, 0, 0], 2200);
-        }, 2400);
+        }, 2200));
 
-        setTimeout(() => {
+        demoSubTimers.push(createDemoTimer(() => {
             if (!demoActive || demoCurrentStage !== stage) return;
             animateCamera(stage.camStart, [0, 0, 0], 1600);
-        }, 6200);
+        }, 6800));
     }
     else if (stage.type === 'building_facade') {
         panelGroup.visible = false;
         buildingFacadeGroup.visible = true;
-        buildBuildingFacadeScene();
-        animateCamera(stage.camStart, [0, 20, 0], 800);
-        setTimeout(() => {
+        if (!facadeBuilt) { buildBuildingFacadeScene(); facadeBuilt = true; }
+        resetFacadeReveal();
+        animateCamera(stage.camStart, [0, -35, 0], 850);
+        demoSubTimers.push(createDemoTimer(() => {
             if (!demoActive || demoCurrentStage !== stage) return;
-            animateCamera(stage.camEnd, [0, 20, 0], 6800);
-        }, 1100);
+            animateCamera(stage.camMid, [0, 0, 0], 2700);
+        }, 1000));
+        demoSubTimers.push(createDemoTimer(() => {
+            if (!demoActive || demoCurrentStage !== stage) return;
+            animateCamera(stage.camEnd, [0, 20, 0], 3400);
+        }, 4000));
     }
-    else if (stage.type === 'metro_tunnel') {
+    else if (stage.type === 'auto_tunnel') {
         panelGroup.visible = false;
         metroTunnelGroup.visible = true;
-        buildMetroTunnelScene();
-        animateCamera(stage.camStart, [0, 25, stage.camStart[2] + 250], 800);
-        setTimeout(() => {
+        if (!tunnelBuilt) { buildMetroTunnelScene(); tunnelBuilt = true; }
+        animateCamera(stage.camStart, [0, 7, stage.camStart[2] + 480], 850);
+        demoSubTimers.push(createDemoTimer(() => {
             if (!demoActive || demoCurrentStage !== stage) return;
-            animateCamera(stage.camEnd, [0, 30, stage.camEnd[2] + 250], 7000);
-        }, 1100);
+            animateCamera(stage.camMid, [0, 10, stage.camMid[2] + 480], 2700);
+        }, 1000));
+        demoSubTimers.push(createDemoTimer(() => {
+            if (!demoActive || demoCurrentStage !== stage) return;
+            animateCamera(stage.camEnd, [0, 10, stage.camEnd[2] + 480], 3400);
+        }, 4000));
     }
     else if (stage.type === 'stone_wall') {
         panelGroup.visible = false;
         stoneWallGroup.visible = true;
-        buildStoneWallScene();
-        animateCamera(stage.camStart, [0, 15, 0], 800);
-        setTimeout(() => {
+        if (!stoneBuilt) { buildStoneWallScene(); stoneBuilt = true; }
+        animateCamera(stage.camStart, [0, -10, 0], 850);
+        demoSubTimers.push(createDemoTimer(() => {
             if (!demoActive || demoCurrentStage !== stage) return;
-            animateCamera(stage.camEnd, [0, 20, 0], 6800);
-        }, 1100);
+            animateCamera(stage.camMid, [0, 0, 0], 2700);
+        }, 1000));
+        demoSubTimers.push(createDemoTimer(() => {
+            if (!demoActive || demoCurrentStage !== stage) return;
+            animateCamera(stage.camEnd, [0, 20, 0], 3400);
+        }, 4000));
     }
     else if (stage.type === 'interior_atrium') {
         panelGroup.visible = false;
         interiorAtriumGroup.visible = true;
-        buildInteriorAtriumScene();
-        animateCamera(stage.camStart, [0, 15, 0], 800);
-        setTimeout(() => {
+        if (!interiorBuilt) { buildInteriorAtriumScene(); interiorBuilt = true; }
+        animateCamera(stage.camStart, [0, -5, 95], 850);
+        demoSubTimers.push(createDemoTimer(() => {
             if (!demoActive || demoCurrentStage !== stage) return;
-            animateCamera(stage.camEnd, [0, 20, 0], 6800);
-        }, 1100);
+            animateCamera(stage.camMid, [0, 0, 55], 2700);
+        }, 1000));
+        demoSubTimers.push(createDemoTimer(() => {
+            if (!demoActive || demoCurrentStage !== stage) return;
+            animateCamera(stage.camEnd, [0, 20, 0], 3400);
+        }, 4000));
+    }
+    else if (stage.type === 'metro_station') {
+        panelGroup.visible = false;
+        metroStationGroup.visible = true;
+        if (!metroStationBuilt) { buildMetroStationScene(); metroStationBuilt = true; }
+        if (metroTrainGroup) metroTrainGroup.position.z = -1800;
+        // Камера остаётся внутри ширины станции (стены стоят на x = ±345),
+        // делает пролёт вдоль состава и заканчивает на противоположной платформе.
+        animateCamera(stage.camStart, [0, -28, -620], 850);
+        demoSubTimers.push(createDemoTimer(() => {
+            if (!demoActive || demoCurrentStage !== stage) return;
+            animateCamera(stage.camMid, [0, -32, -260], 2700);
+        }, 1000));
+        demoSubTimers.push(createDemoTimer(() => {
+            if (!demoActive || demoCurrentStage !== stage) return;
+            animateCamera(stage.camEnd, [0, -28, 90], 3400);
+        }, 4000));
     }
 
     demoStartTime = performance.now();
-    demoStageTimer = setTimeout(() => {
+    demoPausedAccumForStage = 0;
+    demoStageTimer = createDemoTimer(() => {
         if (!demoActive) return;
         demoStepIndex = (demoStepIndex + 1) % demoStoryboard.length;
         runDemoStage(demoStepIndex);
@@ -3467,40 +4396,47 @@ function runDemoStage(idx) {
 
 function startDemoMode() {
     if (demoActive) return;
-    demoActive = true;
+    demoActive = true; demoPaused = false; demoPausedAccumForStage = 0;
+    const sb = document.querySelector('.sidebar');
+    if (sb) sb.classList.add('demo-hidden');
+    setTimeout(handleResize, 450);
     autoRotateEnabled = true;
     document.getElementById('demoModeBtn').classList.add('active');
     document.getElementById('demoModeBtn').innerHTML = '<span>⏹ Стоп Демо</span>';
     document.getElementById('demoBanner').classList.remove('hidden');
+    syncDemoSceneButtons();
     runDemoStage(demoStepIndex);
 }
 
 function stopDemoMode() {
     if (!demoActive) return;
-    demoActive = false;
+    demoActive = false; demoPaused = false;
+    const sb = document.querySelector('.sidebar');
+    if (sb) sb.classList.remove('demo-hidden');
+    setTimeout(handleResize, 450);
     demoCurrentStage = null;
-    if (demoStageTimer) clearTimeout(demoStageTimer);
-
-    hideAllShowcaseGroups();
-
-    panelGroup.visible = true;
-    panelGroup.position.set(0, 0, 0);
-
+    if (demoStageTimer) cancelDemoTimer(demoStageTimer);
+    demoSubTimers.forEach(cancelDemoTimer); demoSubTimers = [];
+    hideAllShowcaseGroups(); setWeatherMode('none');
+    panelGroup.visible = true; panelGroup.position.set(0, 0, 0); panelGroup.rotation.set(0, 0, 0);
     animateExplodeValue(0, 500);
     const view45 = cameraViews['3d45'];
     if (view45) animateCamera(view45.pos, view45.target, 700);
-
     document.getElementById('demoModeBtn').classList.remove('active');
     document.getElementById('demoModeBtn').innerHTML = '<span>🎬 Демо-шоу</span>';
     document.getElementById('demoBanner').classList.add('hidden');
+    syncDemoSceneButtons(); updateAnnotationsScreenSafe();
 }
 
 document.getElementById('demoModeBtn').addEventListener('click', () => {
-    if (demoActive) stopDemoMode();
-    else startDemoMode();
+    if (demoActive) stopDemoMode(); else startDemoMode();
+});
+const demoPauseBtn = document.getElementById('demoPauseBtn');
+if (demoPauseBtn) demoPauseBtn.addEventListener('click', toggleDemoPause);
+document.querySelectorAll('[data-demo-act]').forEach(btn => {
+    btn.addEventListener('click', () => selectDemoAct(btn.dataset.demoAct));
 });
 
-// Мгновенная плавная передача управления пользователю при любом клике или касании сцены
 controls.addEventListener('start', () => {
     lastInteraction = Date.now();
     if (demoActive) stopDemoMode();
@@ -3773,15 +4709,18 @@ let lastInteraction = 0;
 function animate(now) {
     requestAnimationFrame(animate);
     controls.update();
+    updateWeatherSystem();
+    updateAnnotationsScreenSafe();
 
     if (demoActive) {
-        const elapsed = now - demoStartTime;
-        const pct = Math.min(100, (elapsed / DEMO_STAGE_DURATION) * 100);
-        const pb = document.getElementById('demoProgressBar');
-        if (pb) pb.style.width = `${pct}%`;
+        const elapsed = Math.max(0, now - demoStartTime - demoPausedAccumForStage - (demoPaused ? now - demoPauseStartedAt : 0));
+        if (!demoPaused) {
+            const pct = Math.min(100, (elapsed / DEMO_STAGE_DURATION) * 100);
+            const pb = document.getElementById('demoProgressBar');
+            if (pb) pb.style.width = `${pct}%`;
+        }
 
-        if (demoCurrentStage && demoCurrentStage.type === 'building_facade') {
-            // Анимация прилета фасадных кассет здания (первые 2.2 секунды)
+        if (!demoPaused && demoCurrentStage && demoCurrentStage.type === 'building_facade') {
             const wallElapsed = (now - facadeAnimationStartTime) / 1000;
             const tWall = Math.min(1, wallElapsed / 2.2);
             const easeWall = 1 - Math.pow(1 - tWall, 3);
@@ -3791,15 +4730,19 @@ function animate(now) {
                 p.position.z = p.userData.zStart + (p.userData.zFinal - p.userData.zStart) * easeWall;
             });
         }
-        else if (demoCurrentStage && demoCurrentStage.type === 'metro_tunnel') {
-            // Движение прожектора поезда метро сквозь протяженный тоннель 2000 мм
-            if (tunnelTrainLight) {
-                const trainZ = -950 + ((elapsed % 4200) / 4200) * 1900;
-                tunnelTrainLight.position.z = trainZ;
-            }
+        else if (!demoPaused && demoCurrentStage && demoCurrentStage.type === 'auto_tunnel') {
+            tunnelCars.forEach(car => {
+                const tunnelLength = 7200;
+                const travel = (elapsed * car.speed + car.phase) % tunnelLength;
+                car.group.position.z = car.direction < 0 ? tunnelLength / 2 - travel : -tunnelLength / 2 + travel;
+            });
         }
-        else if (demoCurrentStage && (demoCurrentStage.type === 'single_explode' || demoCurrentStage.type === 'single_beauty')) {
-            panelGroup.rotation.y += 0.0035;
+        else if (!demoPaused && demoCurrentStage && demoCurrentStage.type === 'metro_station' && metroTrainGroup) {
+            // Train glides through the station; wrapped motion avoids a hard stop at the edge of the set.
+            metroTrainGroup.position.z = -1800 + ((elapsed * .28) % 3600);
+        }
+        else if (!demoPaused && demoCurrentStage && (demoCurrentStage.type === 'single_explode' || demoCurrentStage.type === 'single_beauty' || demoCurrentStage.type === 'thermo_showcase')) {
+            panelGroup.rotation.y += demoCurrentStage.type === 'single_explode' ? 0.0018 : 0.0035;
         }
     } else if (autoRotateEnabled && Date.now() - lastInteraction > 2500) {
         panelGroup.rotation.y += 0.0018;
@@ -3817,6 +4760,7 @@ syncRalSwatchActive('backRalSwatches', 'RAL 9006');
 updateCoreUI();
 updateMaterials();
 updateLayersCount();
+initWeatherSystem();
 
 setTimeout(() => {
     handleResize();
