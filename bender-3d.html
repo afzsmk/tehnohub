@@ -182,6 +182,19 @@
         }
         #resDieSelect option { background: #111c2b; color: white; font-weight: normal; }
 
+        #resPunchSelect {
+            background: transparent; border: none; color: #f59e0b; font-size: 1rem; font-weight: 700;
+            outline: none; cursor: pointer; padding: 0; font-family: inherit; width: 85px; text-align: center;
+            border-bottom: 1px dashed rgba(245, 158, 11, 0.6); -webkit-appearance: none; appearance: none;
+        }
+        #resPunchSelect option { background: #111c2b; color: white; font-weight: normal; }
+        .input-active-flash {
+            outline: 2px solid #3b82f6 !important;
+            box-shadow: 0 0 12px rgba(59, 130, 246, 0.7) !important;
+            background-color: rgba(59, 130, 246, 0.18) !important;
+            transition: all 0.3s ease;
+        }
+
         .view-toggle { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; }
         .view-btn { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #a0b3cc; padding: 0.45rem 0.9rem; border-radius: 0.6rem; cursor: pointer; font-size: 0.8rem; font-weight: 500; transition: 0.2s; }
         .view-btn.active { background: #2563eb; border-color: #2563eb; color: white; }
@@ -663,6 +676,19 @@
                 </div>
             </div>
             <div class="param-item">
+                <span class="param-label">Пуансон</span>
+                <div style="display:flex;align-items:center;gap:0.3rem;">
+                    <span class="param-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M7 3h10v4l-4 8v6h-2v-6l-4-8V3z"/></svg>
+                    </span>
+                    <select id="resPunchSelect" title="Нажмите, чтобы изменить пуансон вручную">
+                        <option value="auto">Авто</option>
+                        <option value="gooseneck">Гусёк (85°)</option>
+                        <option value="acute">Прямой (26°)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="param-item">
                 <span class="param-label">Усилие пресса</span>
                 <div style="display:flex;align-items:center;gap:0.3rem;">
                     <span class="param-icon">
@@ -871,6 +897,8 @@
 
         const availableDies = [10, 16, 22, 35, 50];
         let manualDie = null;
+        let manualPunch = 'auto';
+        window.currentDPen = 0.0;
 
         let segments = [{ length: 50 }, { length: 30 }];
         let bends = [{ angle: 90, direction: 1 }];
@@ -1428,20 +1456,37 @@
             return punchGooseneckPoly;
         }
 
+        function getDieShoulderRadius(V, dieAngleDeg) {
+            if (dieAngleDeg <= 65) {
+                if (V <= 10) return 1.5;
+                if (V <= 16) return 2.0;
+                if (V <= 22) return 2.5;
+                return 3.0;
+            } else {
+                if (V <= 10) return 2.75;
+                if (V <= 22) return 2.0;
+                return 3.0;
+            }
+        }
+
         // 3. Т-образная высокая матрица V10 (чертеж 1)
         function createDieV10Shape() {
             const shape = new THREE.Shape();
-            const V = 12.0;
+            const V = 10.0;
             const halfV = V / 2;
             const halfAngle = (42.5 * Math.PI) / 180;
             const vDepth = halfV / Math.tan(halfAngle);
-            const rShoulder = 2.75;
+            const R = 2.75;
+            const dTop = R * Math.tan((Math.PI / 2 - halfAngle) / 2);
+            const xcLeft = -halfV - dTop;
+            const xcRight = halfV + dTop;
 
-            shape.moveTo(-halfV - rShoulder, 0);
-            shape.lineTo(-halfV, 0);
+            shape.moveTo(-9, 0);
+            shape.lineTo(xcLeft, 0);
+            shape.absarc(xcLeft, -R, R, Math.PI / 2, halfAngle, true);
             shape.lineTo(0, -vDepth);
-            shape.lineTo(halfV, 0);
-            shape.lineTo(halfV + rShoulder, 0);
+            shape.lineTo(xcRight - R * Math.cos(halfAngle), -R + R * Math.sin(halfAngle));
+            shape.absarc(xcRight, -R, R, Math.PI - halfAngle, Math.PI / 2, true);
             shape.lineTo(9, 0);
             shape.lineTo(9, -102);
             shape.lineTo(30, -102);
@@ -1462,11 +1507,17 @@
 
             const halfVtop = vTop / 2;
             const depthTop = halfVtop / tanA;
+            const R = getDieShoulderRadius(vTop, dieAngleDeg);
+            const dTop = R * Math.tan((Math.PI / 2 - halfAngle) / 2);
+            const xcLeft = -halfVtop - dTop;
+            const xcRight = halfVtop + dTop;
 
             shape.moveTo(-30, 0);
-            shape.lineTo(-halfVtop, 0);
+            shape.lineTo(xcLeft, 0);
+            shape.absarc(xcLeft, -R, R, Math.PI / 2, halfAngle, true);
             shape.lineTo(0, -depthTop);
-            shape.lineTo(halfVtop, 0);
+            shape.lineTo(xcRight - R * Math.cos(halfAngle), -R + R * Math.sin(halfAngle));
+            shape.absarc(xcRight, -R, R, Math.PI - halfAngle, Math.PI / 2, true);
             shape.lineTo(30, 0);
 
             const halfVright = vRight / 2;
@@ -1709,46 +1760,39 @@
 
             if (punchHint) punchHint.classList.remove('show');
 
-            let targetAnchor = null;
-            if (sheetGroup) {
-                sheetGroup.traverse(child => {
-                    if (child.userData && child.userData.isPunchAnchor && child.userData.bendIdx === bIdx) {
-                        targetAnchor = child;
-                    }
-                });
-            }
-
-            if (targetAnchor) {
-                const L = getBendLength();
-                const bendAngle = bends[bIdx] ? bends[bIdx].angle : 90;
-                const isAcute = bendAngle < 85;
-                let punchType = isAcute ? 'acute' : 'gooseneck';
+            const L = getBendLength();
+            const bendAngle = bends[bIdx] ? bends[bIdx].angle : 90;
+            const isAcute = bendAngle < 85;
+            let punchType = (manualPunch && manualPunch !== 'auto') ? manualPunch : (isAcute ? 'acute' : 'gooseneck');
+            if (manualPunch === 'auto') {
                 if (simCurrentStep >= 0 && simSolverResult && simSolverResult.sequence && simSolverResult.sequence[simCurrentStep]) {
                     if (simSolverResult.sequence[simCurrentStep].punchType) {
                         punchType = simSolverResult.sequence[simCurrentStep].punchType;
                     }
+                } else if (simSolverResult && simSolverResult.sequence && simSolverResult.sequence.length > 0) {
+                    const stepItem = simSolverResult.sequence.find(s => s.bendIdx === bIdx);
+                    if (stepItem && stepItem.punchType) punchType = stepItem.punchType;
                 }
-                const V = parseInt(document.getElementById('resDieSelect').value) || 16;
-                const S = getThickness();
-
-                const pMesh = getPunchMesh(L, punchType);
-                const dMesh = getDieMesh(L, V, isAcute);
-
-                targetAnchor.add(pMesh);
-                targetAnchor.add(dMesh);
-
-                const dir = targetAnchor.userData.dir;
-                const isFlipped = (forcePunchFlipped !== null) ? forcePunchFlipped : punchFlipped;
-
-                // Пуансон (всегда сверху)
-                pMesh.position.set(0, punchYOffset, 0);
-                pMesh.rotation.set(0, 0, 0);
-                if (isFlipped) pMesh.rotation.y = Math.PI;
-
-                // Матрица (всегда снизу, V-паз встречает лист в y = -S)
-                dMesh.position.set(0, -S, 0);
-                dMesh.rotation.set(0, 0, 0);
             }
+            const V = parseInt(document.getElementById('resDieSelect').value) || 16;
+            const S = getThickness();
+
+            const pMesh = getPunchMesh(L, punchType);
+            const dMesh = getDieMesh(L, V, isAcute);
+
+            scene.add(pMesh);
+            scene.add(dMesh);
+
+            const isFlipped = (forcePunchFlipped !== null) ? forcePunchFlipped : punchFlipped;
+            const dPen = window.currentDPen || 0.0;
+
+            // Пуансон (строго вертикален, опускается при гибке в V-паз)
+            pMesh.position.set(0, punchYOffset - dPen, 0);
+            pMesh.rotation.set(0, isFlipped ? Math.PI : 0, 0);
+
+            // Матрица (строго зафиксирована на столе станка)
+            dMesh.position.set(0, -S, 0);
+            dMesh.rotation.set(0, 0, 0);
         }
 
         function updatePunch() {
@@ -1942,7 +1986,8 @@
                             }
 
                             const inDieGrooveZone = isWorkZone && (Math.abs(localDieP.x) <= halfV + 1.5) && (localDieP.y >= -20 && localDieP.y <= 1.5);
-                            if (!inDieGrooveZone) {
+                            const isRestingOnDieTop = (localDieP.y >= -0.8 && localDieP.y <= 1.0 && Math.abs(localDieP.x) <= 30.5);
+                            if (!inDieGrooveZone && !isRestingOnDieTop) {
                                 if (pointInPolygon(localDieP.x, localDieP.y, diePoly)) {
                                     meshCollided = true;
                                     hasDieColl = true;
@@ -2158,7 +2203,7 @@
             sheetGroup = new THREE.Group();
             scene.add(sheetGroup);
 
-            // Клик по гибу прямо в 3D для мгновенного переноса пуансона
+            // Клик по полке или гибу прямо в 3D для фокусировки ввода или переноса пуансона
             let pointerDownX = 0, pointerDownY = 0;
             const raycaster = new THREE.Raycaster();
             const mouseVec = new THREE.Vector2();
@@ -2169,7 +2214,7 @@
             });
 
             renderer.domElement.addEventListener('pointerup', (e) => {
-                if (Math.hypot(e.clientX - pointerDownX, e.clientY - pointerDownY) > 4) return;
+                if (Math.hypot(e.clientX - pointerDownX, e.clientY - pointerDownY) > 5) return;
                 
                 const rect = renderer.domElement.getBoundingClientRect();
                 mouseVec.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
@@ -2179,10 +2224,49 @@
                 const intersects = raycaster.intersectObjects(sheetGroup.children, true);
                 
                 for (let hit of intersects) {
-                    if (hit.object && hit.object.userData && hit.object.userData.type === 'bendArc') {
-                        selectedBendIdx = hit.object.userData.bendIdx;
+                    if (!hit.object || !hit.object.userData) continue;
+                    const ud = hit.object.userData;
+
+                    // 1. Клик по полке / сегменту в 3D или по ее текстовой метке
+                    let targetSeg = undefined;
+                    if (ud.type === 'segment' && ud.segIdx !== undefined) {
+                        targetSeg = ud.segIdx;
+                    } else if (ud.type === 'label' && ud.targetType === 'segment' && ud.segIdx !== undefined) {
+                        targetSeg = ud.segIdx;
+                    }
+
+                    if (targetSeg !== undefined) {
+                        const inp = document.getElementById('seg_' + targetSeg);
+                        if (inp) {
+                            inp.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            inp.focus();
+                            inp.select();
+                            inp.classList.add('input-active-flash');
+                            setTimeout(() => inp.classList.remove('input-active-flash'), 1200);
+                        }
+                        break;
+                    }
+
+                    // 2. Клик по гибу (дуге) в 3D или по ее текстовой метке
+                    let targetBend = undefined;
+                    if (ud.type === 'bendArc' && ud.bendIdx !== undefined) {
+                        targetBend = ud.bendIdx;
+                    } else if (ud.type === 'label' && ud.targetType === 'bend' && ud.bendIdx !== undefined) {
+                        targetBend = ud.bendIdx;
+                    }
+
+                    if (targetBend !== undefined) {
+                        selectedBendIdx = targetBend;
                         updateBendEditor();
                         redraw();
+                        const bInp = document.getElementById('bend_' + targetBend);
+                        if (bInp) {
+                            bInp.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            bInp.focus();
+                            bInp.select();
+                            bInp.classList.add('input-active-flash');
+                            setTimeout(() => bInp.classList.remove('input-active-flash'), 1200);
+                        }
                         break;
                     }
                 }
@@ -2262,29 +2346,63 @@
             const anchorIdx = Math.floor((segs.length - 1) / 2);
             const sheetFlip = (alignBendIdx >= 0 && bds[alignBendIdx] && bds[alignBendIdx].direction < 0) ? -1 : 1;
 
+            // Расчет заглубления активного гиба в раскрытие матрицы V-паза (dPen)
+            let dPen = 0.0;
+            if (alignBendIdx >= 0 && bds[alignBendIdx]) {
+                const targetBendDeg = bendGeom[alignBendIdx].bendAngleDeg;
+                const activeBendDeg = (customAnglesMap && customAnglesMap[alignBendIdx] !== undefined)
+                    ? customAnglesMap[alignBendIdx]
+                    : (customAnglesMap ? 0 : targetBendDeg);
+                const activeBendRad = activeBendDeg * Math.PI / 180;
+                const V = geom.V || 16;
+                dPen = (V / 2) * Math.sin(activeBendRad / 2) * 0.85;
+            }
+            window.currentDPen = dPen;
+
             for (let i = 0; i < segs.length; i++) {
                 let leftOSSB = 0, rightOSSB = 0;
                 if (i < bendGeom.length) leftOSSB = bendGeom[i].OSSB;
                 if (i > 0 && i - 1 < bendGeom.length) rightOSSB = bendGeom[i - 1].OSSB;
                 
-                let netLen = segs[i].length - leftOSSB - rightOSSB;
-                if (netLen < 0) netLen = 0;
+                // Добавочная длина от неразвернутых зон примыкающих гибов для постоянства длины листа
+                let prevDeltaL = 0;
+                if (i > 0 && i - 1 < bendGeom.length) {
+                    const prevBg = bendGeom[i - 1];
+                    const prevTarget = prevBg.bendAngleDeg;
+                    const prevCur = (customAnglesMap && customAnglesMap[i - 1] !== undefined) ? customAnglesMap[i - 1] : (customAnglesMap ? 0 : prevTarget);
+                    const prevRho = prevTarget > 0 ? Math.min(1, Math.max(0, prevCur / prevTarget)) : 0;
+                    const prevBA = prevBg.BA || (prevBg.OSSB * 2) || 0.1;
+                    prevDeltaL = 0.5 * (1 - prevRho) * prevBA;
+                }
 
-                if (netLen > 0) {
-                    const box = new THREE.BoxGeometry(netLen, S, W);
+                let nextDeltaL = 0;
+                if (i < bendGeom.length) {
+                    const nextBg = bendGeom[i];
+                    const nextTarget = nextBg.bendAngleDeg;
+                    const nextCur = (customAnglesMap && customAnglesMap[i] !== undefined) ? customAnglesMap[i] : (customAnglesMap ? 0 : nextTarget);
+                    const nextRho = nextTarget > 0 ? Math.min(1, Math.max(0, nextCur / nextTarget)) : 0;
+                    const nextBA = nextBg.BA || (nextBg.OSSB * 2) || 0.1;
+                    nextDeltaL = 0.5 * (1 - nextRho) * nextBA;
+                }
+
+                let curLen = (segs[i].length - leftOSSB - rightOSSB) + prevDeltaL + nextDeltaL;
+                if (curLen < 0) curLen = 0;
+
+                if (curLen > 0) {
+                    const box = new THREE.BoxGeometry(curLen, S, W);
                     const mesh = new THREE.Mesh(box, material.clone());
                     mesh.castShadow = true; mesh.receiveShadow = true;
-                    mesh.position.set(netLen/2, 0, 0);
+                    mesh.position.set(curLen / 2, 0, 0);
                     const segLabel = (i === 0) ? 'Полка 1' : (i === segs.length - 1 ? `Полка ${i + 1}` : `Сегмент ${i + 1}`);
-                    mesh.userData = { type: 'segment', segIdx: i, netLen: netLen, S: S, label: segLabel };
+                    mesh.userData = { type: 'segment', segIdx: i, netLen: curLen, S: S, label: segLabel };
                     if (i === anchorIdx) mesh.userData.isAnchor = true;
                     currentParent.add(mesh);
 
                     if (showLabels && alignBendIdx < 0) {
                         const flangeLabel = createTextSprite(`Полка ${i+1}`, 'rgba(59, 130, 246, 0.9)');
                         if (flangeLabel) {
-                            flangeLabel.position.set(netLen/2, S/2 + 6, 0);
-                            flangeLabel.userData = { type: 'label', baseScale: { x: 18, y: 4.5 } };
+                            flangeLabel.position.set(curLen / 2, S / 2 + 6, 0);
+                            flangeLabel.userData = { type: 'label', targetType: 'segment', segIdx: i, baseScale: { x: 18, y: 4.5 } };
                             currentParent.add(flangeLabel);
                         }
                     }
@@ -2300,31 +2418,21 @@
                     const bendAngleRad = bendAngleDeg * Math.PI / 180;
                     
                     if (bendAngleRad < 0.005) {
-                        // Несогнутый (плоский) участок гиба
-                        const flatLen = bg.BA || (bg.OSSB * 2) || 0.1;
-                        if (flatLen > 0) {
-                            const flatBox = new THREE.BoxGeometry(flatLen, S, W);
-                            const flatMesh = new THREE.Mesh(flatBox, material.clone());
-                            flatMesh.castShadow = true; flatMesh.receiveShadow = true;
-                            flatMesh.position.set(netLen + flatLen / 2, 0, 0);
-                            flatMesh.userData = { type: 'bendFlat', bendIdx: i, dir: dir, Ri: Ri, S: S, netLen: flatLen, label: `Гиб ${i + 1} (разв)` };
-                            currentParent.add(flatMesh);
-                        }
-
+                        // Несогнутый (плоский) гиб
                         const punchAnchor = new THREE.Group();
-                        punchAnchor.position.set(netLen + flatLen / 2, dir * (S / 2), 0);
+                        punchAnchor.position.set(curLen, dir * (S / 2), 0);
                         punchAnchor.userData = { isPunchAnchor: true, bendIdx: i, dir: dir };
                         currentParent.add(punchAnchor);
 
                         const nextParent = new THREE.Group();
-                        nextParent.position.set(netLen + flatLen, 0, 0);
+                        nextParent.position.set(curLen, 0, 0);
                         currentParent.add(nextParent);
                         currentParent = nextParent;
                     } else {
-                        // Согнутая дуга
+                        // Согнутая дуга гиба
                         const punchAnchor = new THREE.Group();
                         const halfAngle = bendAngleRad / 2;
-                        const punchPosX = netLen + Ri * Math.sin(halfAngle);
+                        const punchPosX = curLen + Ri * Math.sin(halfAngle);
                         const punchPosY = dir * (S / 2 + Ri * (1 - Math.cos(halfAngle)));
                         punchAnchor.position.set(punchPosX, punchPosY, 0);
                         punchAnchor.rotation.z = dir * halfAngle;
@@ -2348,7 +2456,7 @@
                         
                         const bMesh = new THREE.Mesh(bGeom, material.clone());
                         bMesh.castShadow = true; bMesh.receiveShadow = true;
-                        bMesh.position.set(netLen, 0, 0);
+                        bMesh.position.set(curLen, 0, 0);
                         bMesh.userData = { type: 'bendArc', bendIdx: i, dir: dir, Ri: Ri, S: S, bendAngleRad: bendAngleRad, label: `Гиб ${i + 1}` };
                         currentParent.add(bMesh);
 
@@ -2356,14 +2464,14 @@
                             const bendLabel = createTextSprite(`Гиб ${i+1}`, 'rgba(245, 158, 11, 0.9)');
                             if (bendLabel) {
                                 const yOffset = dir > 0 ? (Ri + S) + 6 : -(Ri + S) - 6;
-                                bendLabel.position.set(netLen, yOffset, 0);
-                                bendLabel.userData = { type: 'label', baseScale: { x: 18, y: 4.5 } };
+                                bendLabel.position.set(curLen, yOffset, 0);
+                                bendLabel.userData = { type: 'label', targetType: 'bend', bendIdx: i, baseScale: { x: 18, y: 4.5 } };
                                 currentParent.add(bendLabel);
                             }
                         }
                         
                         const nextParent = new THREE.Group();
-                        const pivotX = netLen;
+                        const pivotX = curLen;
                         const pivotY = dir > 0 ? (Ri + S/2) : (-Ri - S/2);
                         
                         nextParent.position.set(pivotX, pivotY, 0);
@@ -2384,36 +2492,27 @@
             sheetGroup.updateMatrixWorld(true);
             
             if (alignBendIdx >= 0) {
-                // Выравнивание по активному гибу симуляции
-                let accumAngle = 0;
-                for (let i = 0; i < alignBendIdx; i++) {
-                    const ang = (customAnglesMap && customAnglesMap[i] !== undefined) ? customAnglesMap[i] : (customAnglesMap ? 0 : bendGeom[i].bendAngleDeg);
-                    accumAngle += (bds[i].direction * sheetFlip) * (ang * Math.PI / 180);
-                }
-                const activeBendAngle = (customAnglesMap && customAnglesMap[alignBendIdx] !== undefined) ? customAnglesMap[alignBendIdx] : (customAnglesMap ? 0 : bendGeom[alignBendIdx].bendAngleDeg);
-                accumAngle += (bds[alignBendIdx].direction * sheetFlip) * (activeBendAngle * Math.PI / 180) / 2;
-
-                sheetGroup.rotation.z = -accumAngle;
-                sheetGroup.updateMatrixWorld(true);
-
-                sheetGroup.rotation.x = -Math.PI / 2;
-                sheetGroup.updateMatrixWorld(true);
-
-                let targetAnchorPos = new THREE.Vector3();
-                let foundAnchor = false;
+                // Точное совмещение активного гиба с осью инструмента через инверсию кватерниона
+                let targetAnchor = null;
                 sheetGroup.traverse(child => {
                     if (child.userData && child.userData.isPunchAnchor && child.userData.bendIdx === alignBendIdx) {
-                        child.getWorldPosition(targetAnchorPos);
-                        foundAnchor = true;
+                        targetAnchor = child;
                     }
                 });
 
-                if (foundAnchor) {
-                    sheetGroup.position.x -= targetAnchorPos.x;
-                    sheetGroup.position.y += (S / 2 - targetAnchorPos.y);
-                    sheetGroup.position.z -= targetAnchorPos.z;
+                if (targetAnchor) {
+                    const anchorWorldQuat = new THREE.Quaternion();
+                    targetAnchor.getWorldQuaternion(anchorWorldQuat);
+                    sheetGroup.quaternion.copy(anchorWorldQuat.invert());
+                    sheetGroup.updateMatrixWorld(true);
+
+                    const anchorWorldPos = new THREE.Vector3();
+                    targetAnchor.getWorldPosition(anchorWorldPos);
+                    sheetGroup.position.x -= anchorWorldPos.x;
+                    sheetGroup.position.y += (-dPen - anchorWorldPos.y);
+                    sheetGroup.position.z -= anchorWorldPos.z;
+                    sheetGroup.updateMatrixWorld(true);
                 }
-                sheetGroup.updateMatrixWorld(true);
             } else {
                 let accumAngle = 0;
                 for(let i = 0; i < anchorIdx; i++) {
@@ -2598,7 +2697,8 @@
             if (simCurrentStep >= 0 && typeof simController !== 'undefined') {
                 simController.renderStep();
             } else {
-                build3DSheet(geom, dims);
+                const alignBend = punchEnabled ? ((selectedBendIdx >= 0 && selectedBendIdx < dims.bends.length) ? selectedBendIdx : 0) : -1;
+                build3DSheet(geom, dims, null, alignBend);
                 updatePunch();
                 checkPunchCollision();
             }
@@ -2902,7 +3002,8 @@
 
                 // 4. Матрица (координата y = -S соответствует верху матрицы)
                 const inDieGroove = pt.isWorkZone && (Math.abs(dx) <= halfV + 1.5) && (dy >= -20 && dy <= 1.5);
-                if (!inDieGroove) {
+                const isRestingOnDieTop = (dy >= -0.8 && dy <= 1.0 && Math.abs(dx) <= 30.5);
+                if (!inDieGroove && !isRestingOnDieTop) {
                     if (pointInPolygon(dx, dy, diePoly)) {
                         return { collides: true, tool: 'die', label: pt.label };
                     }
@@ -3002,11 +3103,9 @@
                 }
             }
 
-            let bestSeq = null;
-            let bestScore = -1;
-            let worstFailReason = '';
-
-            for (const perm of uniquePerms) {
+            // Функция проверки одной перестановки под заданный режим пуансона
+            function testPermutation(perm, mode) {
+                // mode: 'gooseneck', 'acute', or 'auto_mixed'
                 const formedAngles = new Array(numBends).fill(0);
                 let seq = [];
                 let permFeasible = true;
@@ -3016,15 +3115,21 @@
                     const bIdx = perm[step];
                     let stepFeasible = false;
                     let chosenFlip = false;
-                    let chosenPunchType = (dims.bends[bIdx].angle < 85) ? 'acute' : 'gooseneck';
+                    let chosenPunchType = '';
 
-                    // Пробуем штатный пуансон (гусек или острый), а если гусек вызывает коллизию — пробуем прямой острый (26°)
-                    const punchTypesToTry = [chosenPunchType];
-                    if (chosenPunchType === 'gooseneck') {
-                        punchTypesToTry.push('acute');
+                    const bAngle = dims.bends[bIdx].angle;
+                    let pTypes = [];
+                    if (mode === 'gooseneck') {
+                        if (bAngle < 85) return { feasible: false, score: step, seq: seq, failReason: `Гиб ${bIdx + 1}: угол ${bAngle}° требует острый пуансон` };
+                        pTypes = ['gooseneck'];
+                    } else if (mode === 'acute') {
+                        pTypes = ['acute'];
+                    } else { // auto_mixed
+                        const defP = (bAngle < 85) ? 'acute' : 'gooseneck';
+                        pTypes = (defP === 'gooseneck') ? ['gooseneck', 'acute'] : ['acute'];
                     }
 
-                    for (const pType of punchTypesToTry) {
+                    for (const pType of pTypes) {
                         for (const flip of [false, true]) {
                             let flipOk = true;
                             // Проверка 3 контрольных положений хода: 0% (укладка), 50% (деформация), 100% (дожим)
@@ -3052,13 +3157,7 @@
                     }
 
                     if (!stepFeasible) {
-                        permFeasible = false;
-                        if (step > bestScore) {
-                            bestScore = step;
-                            bestSeq = seq;
-                            worstFailReason = failReason;
-                        }
-                        break;
+                        return { feasible: false, score: step, seq: seq, failReason: failReason };
                     }
 
                     seq.push({
@@ -3071,19 +3170,51 @@
                     formedAngles[bIdx] = geom.bends[bIdx].bendAngleDeg;
                 }
 
-                if (permFeasible) {
-                    const seqStr = seq.map(s => {
-                        let str = (s.bendIdx + 1) + (s.punchFlipped ? '↷' : '');
-                        if (s.punchType === 'acute' && dims.bends[s.bendIdx].angle >= 85) {
-                            str += ' [Прямой]';
+                return { feasible: true, score: perm.length, seq: seq, failReason: '' };
+            }
+
+            let bestSeq = null;
+            let bestScore = -1;
+            let worstFailReason = '';
+
+            // Приоритеты инструмента:
+            // Если выбран ручной пуансон (manualPunch != 'auto') - проверяем только его
+            // Если 'auto':
+            //   1. Проверяем, можно ли все гибы сделать единым пуансоном "Гусёк" (85°)
+            //   2. Если нет (или нужен острый), проверяем, можно ли ВСЕ гибы сделать единым пуансоном "Прямой острый" (26°)
+            //   3. Если ни одним одиночным пуансоном сделать все нельзя - допускаем смешанный вариант
+            let modesToTry = [];
+            if (manualPunch === 'gooseneck') {
+                modesToTry = ['gooseneck'];
+            } else if (manualPunch === 'acute') {
+                modesToTry = ['acute'];
+            } else {
+                modesToTry = ['gooseneck', 'acute', 'auto_mixed'];
+            }
+
+            for (const mode of modesToTry) {
+                for (const perm of uniquePerms) {
+                    const res = testPermutation(perm, mode);
+                    if (res.feasible) {
+                        const seqStr = res.seq.map(s => {
+                            let str = (s.bendIdx + 1) + (s.punchFlipped ? '↷' : '');
+                            if (s.punchType === 'acute' && dims.bends[s.bendIdx].angle >= 85) {
+                                str += ' [Прямой]';
+                            }
+                            return str;
+                        }).join(' → ');
+                        return {
+                            isFeasible: true,
+                            sequence: res.seq,
+                            message: `Выполнима: ${seqStr}`
+                        };
+                    } else {
+                        if (res.score > bestScore) {
+                            bestScore = res.score;
+                            bestSeq = res.seq;
+                            worstFailReason = res.failReason;
                         }
-                        return str;
-                    }).join(' → ');
-                    return {
-                        isFeasible: true,
-                        sequence: seq,
-                        message: `Выполнима: ${seqStr}`
-                    };
+                    }
                 }
             }
 
@@ -3111,6 +3242,24 @@
                 } else {
                     dot.className = 'status-dot status-error';
                     statusText.textContent = simSolverResult.message;
+                }
+            }
+
+            // Обновляем текст и значение в селекторе пуансона
+            const pSel = document.getElementById('resPunchSelect');
+            if (pSel) {
+                if (manualPunch && manualPunch !== 'auto') {
+                    pSel.value = manualPunch;
+                    pSel.options[0].textContent = 'Авто';
+                } else {
+                    pSel.value = 'auto';
+                    let chosenP = 'Гусёк';
+                    if (simSolverResult && simSolverResult.sequence && simSolverResult.sequence.length > 0) {
+                        const allAcute = simSolverResult.sequence.every(s => s.punchType === 'acute');
+                        const allGoose = simSolverResult.sequence.every(s => s.punchType === 'gooseneck');
+                        chosenP = allAcute ? 'Прямой' : (allGoose ? 'Гусёк' : 'Смеш.');
+                    }
+                    pSel.options[0].textContent = `Авто (${chosenP})`;
                 }
             }
         }
@@ -3695,9 +3844,12 @@
                     const bbox = new THREE.Box3().setFromObject(sheetGroup);
                     const size = bbox.getSize(new THREE.Vector3());
                     const maxDim = Math.max(size.x, size.y, size.z, 50);
-                    camera.position.set(maxDim*1.2, maxDim*0.8, maxDim*1.2);
+                    camera.position.set(0.001, maxDim * 1.8, 0.001);
                     controls.target.set(0, size.y / 2, 0);
                     controls.update();
+                    document.querySelectorAll('.view-controls .view-btn-3d:not(.punch-btn):not(.help-btn)').forEach(b => b.classList.remove('active'));
+                    const topBtn = document.getElementById('viewTop');
+                    if (topBtn) topBtn.classList.add('active');
                 }
                 firstDrawDone = true; 
                 resetViewOnSwitch = false; 
@@ -3795,6 +3947,7 @@
         document.getElementById('bendLengthSlider').addEventListener('input', () => { document.getElementById('bendLength').value = document.getElementById('bendLengthSlider').value; scheduleRedraw(); });
         document.getElementById('material').addEventListener('change', () => { resetManualDie(); redraw(); });
         document.getElementById('resDieSelect').addEventListener('change', (e) => { manualDie = parseInt(e.target.value); redraw(); });
+        document.getElementById('resPunchSelect').addEventListener('change', (e) => { manualPunch = e.target.value; redraw(); });
         document.getElementById('btnExportDxf').addEventListener('click', exportToDXF);
         document.getElementById('saveBtn').addEventListener('click', saveCurrentProfile);
         document.getElementById('loadBtn').addEventListener('click', loadSelectedProfile);
@@ -3939,8 +4092,19 @@
         });
 
         window.redraw = redraw;
-        window.bends = bends;
-        window.segments = segments;
+        Object.defineProperty(window, 'bends', { get: () => bends, set: v => { bends = v; }, configurable: true });
+        Object.defineProperty(window, 'segments', { get: () => segments, set: v => { segments = v; }, configurable: true });
+        Object.defineProperty(window, 'manualPunch', { get: () => manualPunch, set: v => { manualPunch = v; }, configurable: true });
+        window.simController = simController;
+        window.build3DSheet = build3DSheet;
+        window.calculateGeometry = calculateGeometry;
+        window.getProfileDims = getProfileDims;
+        window.updateBendEditor = updateBendEditor;
+        Object.defineProperty(window, 'camera', { get: () => camera, configurable: true });
+        Object.defineProperty(window, 'scene', { get: () => scene, configurable: true });
+        Object.defineProperty(window, 'sheetGroup', { get: () => sheetGroup, configurable: true });
+        Object.defineProperty(window, 'punchMesh', { get: () => punchMesh, configurable: true });
+        Object.defineProperty(window, 'dieMesh', { get: () => dieMesh, configurable: true });
 
         refreshProfilesList();
         updateBendEditor();
