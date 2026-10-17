@@ -3998,11 +3998,14 @@
             const totalLen = computeFlatLength(geom, dims);
             const totalBD = geom.bends.reduce((sum, bend) => sum + bend.BD, 0);
             const solveResult = solveBendSequence(geom, dims);
-            const sequence = solveResult && Array.isArray(solveResult.sequence) ? solveResult.sequence : [];
+            const rawSequence = solveResult && Array.isArray(solveResult.sequence) ? solveResult.sequence : [];
+            const isFeasible = !!(solveResult && solveResult.isFeasible);
+            // Не печатаем частичную последовательность как рабочую инструкцию,
+            // если решатель не подтвердил весь процесс.
+            const sequence = isFeasible ? rawSequence : [];
             const materialName = (materialData[geom.matKey] && materialData[geom.matKey].name) || geom.matKey;
             const profileName = document.getElementById('profileName').value.trim() || 'Без названия';
             currentTechCardTitle = 'Техкарта — ' + profileName;
-            const isFeasible = !!(solveResult && solveResult.isFeasible);
             const hasWithdrawalNotes = sequence.some(step => step.withdrawalCollision);
             const statusClass = isFeasible ? (hasWithdrawalNotes ? 'tc-status warn' : 'tc-status') : 'tc-status bad';
             const statusTitle = isFeasible ? 'Последовательность найдена расчётной моделью' : 'Последовательность не подтверждена моделью';
@@ -4016,6 +4019,7 @@
             const warningsText = (document.getElementById('warningBox') && document.getElementById('warningBox').innerText || '').trim();
             const warnings = warningsText ? warningsText.split(/\n| · /).map(x => x.trim()).filter(Boolean) : [];
             const dateText = new Date().toLocaleString('ru-RU');
+            const totalPages = 1 + (sequence.length ? Math.ceil(sequence.length / 2) : 1);
             let markup = '<section class="tc-page">';
             markup += '<header class="tc-header"><div><div class="tc-kicker">K-Bend · листогибочный пресс</div><h1 class="tc-title">Технологическая карта гибки</h1><div class="tc-part-name">' + techCardEscape(profileName) + '</div></div>';
             markup += '<div class="' + statusClass + '">' + techCardEscape(statusTitle) + '<div style="margin-top:5px;font-weight:500">' + techCardEscape(solveResult ? solveResult.message : 'Нет результата проверки') + '</div></div></header>';
@@ -4046,10 +4050,10 @@
                 markup += '</div>';
             }
             markup += '<div class="tc-signatures"><div class="tc-signature">Наладчик / подпись</div><div class="tc-signature">Оператор / подпись</div><div class="tc-signature">Контроль первой детали</div></div>';
-            markup += '<footer class="tc-page-footer"><span>K-Bend · расчётная технологическая карта</span><span>1 / ' + (1 + Math.ceil(sequence.length / 2)) + '</span></footer></section>';
+            markup += '<footer class="tc-page-footer"><span>K-Bend · расчётная технологическая карта</span><span>1 / ' + totalPages + '</span></footer></section>';
 
             if (!sequence.length) {
-                markup += '<section class="tc-page"><h2>Операции гибки не сформированы</h2><p>Решатель не выдал последовательность гибов для текущего профиля. Проверьте геометрию и параметры оснастки.</p></section>';
+                markup += '<section class="tc-page"><h2>Операции гибки не сформированы</h2><p>Решатель не подтвердил полную последовательность для текущего профиля. Частичная последовательность намеренно не печатается как рабочая инструкция.</p><div class="tc-note">' + techCardEscape(solveResult ? solveResult.message : 'Нет результата решения') + '</div><footer class="tc-page-footer"><span>' + techCardEscape(profileName) + '</span><span>2 / ' + totalPages + '</span></footer></section>';
             } else {
                 for (let chunkStart = 0; chunkStart < sequence.length; chunkStart += 2) {
                     const chunk = sequence.slice(chunkStart, chunkStart + 2);
@@ -4090,7 +4094,7 @@
                         markup += '<div class="tc-step-checks"><span><i class="tc-checkbox"></i>Поворот / ориентация проверены</span><span><i class="tc-checkbox"></i>Гиб выполнен</span><span><i class="tc-checkbox"></i>Угол факт: ______ °</span></div>';
                         markup += '</article>';
                     });
-                    markup += '<footer class="tc-page-footer"><span>Деталь: ' + techCardEscape(profileName) + '</span><span>Страница ' + pageNo + ' / ' + (1 + Math.ceil(sequence.length / 2)) + '</span></footer></section>';
+                    markup += '<footer class="tc-page-footer"><span>Деталь: ' + techCardEscape(profileName) + '</span><span>Страница ' + pageNo + ' / ' + totalPages + '</span></footer></section>';
                 }
             }
             return markup;
