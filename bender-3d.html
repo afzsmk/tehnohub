@@ -3122,6 +3122,7 @@
             function testPermutation(perm, mode) {
                 const formedAngles = new Array(numBends).fill(0);
                 const seq = [];
+                let previousTurned = false;
                 let failReason = '';
 
                 for (let step = 0; step < perm.length; step++) {
@@ -3197,7 +3198,7 @@
                             }
                             if (!stepOk) continue;
 
-                            const candidate = { partTurned: turn, punchType: pType, withdrawalCollision };
+                            const candidate = { partTurned: turn, turnBeforeStep: turn !== previousTurned, punchType: pType, withdrawalCollision };
                             if (!bestCandidate || (bestCandidate.withdrawalCollision && !withdrawalCollision)) {
                                 bestCandidate = candidate;
                             }
@@ -3216,12 +3217,14 @@
                     seq.push({
                         bendIdx: bIdx,
                         partTurned: bestCandidate.partTurned,
+                        turnBeforeStep: bestCandidate.turnBeforeStep,
                         punchType: bestCandidate.punchType,
                         withdrawalCollision: bestCandidate.withdrawalCollision,
                         isAcute: (bestCandidate.punchType === 'acute'),
                         angleDeg: targetBendDeg
                     });
                     formedAngles[bIdx] = targetBendDeg;
+                    previousTurned = bestCandidate.partTurned;
                 }
 
                 return { feasible: true, score: perm.length, seq, failReason: '' };
@@ -3245,7 +3248,7 @@
                     const res = testPermutation(perm, mode);
                     if (res.feasible) {
                         const seqStr = res.seq.map(s => {
-                            let str = (s.bendIdx + 1) + (s.partTurned ? ' ↻дет.' : '');
+                            let str = (s.bendIdx + 1) + (s.turnBeforeStep ? ' ↻дет.' : '');
                             if (s.punchType === 'acute' && dims.bends[s.bendIdx].angle >= 85) {
                                 str += ' [Прямой]';
                             }
@@ -3607,7 +3610,7 @@
                         const cur = seq[this.currentStepIdx];
                         if (cur) {
                             const bIdx = cur.bendIdx;
-                            const flipIcon = cur.partTurned ? ' ↻дет.' : '';
+                            const flipIcon = cur.turnBeforeStep ? ' ↻ повернуть деталь' : '';
                             const punchLabel = (cur.punchType === 'acute' && dims && dims.bends[bIdx] && dims.bends[bIdx].angle >= 85) ? ' [Прямой]' : '';
                             stepText.textContent = `Шаг ${this.currentStepIdx + 1}/${seq.length} (Гиб ${bIdx + 1}${flipIcon}${punchLabel})`;
                         }
