@@ -175,6 +175,91 @@
         }
         #btnExportDxf:active { transform: translateY(1px); }
 
+        .tech-card-trigger { appearance:none; cursor:pointer; color:inherit; font:inherit; text-align:center; transition:all .2s; border:1px solid rgba(96,165,250,.28); background:rgba(59,130,246,.07); }
+        .tech-card-trigger:hover { background:rgba(59,130,246,.16); border-color:#60a5fa; transform:translateY(-1px); }
+        .tech-card-trigger .param-value { color:#93c5fd; font-size:.88rem; }
+        .tech-card-overlay { display:none; position:fixed; inset:0; z-index:20000; align-items:flex-start; justify-content:center; padding:18px; overflow:auto; background:rgba(0,0,0,.78); }
+        .tech-card-overlay.show { display:flex; }
+        .tech-card-dialog { display:flex; flex-direction:column; width:min(1120px,100%); max-height:calc(100vh - 36px); overflow:hidden; border:1px solid rgba(255,255,255,.12); border-radius:14px; background:#101b2a; box-shadow:0 24px 80px rgba(0,0,0,.5); }
+        .tech-card-toolbar { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; padding:12px 16px; border-bottom:1px solid rgba(255,255,255,.1); color:#e5edf8; }
+        .tech-card-toolbar-title { font-weight:700; margin-right:auto; }
+        .tech-card-toolbar-actions { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+        .tech-card-toolbar button { border:1px solid rgba(255,255,255,.18); border-radius:7px; color:#e8f0fc; background:#1d2c40; padding:8px 12px; font-weight:600; cursor:pointer; }
+        .tech-card-toolbar button.primary { color:white; background:#2563eb; border-color:#3b82f6; }
+        .tech-card-toolbar button:hover { filter:brightness(1.14); }
+        .tech-card-toolbar-fields { display:flex; flex-wrap:wrap; align-items:center; gap:7px; width:100%; }
+        .tech-card-toolbar-fields label { color:#aebed2; font-size:12px; gap:5px; }
+        .tech-card-toolbar-fields input { width:120px; padding:6px 8px; font-size:12px; border-radius:6px; }
+        .tech-card-document { overflow:auto; padding:18px; background:#cbd5e1; }
+        .tc-page { width:100%; max-width:900px; margin:0 auto 18px; padding:28px; min-height:420px; background:#fff; color:#172033; font:12px/1.45 Arial,Helvetica,sans-serif; box-shadow:0 5px 22px rgba(0,0,0,.2); }
+        .tc-page * { box-sizing:border-box; }
+        .tc-header { display:flex; justify-content:space-between; align-items:flex-start; gap:20px; border-bottom:2px solid #1d4ed8; padding-bottom:13px; margin-bottom:15px; }
+        .tc-kicker { color:#64748b; font-size:10px; letter-spacing:1.8px; font-weight:700; text-transform:uppercase; }
+        .tc-title { margin:3px 0 4px; font-size:24px; line-height:1.1; letter-spacing:-.5px; color:#0f172a; }
+        .tc-part-name { font-size:15px; color:#1d4ed8; font-weight:700; overflow-wrap:anywhere; }
+        .tc-status { min-width:175px; max-width:240px; padding:9px 11px; border:1px solid #bbf7d0; border-radius:8px; color:#166534; background:#f0fdf4; font-size:10px; font-weight:700; }
+        .tc-status.bad { color:#991b1b; background:#fef2f2; border-color:#fecaca; }
+        .tc-status.warn { color:#92400e; background:#fffbeb; border-color:#fde68a; }
+        .tc-muted { color:#64748b; }
+        .tc-section-title { display:flex; align-items:center; gap:8px; margin:16px 0 8px; font-size:13px; color:#0f172a; font-weight:800; }
+        .tc-section-title:before { content:''; width:4px; height:14px; border-radius:3px; background:#2563eb; }
+        .tc-meta-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin:12px 0; }
+        .tc-meta { min-height:43px; border:1px solid #dbe3ee; border-radius:6px; padding:7px 8px; }
+        .tc-meta small { display:block; margin-bottom:3px; color:#64748b; font-size:9px; text-transform:uppercase; letter-spacing:.5px; }
+        .tc-meta strong { font-size:12px; color:#111827; overflow-wrap:anywhere; }
+        .tc-diagram-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+        .tc-diagram-box { min-width:0; border:1px solid #dbe3ee; border-radius:7px; padding:8px; }
+        .tc-diagram-title { margin-bottom:4px; color:#334155; font-size:10px; font-weight:800; text-transform:uppercase; }
+        .tc-profile-svg { display:block; width:100%; height:auto; min-height:82px; max-height:155px; }
+        .tc-flat-svg { display:block; width:100%; height:auto; }
+        .tc-table { width:100%; border-collapse:collapse; font-size:11px; }
+        .tc-table th,.tc-table td { padding:6px 8px; border:1px solid #dbe3ee; text-align:left; vertical-align:top; }
+        .tc-table th { width:40%; color:#475569; background:#f8fafc; font-weight:600; }
+        .tc-note { margin-top:12px; padding:9px 10px; border-left:3px solid #f59e0b; background:#fffbeb; color:#713f12; font-size:10px; }
+        .tc-warning-list { margin:5px 0 0; padding-left:18px; }
+        .tc-signatures { display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px; margin-top:18px; }
+        .tc-signature { padding-top:9px; border-top:1px solid #94a3b8; color:#64748b; font-size:10px; }
+        .tc-page-footer { display:flex; justify-content:space-between; gap:12px; margin-top:16px; padding-top:7px; border-top:1px solid #cbd5e1; color:#64748b; font-size:9px; }
+        .tc-operation-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:9px; }
+        .tc-operation-num { color:#2563eb; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.8px; }
+        .tc-operation-title { margin:2px 0; color:#0f172a; font-size:19px; line-height:1.1; }
+        .tc-angle-badge { border:1px solid #bfdbfe; border-radius:7px; background:#eff6ff; color:#1d4ed8; padding:8px 12px; white-space:nowrap; font-size:17px; font-weight:800; }
+        .tc-turn-flag { margin:9px 0; padding:9px 11px; border:1px solid #fcd34d; border-radius:6px; color:#92400e; background:#fffbeb; font-size:12px; font-weight:800; }
+        .tc-hold-flag { margin:9px 0; padding:8px 10px; border:1px solid #cbd5e1; border-radius:6px; color:#334155; background:#f8fafc; font-size:10px; }
+        .tc-op-facts { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:7px; margin:9px 0; }
+        .tc-op-fact { padding:7px; border:1px solid #dbe3ee; border-radius:5px; }
+        .tc-op-fact small { display:block; color:#64748b; font-size:9px; text-transform:uppercase; }
+        .tc-op-fact strong { display:block; margin-top:2px; color:#111827; font-size:11px; overflow-wrap:anywhere; }
+        .tc-step-visuals { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-top:8px; }
+        .tc-step-visual { border:1px solid #dbe3ee; border-radius:6px; padding:7px; min-width:0; }
+        .tc-step-visual figcaption { margin-bottom:4px; color:#475569; font-size:10px; font-weight:800; }
+        .tc-step-checks { display:flex; flex-wrap:wrap; gap:14px; margin-top:10px; padding-top:8px; border-top:1px dashed #cbd5e1; color:#334155; font-size:10px; }
+        .tc-checkbox { display:inline-block; width:11px; height:11px; border:1px solid #475569; vertical-align:-2px; margin-right:4px; }
+        .tc-export-toolbar { padding:10px; text-align:center; }
+        .tc-export-toolbar button { cursor:pointer; border:1px solid #2563eb; border-radius:7px; padding:8px 14px; color:white; background:#2563eb; font-weight:700; }
+        @media (max-width:760px) {
+            .tech-card-overlay { padding:0; }
+            .tech-card-dialog { max-height:100vh; border-radius:0; }
+            .tech-card-document { padding:8px; }
+            .tc-page { padding:16px; }
+            .tc-meta-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+            .tc-op-facts { grid-template-columns:repeat(2,minmax(0,1fr)); }
+            .tc-title { font-size:21px; }
+        }
+        @page { size:A4 portrait; margin:0; }
+        @media print {
+            body { display:block !important; width:auto !important; height:auto !important; overflow:visible !important; background:#fff !important; }
+            body.tech-card-printing > .app { display:none !important; }
+            body.tech-card-printing > #techCardOverlay { display:block !important; position:static !important; inset:auto !important; padding:0 !important; overflow:visible !important; background:#fff !important; }
+            body.tech-card-printing .tech-card-dialog { display:block !important; width:auto !important; max-height:none !important; overflow:visible !important; border:0 !important; border-radius:0 !important; background:#fff !important; box-shadow:none !important; }
+            body.tech-card-printing .tech-card-toolbar { display:none !important; }
+            body.tech-card-printing .tech-card-document { overflow:visible !important; padding:0 !important; background:#fff !important; }
+            .tc-page { max-width:none !important; min-height:0 !important; margin:0 !important; padding:12mm !important; box-shadow:none !important; border-radius:0 !important; break-after:page; page-break-after:always; }
+            .tc-page:last-child { break-after:auto; page-break-after:auto; }
+            body.tech-card-standalone { display:block !important; margin:0 !important; }
+            .tc-export-toolbar { display:none !important; }
+        }
+
         #resDieSelect {
             background: transparent; border: none; color: #60a5fa; font-size: 1rem; font-weight: 700;
             outline: none; cursor: pointer; padding: 0; font-family: inherit; width: 50px; text-align: center;
@@ -726,6 +811,13 @@
                     <span class="param-value" id="resBD">2.51</span>
                 </div>
             </div>
+            <button type="button" class="param-item tech-card-trigger" id="btnTechCard" title="Сформировать техкарту оператора, печать или PDF">
+                <span class="param-label">Техкарта</span>
+                <span class="param-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#93c5fd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h8l4 4v14H5V3h2z"/><path d="M15 3v5h4M8 12h8M8 16h8"/></svg>
+                </span>
+                <span class="param-value">Оператор</span>
+            </button>
             <div class="param-item" id="btnExportDxf" title="Скачать чертеж развёртки в формате DXF">
                 <span class="param-label">Развёртка DXF</span>
                 <div style="display:flex;align-items:center;gap:0.3rem;">
@@ -883,6 +975,25 @@
             </div>
         </div>
     </div>
+</div>
+
+<div id="techCardOverlay" class="tech-card-overlay" hidden aria-hidden="true">
+    <section class="tech-card-dialog" role="dialog" aria-modal="true" aria-labelledby="techCardModalTitle">
+        <div class="tech-card-toolbar">
+            <div class="tech-card-toolbar-title" id="techCardModalTitle">Технологическая карта K-Bend</div>
+            <div class="tech-card-toolbar-actions">
+                <button type="button" id="techCardDownloadBtn">Скачать HTML</button>
+                <button type="button" class="primary" id="techCardPrintBtn">Печать / PDF</button>
+                <button type="button" id="techCardCloseBtn" aria-label="Закрыть техкарту">Закрыть ✕</button>
+            </div>
+            <div class="tech-card-toolbar-fields">
+                <label>Заказ <input id="techCardOrderInput" type="text" placeholder="Номер заказа"></label>
+                <label>Количество <input id="techCardQuantityInput" type="number" min="1" step="1" placeholder="шт."></label>
+                <label>Оператор <input id="techCardOperatorInput" type="text" placeholder="ФИО"></label>
+            </div>
+        </div>
+        <div id="techCardDocument" class="tech-card-document"></div>
+    </section>
 </div>
 
 <script>
