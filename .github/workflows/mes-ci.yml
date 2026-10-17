@@ -8,13 +8,11 @@ on:
     paths:
       - 'mes/**'
       - '.github/workflows/mes-ci.yml'
-      - '.github/workflows/deploy.yml'
       - '.github/workflows/mes-supabase.yml'
   pull_request:
     paths:
       - 'mes/**'
       - '.github/workflows/mes-ci.yml'
-      - '.github/workflows/deploy.yml'
       - '.github/workflows/mes-supabase.yml'
   workflow_dispatch:
 
