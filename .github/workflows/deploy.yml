@@ -54,6 +54,14 @@ jobs:
         with:
           node-version: 24
 
+      # Compute the MES cache key before local Supabase tests create generated files.
+      - name: Restore MES build output
+        id: mes-cache
+        uses: actions/cache@v4
+        with:
+          path: mes/dist
+          key: mes-dist-v1-${{ hashFiles('mes/**') }}
+
       - name: Validate K-Bend inline JavaScript
         if: steps.changes.outputs.bender == 'true'
         shell: bash
@@ -330,13 +338,6 @@ jobs:
         if: steps.scheduler-cache.outputs.cache-hit != 'true'
         working-directory: ./scheduler
         run: npm run build
-
-      - name: Restore MES build output
-        id: mes-cache
-        uses: actions/cache@v4
-        with:
-          path: mes/dist
-          key: mes-dist-v1-${{ hashFiles('mes/**') }}
 
       - name: Install MES dependencies
         if: steps.mes-cache.outputs.cache-hit != 'true'
