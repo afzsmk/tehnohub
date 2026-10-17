@@ -27,6 +27,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       # Run expensive validation only when files in the corresponding app change.
       # The deploy job still builds each app below so GitHub Pages receives a complete site.
