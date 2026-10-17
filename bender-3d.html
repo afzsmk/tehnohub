@@ -2908,7 +2908,7 @@
             for (let k = B + 1; k < segs.length; k++) {
                 let leftOSSB = (k < numBends) ? bendGeom[k].OSSB : 0;
                 let rightOSSB = (k > 0) ? bendGeom[k - 1].OSSB : 0;
-                let netLen = getSegmentNetLengthAtAngles(geom, dims, formedAngles, k);
+                let netLen = getSegmentNetLengthAtAngles(geom, dims, formedAngles, k, B, progress);
                 const isAdj = (k === B + 1);
 
                 const pStart = { ...curP };
