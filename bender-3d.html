@@ -2729,23 +2729,29 @@
         // МОДУЛЬ ТЕХНОЛОГИЧЕСКОГО РАСЧЕТА И СИМУЛЯЦИИ ГИБКИ (DURMA)
         // ========================================================
 
-        function getSegmentNetLengthAtAngles(geom, dims, formedAngles, segIdx) {
+        function getSegmentNetLengthAtAngles(geom, dims, formedAngles, segIdx, activeBendIdx, progress) {
             const seg = dims.segments[segIdx];
             let leftOSSB = 0, rightOSSB = 0, prevDeltaL = 0, nextDeltaL = 0;
             if (segIdx < geom.bends.length) leftOSSB = geom.bends[segIdx].OSSB;
             if (segIdx > 0 && segIdx - 1 < geom.bends.length) rightOSSB = geom.bends[segIdx - 1].OSSB;
 
+            const angleAt = bendIdx => bendIdx === activeBendIdx
+                ? geom.bends[bendIdx].bendAngleDeg * progress
+                : (formedAngles[bendIdx] || 0);
+
             if (segIdx > 0 && segIdx - 1 < geom.bends.length) {
-                const bend = geom.bends[segIdx - 1];
+                const bendIdx = segIdx - 1;
+                const bend = geom.bends[bendIdx];
                 const target = bend.bendAngleDeg;
-                const current = formedAngles[segIdx - 1] || 0;
+                const current = angleAt(bendIdx);
                 const ratio = target > 0 ? Math.min(1, Math.max(0, current / target)) : 0;
                 prevDeltaL = 0.5 * (1 - ratio) * (bend.BA || (bend.OSSB * 2) || 0.1);
             }
             if (segIdx < geom.bends.length) {
-                const bend = geom.bends[segIdx];
+                const bendIdx = segIdx;
+                const bend = geom.bends[bendIdx];
                 const target = bend.bendAngleDeg;
-                const current = formedAngles[segIdx] || 0;
+                const current = angleAt(bendIdx);
                 const ratio = target > 0 ? Math.min(1, Math.max(0, current / target)) : 0;
                 nextDeltaL = 0.5 * (1 - ratio) * (bend.BA || (bend.OSSB * 2) || 0.1);
             }
@@ -2835,7 +2841,7 @@
             for (let k = B; k >= 0; k--) {
                 let leftOSSB = (k < numBends) ? bendGeom[k].OSSB : 0;
                 let rightOSSB = (k > 0) ? bendGeom[k - 1].OSSB : 0;
-                let netLen = getSegmentNetLengthAtAngles(geom, dims, formedAngles, k);
+                let netLen = getSegmentNetLengthAtAngles(geom, dims, formedAngles, k, B, progress);
                 const isAdj = (k === B);
 
                 const pStart = { ...curP };
