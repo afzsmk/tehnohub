@@ -918,6 +918,8 @@
         let currentPunchLength = 0;
         let currentPunchKey = '';
         let hasCollision = false;
+        let simObservedCollisionStep = -2;
+        let simObservedHardCollision = '';
 
         let dieMesh = null;
         let currentDieLength = 0;
@@ -1836,16 +1838,25 @@
         function checkPunchCollision() {
             hasCollision = false;
             const isWithdrawalPhase = simCurrentStep >= 0 && window.simPhaseType === 'withdraw';
-            collisionMaterial.color.setHex(isWithdrawalPhase ? 0xf59e0b : 0xff2222);
-            collisionMaterial.emissive.setHex(isWithdrawalPhase ? 0xb45309 : 0xff0000);
+            collisionMaterial.color.setHex(0xff2222);
+            collisionMaterial.emissive.setHex(0xff0000);
+            if (simObservedCollisionStep !== simCurrentStep) {
+                simObservedCollisionStep = simCurrentStep;
+                simObservedHardCollision = '';
+            }
 
             // Сначала синхронизируем статус с решателем; текущая коллизия
             // на рабочем положении уточнит его ниже.
             const statusDot = document.getElementById('simDot');
             const statusTextEl = document.getElementById('simStatusText');
             if (statusDot && statusTextEl && simSolverResult) {
-                statusDot.className = 'status-dot ' + (simSolverResult.isFeasible ? 'status-ok' : 'status-error');
-                statusTextEl.textContent = simSolverResult.message;
+                if (simCurrentStep >= 0 && simObservedHardCollision) {
+                    statusDot.className = 'status-dot status-error';
+                    statusTextEl.textContent = simObservedHardCollision;
+                } else {
+                    statusDot.className = 'status-dot ' + (simSolverResult.isFeasible ? 'status-ok' : 'status-error');
+                    statusTextEl.textContent = simSolverResult.message;
+                }
             }
             const badge = document.getElementById('collisionBadge');
             const punchBtn = document.getElementById('viewPunchBtn');
@@ -2110,6 +2121,8 @@
             if (collisions.length > 0) {
                 hasCollision = true;
                 const withdrawalAdvisory = isWithdrawalPhase && (hasPunchColl || hasRamColl) && !hasDieColl && !hasBedColl && !hasSupportError;
+                collisionMaterial.color.setHex(withdrawalAdvisory ? 0xf59e0b : 0xff2222);
+                collisionMaterial.emissive.setHex(withdrawalAdvisory ? 0xb45309 : 0xff0000);
                 collisions.forEach(mesh => {
                     if (!mesh.userData._origMaterial) {
                         mesh.userData._origMaterial = mesh.material;
@@ -2137,7 +2150,8 @@
                 if (punchBtn) punchBtn.classList.toggle('collision', !withdrawalAdvisory);
                 if (simCurrentStep >= 0 && !withdrawalAdvisory && statusDot && statusTextEl) {
                     statusDot.className = 'status-dot status-error';
-                    statusTextEl.textContent = `Коллизия в текущем положении: ${document.getElementById('collisionText')?.textContent || 'проверьте траекторию'}`;
+                    simObservedHardCollision = `Коллизия в текущем положении: ${document.getElementById('collisionText')?.textContent || 'проверьте траекторию'}`;
+                    statusTextEl.textContent = simObservedHardCollision;
                 }
             } else {
                 if (badge) badge.classList.remove('show', 'withdrawal');
