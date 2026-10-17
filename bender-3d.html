@@ -220,6 +220,7 @@
         }
         .view-btn-3d:hover { background: rgba(100, 150, 200, 0.15); color: #c0d4f0; border-color: rgba(100,150,200,0.3); }
         .view-btn-3d.active { background: rgba(37, 99, 235, 0.2); color: #60a5fa; border-color: rgba(96, 165, 250, 0.4); }
+        .view-btn-3d:disabled { opacity: 0.55; cursor: not-allowed; }
         
         .view-btn-3d.help-btn { background: rgba(52, 211, 153, 0.1); color: #34d399; border-color: rgba(52, 211, 153, 0.3); margin-left: 6px; }
         .view-btn-3d.help-btn:hover { background: rgba(52, 211, 153, 0.25); color: #6ee7b7; border-color: rgba(52, 211, 153, 0.5); }
@@ -1748,6 +1749,10 @@
 
             if (punchFlipBtn) {
                 punchFlipBtn.style.display = 'flex';
+                punchFlipBtn.disabled = simCurrentStep >= 0;
+                punchFlipBtn.title = simCurrentStep >= 0
+                    ? 'Ориентация детали для этого шага выбрана технологическим решателем'
+                    : 'Повернуть деталь на 180° вокруг вертикальной оси (F)';
                 punchFlipBtn.classList.toggle('active', (forcePartTurned !== null ? forcePartTurned : partTurned));
             }
 
@@ -3275,6 +3280,8 @@
         function updateBendSequenceSolver(geom, dims) {
             if (!geom || !dims) return;
             simSolverResult = solveBendSequence(geom, dims);
+            simObservedCollisionStep = simCurrentStep;
+            simObservedHardCollision = '';
             simSequence = simSolverResult.sequence;
             window.simSolverResult = simSolverResult;
 
