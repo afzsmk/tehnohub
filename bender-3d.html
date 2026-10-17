@@ -3858,6 +3858,311 @@
             URL.revokeObjectURL(url);
         }
 
+
+        // ===== Операторская технологическая карта =====
+        let currentTechCardMarkup = '';
+        let currentTechCardTitle = 'Технологическая карта K-Bend';
+
+        function techCardEscape(value) {
+            return String(value === undefined || value === null ? '' : value).replace(/[&<>"']/g, function(ch) {
+                return ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[ch];
+            });
+        }
+
+        function techCardNumber(value, digits = 1) {
+            const n = Number(value);
+            return Number.isFinite(n) ? n.toFixed(digits) : '—';
+        }
+
+        function buildTechCardProfileSvg(geom, dims, angleValues, highlightBendIdx = -1, turned = false) {
+            if (!geom || !dims || !dims.segments || dims.segments.length === 0) {
+                return '<svg class="tc-profile-svg" viewBox="0 0 720 160" role="img" aria-label="Профиль отсутствует"><text x="360" y="82" text-anchor="middle" fill="#64748b" font-size="14">Нет геометрии</text></svg>';
+            }
+
+            const points = [{ x:0, y:0 }];
+            let x = 0, y = 0, heading = 0;
+            for (let i = 0; i < dims.segments.length; i++) {
+                let segLen = Number(dims.segments[i].length) || 0;
+                try {
+                    if (typeof getSegmentNetLengthAtAngles === 'function') {
+                        segLen = getSegmentNetLengthAtAngles(geom, dims, angleValues, i, -1, 1);
+                    }
+                } catch (e) {}
+                segLen = Math.max(1, segLen);
+                x += Math.cos(heading) * segLen;
+                y += Math.sin(heading) * segLen;
+                points.push({ x, y });
+                if (i < dims.bends.length) {
+                    const angle = Number(angleValues[i]) || 0;
+                    const direction = dims.bends[i].direction >= 0 ? 1 : -1;
+                    heading += direction * angle * Math.PI / 180;
+                }
+            }
+
+            if (turned) points.forEach(p => { p.x = -p.x; });
+            const xs = points.map(p => p.x), ys = points.map(p => p.y);
+            const minX = Math.min.apply(null, xs), maxX = Math.max.apply(null, xs);
+            const minY = Math.min.apply(null, ys), maxY = Math.max.apply(null, ys);
+            const spanX = Math.max(1, maxX - minX), spanY = Math.max(1, maxY - minY);
+            const scale = Math.min(630 / spanX, 92 / spanY, 4.5);
+            const mapPoint = p => ({
+                x: 360 + (p.x - (minX + maxX) / 2) * scale,
+                y: 80 - (p.y - (minY + maxY) / 2) * scale
+            });
+            const screenPoints = points.map(mapPoint);
+            let svg = '<svg class="tc-profile-svg" viewBox="0 0 720 160" role="img" aria-label="Схема сечения детали">';
+            svg += '<line x1="24" y1="133" x2="696" y2="133" stroke="#e2e8f0" stroke-width="1"/>';
+            for (let i = 0; i < screenPoints.length - 1; i++) {
+                const a = screenPoints[i], b = screenPoints[i + 1];
+                svg += '<line x1="' + a.x.toFixed(2) + '" y1="' + a.y.toFixed(2) + '" x2="' + b.x.toFixed(2) + '" y2="' + b.y.toFixed(2) + '" stroke="#2563eb" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>';
+                const midX = (a.x + b.x) / 2, midY = (a.y + b.y) / 2;
+                const segLen = Number(dims.segments[i].length) || 0;
+                if (Math.hypot(b.x - a.x, b.y - a.y) > 34) {
+                    svg += '<text x="' + midX.toFixed(2) + '" y="' + Math.min(146, midY + 17).toFixed(2) + '" text-anchor="middle" fill="#64748b" font-size="10">' + techCardEscape(techCardNumber(segLen, 0)) + '</text>';
+                }
+            }
+            for (let i = 0; i < dims.bends.length; i++) {
+                const p = screenPoints[i + 1];
+                if (!p) continue;
+                const active = i === highlightBendIdx;
+                const color = active ? '#ea580c' : '#0f766e';
+                const externalAngle = Number(dims.bends[i].angle) || 90;
+                svg += '<circle cx="' + p.x.toFixed(2) + '" cy="' + p.y.toFixed(2) + '" r="' + (active ? 7 : 5) + '" fill="' + color + '" stroke="#ffffff" stroke-width="1.5"/>';
+                svg += '<text x="' + p.x.toFixed(2) + '" y="' + Math.max(13, p.y - 12).toFixed(2) + '" text-anchor="middle" fill="' + color + '" font-size="11" font-weight="700">Г' + (i + 1) + ' · ' + techCardEscape(techCardNumber(externalAngle, 0)) + '°</text>';
+            }
+            svg += '<text x="22" y="18" fill="#64748b" font-size="9">' + (turned ? 'Ориентация детали: поворот 180°' : 'Исходная ориентация') + '</text>';
+            svg += '<text x="698" y="151" text-anchor="end" fill="#94a3b8" font-size="9">Схема условная, не в масштабе</text>';
+            svg += '</svg>';
+            return svg;
+        }
+
+        function buildTechCardFlatSvg(geom, dims, totalLen, bendLength) {
+            if (!geom || !dims || totalLen <= 0) {
+                return '<svg class="tc-flat-svg" viewBox="0 0 720 120" role="img" aria-label="Развертка отсутствует"><text x="360" y="60" text-anchor="middle" fill="#64748b">Нет данных развёртки</text></svg>';
+            }
+            const left = 42, width = 636, top = 31, height = 52;
+            const scale = width / Math.max(1, totalLen);
+            const parts = [];
+            for (let i = 0; i < dims.segments.length; i++) {
+                let leftOSSB = 0, rightOSSB = 0;
+                if (i < geom.bends.length) leftOSSB = geom.bends[i].OSSB;
+                if (i > 0 && i - 1 < geom.bends.length) rightOSSB = geom.bends[i - 1].OSSB;
+                parts.push({ type:'segment', index:i, len:Math.max(0, dims.segments[i].length - leftOSSB - rightOSSB) });
+                if (i < geom.bends.length) parts.push({ type:'bend', index:i, len:geom.bends[i].BA });
+            }
+            let svg = '<svg class="tc-flat-svg" viewBox="0 0 720 120" role="img" aria-label="Схема плоской заготовки">';
+            svg += '<rect x="' + left + '" y="' + top + '" width="' + (totalLen * scale).toFixed(2) + '" height="' + height + '" fill="#f8fafc" stroke="#475569" stroke-width="1.5"/>';
+            let offset = 0;
+            parts.forEach(part => {
+                const partWidth = part.len * scale;
+                if (part.type === 'bend') {
+                    const x1 = left + offset * scale;
+                    const xm = x1 + partWidth / 2;
+                    const x2 = x1 + partWidth;
+                    svg += '<line x1="' + x1.toFixed(2) + '" y1="' + (top - 7) + '" x2="' + x1.toFixed(2) + '" y2="' + (top + height + 7) + '" stroke="#ea580c" stroke-width="1.3"/>';
+                    svg += '<line x1="' + xm.toFixed(2) + '" y1="' + (top - 7) + '" x2="' + xm.toFixed(2) + '" y2="' + (top + height + 7) + '" stroke="#ea580c" stroke-dasharray="4 3" stroke-width="1.3"/>';
+                    svg += '<line x1="' + x2.toFixed(2) + '" y1="' + (top - 7) + '" x2="' + x2.toFixed(2) + '" y2="' + (top + height + 7) + '" stroke="#ea580c" stroke-width="1.3"/>';
+                    svg += '<text x="' + xm.toFixed(2) + '" y="17" text-anchor="middle" fill="#c2410c" font-size="10" font-weight="700">Г' + (part.index + 1) + '</text>';
+                } else if (partWidth > 23) {
+                    const mid = left + (offset + part.len / 2) * scale;
+                    svg += '<text x="' + mid.toFixed(2) + '" y="' + (top + height + 20) + '" text-anchor="middle" fill="#475569" font-size="10">' + techCardEscape(techCardNumber(part.len, 1)) + '</text>';
+                }
+                offset += part.len;
+            });
+            svg += '<text x="360" y="116" text-anchor="middle" fill="#64748b" font-size="10">L развёртки = ' + techCardEscape(techCardNumber(totalLen, 2)) + ' мм · длина гиба = ' + techCardEscape(techCardNumber(bendLength, 0)) + ' мм</text>';
+            svg += '</svg>';
+            return svg;
+        }
+
+        function updateTechCardBindings() {
+            const values = {
+                order: document.getElementById('techCardOrderInput').value.trim(),
+                quantity: document.getElementById('techCardQuantityInput').value.trim(),
+                operator: document.getElementById('techCardOperatorInput').value.trim()
+            };
+            document.querySelectorAll('[data-tech-bind]').forEach(el => {
+                const key = el.getAttribute('data-tech-bind');
+                let value = values[key] || '________________';
+                if (key === 'quantity' && values.quantity) value += ' шт.';
+                el.textContent = value;
+            });
+        }
+
+        function buildTechCardMarkup() {
+            const geom = calculateGeometry();
+            const dims = getProfileDims();
+            if (!geom || !dims || dims.segments.length === 0) {
+                return '<div class="tc-page"><h1>Невозможно сформировать техкарту</h1><p>Сначала задайте материал, толщину и геометрию детали.</p></div>';
+            }
+
+            const totalLen = computeFlatLength(geom, dims);
+            const totalBD = geom.bends.reduce((sum, bend) => sum + bend.BD, 0);
+            const solveResult = solveBendSequence(geom, dims);
+            const sequence = solveResult && Array.isArray(solveResult.sequence) ? solveResult.sequence : [];
+            const materialName = (materialData[geom.matKey] && materialData[geom.matKey].name) || geom.matKey;
+            const profileName = document.getElementById('profileName').value.trim() || 'Без названия';
+            currentTechCardTitle = 'Техкарта — ' + profileName;
+            const isFeasible = !!(solveResult && solveResult.isFeasible);
+            const hasWithdrawalNotes = sequence.some(step => step.withdrawalCollision);
+            const statusClass = isFeasible ? (hasWithdrawalNotes ? 'tc-status warn' : 'tc-status') : 'tc-status bad';
+            const statusTitle = isFeasible ? 'Последовательность найдена расчётной моделью' : 'Последовательность не подтверждена моделью';
+            const forceValue = (document.getElementById('resForce') && document.getElementById('resForce').textContent) || '—';
+            const punchName = sequence.length
+                ? (sequence[0].punchType === 'acute' ? 'Прямой пуансон' : 'Пуансон типа «гусёк»')
+                : ((manualPunch === 'acute') ? 'Прямой пуансон' : (manualPunch === 'gooseneck' ? 'Пуансон типа «гусёк»' : 'Автоматический выбор'));
+            const allAngles = geom.bends.map(b => b.bendAngleDeg);
+            const finalSvg = buildTechCardProfileSvg(geom, dims, allAngles, -1, false);
+            const flatSvg = buildTechCardFlatSvg(geom, dims, totalLen, getBendLength());
+            const warningsText = (document.getElementById('warningBox') && document.getElementById('warningBox').innerText || '').trim();
+            const warnings = warningsText ? warningsText.split(/\n| · /).map(x => x.trim()).filter(Boolean) : [];
+            const dateText = new Date().toLocaleString('ru-RU');
+            let markup = '<section class="tc-page">';
+            markup += '<header class="tc-header"><div><div class="tc-kicker">K-Bend · листогибочный пресс</div><h1 class="tc-title">Технологическая карта гибки</h1><div class="tc-part-name">' + techCardEscape(profileName) + '</div></div>';
+            markup += '<div class="' + statusClass + '">' + techCardEscape(statusTitle) + '<div style="margin-top:5px;font-weight:500">' + techCardEscape(solveResult ? solveResult.message : 'Нет результата проверки') + '</div></div></header>';
+            markup += '<div class="tc-meta-grid">';
+            markup += '<div class="tc-meta"><small>Заказ</small><strong data-tech-bind="order">________________</strong></div>';
+            markup += '<div class="tc-meta"><small>Количество</small><strong data-tech-bind="quantity">________________</strong></div>';
+            markup += '<div class="tc-meta"><small>Оператор</small><strong data-tech-bind="operator">________________</strong></div>';
+            markup += '<div class="tc-meta"><small>Сформировано</small><strong>' + techCardEscape(dateText) + '</strong></div></div>';
+            markup += '<div class="tc-section-title">Заготовка и готовый профиль</div><div class="tc-diagram-grid">';
+            markup += '<div class="tc-diagram-box"><div class="tc-diagram-title">Готовая деталь · номера исходных гибов</div>' + finalSvg + '</div>';
+            markup += '<div class="tc-diagram-box"><div class="tc-diagram-title">Плоская заготовка · линии гибов</div>' + flatSvg + '</div></div>';
+            markup += '<div class="tc-section-title">Параметры изготовления</div><table class="tc-table"><tbody>';
+            markup += '<tr><th>Материал</th><td>' + techCardEscape(materialName) + '</td><th>Толщина S</th><td>' + techCardEscape(techCardNumber(geom.S, 2)) + ' мм</td></tr>';
+            markup += '<tr><th>Длина гиба L</th><td>' + techCardEscape(techCardNumber(getBendLength(), 0)) + ' мм</td><th>Длина развёртки</th><td>' + techCardEscape(techCardNumber(totalLen, 2)) + ' мм</td></tr>';
+            markup += '<tr><th>Матрица</th><td>V' + techCardEscape(techCardNumber(geom.V, 0)) + '</td><th>Тип пуансона</th><td>' + techCardEscape(punchName) + '</td></tr>';
+            markup += '<tr><th>Внутренний радиус Ri</th><td>' + techCardEscape(techCardNumber(geom.R, 2)) + ' мм</td><th>K-фактор</th><td>' + techCardEscape(techCardNumber(geom.K, 3)) + '</td></tr>';
+            markup += '<tr><th>Суммарный BD модели</th><td>' + techCardEscape(techCardNumber(totalBD, 2)) + ' мм</td><th>Усилие по приложению</th><td>' + techCardEscape(forceValue) + '</td></tr>';
+            markup += '<tr><th>Число гибов</th><td>' + dims.bends.length + '</td><th>Порядок</th><td>' + techCardEscape(sequence.map(step => 'Г' + (step.bendIdx + 1)).join(' → ') || 'Не определён') + '</td></tr>';
+            markup += '</tbody></table>';
+            markup += '<div class="tc-note"><b>Важно для оператора.</b> Пуансон и матрица сохраняют одну ориентацию и не разворачиваются на каждом шаге. Если операция помечена «Повернуть деталь», поверните заготовку на 180° относительно исходной ориентации. Схемы сечения условные, не предназначены для снятия размеров.</div>';
+            if (hasWithdrawalNotes) {
+                markup += '<div class="tc-note"><b>Предупреждение об отводе.</b> Расчёт обнаружил контакт с пуансоном/верхней балкой в фазе отвода на гибах: ' + techCardEscape(sequence.filter(step => step.withdrawalCollision).map(step => step.bendIdx + 1).join(', ')) + '. Это отмечено как некритичный контакт только при отводе; проверьте на пробной детали.</div>';
+            }
+            if (warnings.length || !isFeasible) {
+                markup += '<div class="tc-note"><b>' + (isFeasible ? 'Замечания расчёта' : 'Расчёт не подтвердил выполнимость') + '</b>';
+                if (warnings.length) markup += '<ul class="tc-warning-list">' + warnings.map(w => '<li>' + techCardEscape(w) + '</li>').join('') + '</ul>';
+                if (!isFeasible) markup += '<div style="margin-top:5px">Не используйте эту карту как разрешение на изготовление до устранения причины и повторной проверки.</div>';
+                markup += '</div>';
+            }
+            markup += '<div class="tc-signatures"><div class="tc-signature">Наладчик / подпись</div><div class="tc-signature">Оператор / подпись</div><div class="tc-signature">Контроль первой детали</div></div>';
+            markup += '<footer class="tc-page-footer"><span>K-Bend · расчётная технологическая карта</span><span>1 / ' + (1 + Math.ceil(sequence.length / 2)) + '</span></footer></section>';
+
+            if (!sequence.length) {
+                markup += '<section class="tc-page"><h2>Операции гибки не сформированы</h2><p>Решатель не выдал последовательность гибов для текущего профиля. Проверьте геометрию и параметры оснастки.</p></section>';
+            } else {
+                for (let chunkStart = 0; chunkStart < sequence.length; chunkStart += 2) {
+                    const chunk = sequence.slice(chunkStart, chunkStart + 2);
+                    const pageNo = 2 + Math.floor(chunkStart / 2);
+                    markup += '<section class="tc-page"><header class="tc-header"><div><div class="tc-kicker">K-Bend · операционная инструкция</div><h1 class="tc-title">Последовательность гибки</h1><div class="tc-part-name">' + techCardEscape(profileName) + '</div></div><div class="tc-status">Оснастка: ' + techCardEscape(punchName) + ' · V' + techCardEscape(techCardNumber(geom.V, 0)) + '</div></header>';
+                    chunk.forEach((step, chunkIndex) => {
+                        const globalIndex = chunkStart + chunkIndex;
+                        const bendIdx = step.bendIdx;
+                        const bendInput = dims.bends[bendIdx] || { angle:90, direction:1 };
+                        const bendModel = geom.bends[bendIdx] || { bendAngleDeg:180 - bendInput.angle, loadBendDeg:180 - bendInput.angle, springbackDeg:0, BA:0 };
+                        const beforeAngles = new Array(dims.bends.length).fill(0);
+                        sequence.slice(0, globalIndex).forEach(previous => {
+                            if (geom.bends[previous.bendIdx]) beforeAngles[previous.bendIdx] = geom.bends[previous.bendIdx].bendAngleDeg;
+                        });
+                        const afterAngles = beforeAngles.slice();
+                        afterAngles[bendIdx] = bendModel.bendAngleDeg;
+                        const beforeTurned = globalIndex > 0 ? !!sequence[globalIndex - 1].partTurned : false;
+                        const afterTurned = !!step.partTurned;
+                        const beforeSvg = buildTechCardProfileSvg(geom, dims, beforeAngles, bendIdx, beforeTurned);
+                        const afterSvg = buildTechCardProfileSvg(geom, dims, afterAngles, bendIdx, afterTurned);
+                        const directionText = bendInput.direction >= 0 ? 'Вверх' : 'Вниз';
+                        const turnMarkup = step.turnBeforeStep
+                            ? '<div class="tc-turn-flag">↻ ПОВЕРНУТЬ ДЕТАЛЬ НА 180° ДО УСТАНОВКИ. ПУАНСОН НЕ РАЗВОРАЧИВАТЬ.</div>'
+                            : '<div class="tc-hold-flag">Сохранить текущую ориентацию детали. Пуансон и матрицу не разворачивать.</div>';
+                        markup += '<article class="tc-operation-card" style="margin-top:' + (chunkIndex ? '16px' : '0') + '">';
+                        markup += '<div class="tc-operation-head"><div><div class="tc-operation-num">Операция ' + (globalIndex + 1) + ' из ' + sequence.length + ' · Исходный гиб №' + (bendIdx + 1) + '</div><h2 class="tc-operation-title">Гиб №' + (bendIdx + 1) + ' · направление ' + techCardEscape(directionText) + '</h2></div><div class="tc-angle-badge">' + techCardEscape(techCardNumber(bendInput.angle, 0)) + '°</div></div>';
+                        markup += turnMarkup;
+                        markup += '<div class="tc-op-facts">';
+                        markup += '<div class="tc-op-fact"><small>Угол по профилю</small><strong>' + techCardEscape(techCardNumber(bendInput.angle, 0)) + '°</strong></div>';
+                        markup += '<div class="tc-op-fact"><small>Угол гибки в модели</small><strong>' + techCardEscape(techCardNumber(bendModel.loadBendDeg, 1)) + '° под нагрузкой</strong></div>';
+                        markup += '<div class="tc-op-fact"><small>Пружинение модели</small><strong>' + techCardEscape(techCardNumber(bendModel.springbackDeg, 1)) + '°</strong></div>';
+                        markup += '<div class="tc-op-fact"><small>Допуск BA</small><strong>' + techCardEscape(techCardNumber(bendModel.BA, 2)) + ' мм</strong></div></div>';
+                        markup += '<div class="tc-step-visuals"><figure class="tc-step-visual"><figcaption>ДО ОПЕРАЦИИ · гиб выделен оранжевым</figcaption>' + beforeSvg + '</figure>';
+                        markup += '<figure class="tc-step-visual"><figcaption>ПОСЛЕ ОПЕРАЦИИ · ожидаемый профиль</figcaption>' + afterSvg + '</figure></div>';
+                        if (step.withdrawalCollision) {
+                            markup += '<div class="tc-note"><b>Отвод:</b> расчёт отметил возможный контакт только при отводе. Это не блокирует статус автоматически; внимательно проверить пробную гибку.</div>';
+                        }
+                        markup += '<div class="tc-step-checks"><span><i class="tc-checkbox"></i>Поворот / ориентация проверены</span><span><i class="tc-checkbox"></i>Гиб выполнен</span><span><i class="tc-checkbox"></i>Угол факт: ______ °</span></div>';
+                        markup += '</article>';
+                    });
+                    markup += '<footer class="tc-page-footer"><span>Деталь: ' + techCardEscape(profileName) + '</span><span>Страница ' + pageNo + ' / ' + (1 + Math.ceil(sequence.length / 2)) + '</span></footer></section>';
+                }
+            }
+            return markup;
+        }
+
+        function showTechCard() {
+            currentTechCardMarkup = buildTechCardMarkup();
+            document.getElementById('techCardDocument').innerHTML = currentTechCardMarkup;
+            document.getElementById('techCardOverlay').hidden = false;
+            document.getElementById('techCardOverlay').classList.add('show');
+            document.getElementById('techCardOverlay').setAttribute('aria-hidden', 'false');
+            document.body.classList.remove('tech-card-printing');
+            updateTechCardBindings();
+        }
+
+        function closeTechCard() {
+            const overlay = document.getElementById('techCardOverlay');
+            overlay.classList.remove('show');
+            overlay.hidden = true;
+            overlay.setAttribute('aria-hidden', 'true');
+            document.body.classList.remove('tech-card-printing');
+        }
+
+        function getTechCardStylesForExport() {
+            let css = '';
+            Array.from(document.styleSheets).forEach(sheet => {
+                try {
+                    Array.from(sheet.cssRules).forEach(rule => {
+                        const text = rule.cssText || '';
+                        if (text.indexOf('tech-card-') >= 0 || text.indexOf('.tc-') >= 0 || text.indexOf('@page') === 0) css += text + '\n';
+                    });
+                } catch (e) {}
+            });
+            return css;
+        }
+
+        function downloadTechCardHtml() {
+            if (!currentTechCardMarkup) showTechCard();
+            const styles = getTechCardStylesForExport();
+            const title = techCardEscape(currentTechCardTitle);
+            const html = '<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>' + title + '</title><style>' + styles + '</style></head><body class="tech-card-standalone tech-card-printing"><div class="tc-export-toolbar"><button type="button" onclick="window.print()">Печать / сохранить PDF</button></div><main class="tech-card-document">' + currentTechCardMarkup + '</main></body></html>';
+            const blob = new Blob([html], { type:'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            const filename = (currentTechCardTitle || 'K-Bend-techcard').replace(/[\\/:*?"<>|]+/g, '_').replace(/\s+/g, '_').slice(0, 90);
+            link.href = url;
+            link.download = filename + '.html';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+        }
+
+        document.getElementById('btnTechCard').addEventListener('click', showTechCard);
+        document.getElementById('techCardCloseBtn').addEventListener('click', closeTechCard);
+        document.getElementById('techCardPrintBtn').addEventListener('click', () => {
+            updateTechCardBindings();
+            document.body.classList.add('tech-card-printing');
+            window.print();
+        });
+        document.getElementById('techCardDownloadBtn').addEventListener('click', downloadTechCardHtml);
+        ['techCardOrderInput', 'techCardQuantityInput', 'techCardOperatorInput'].forEach(id => {
+            document.getElementById(id).addEventListener('input', updateTechCardBindings);
+        });
+        document.getElementById('techCardOverlay').addEventListener('click', e => {
+            if (e.target === document.getElementById('techCardOverlay')) closeTechCard();
+        });
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape' && document.getElementById('techCardOverlay').classList.contains('show')) closeTechCard();
+        });
+        window.addEventListener('afterprint', () => document.body.classList.remove('tech-card-printing'));
+
         const STORAGE_KEY = 'kbend_profiles';
 
         function getProfiles() {
