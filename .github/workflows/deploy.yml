@@ -38,6 +38,10 @@ jobs:
         with:
           base: ${{ github.event.before }}
           filters: |
+            bender:
+              - 'bender-3d.html'
+              - 'three.min.js'
+              - 'OrbitControls.js'
             mes:
               - 'mes/**'
             workforce:
@@ -49,6 +53,24 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 24
+
+      - name: Validate K-Bend inline JavaScript
+        if: steps.changes.outputs.bender == 'true'
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const html = fs.readFileSync('bender-3d.html', 'utf8');
+          const scripts = /<script\\b([^>]*)>([\\s\\S]*?)<\\/script>/gi;
+          let count = 0;
+          for (const match of html.matchAll(scripts)) {
+            if (/\\bsrc\\s*=/.test(match[1])) continue;
+            new Function(match[2]);
+            count++;
+          }
+          if (count === 0) throw new Error('No inline JavaScript blocks found in bender-3d.html');
+          console.log(`K-Bend: ${count} inline JavaScript blocks passed syntax validation.`);
+          NODE
 
       - name: Setup Supabase CLI
         if: steps.changes.outputs.mes == 'true'
@@ -265,7 +287,15 @@ jobs:
             exit 1
           fi
 
+      - name: Restore Workforce build output
+        id: workforce-cache
+        uses: actions/cache@v4
+        with:
+          path: workforce/dist
+          key: workforce-dist-v1-${{ hashFiles('workforce/**') }}
+
       - name: Install Workforce dependencies
+        if: steps.workforce-cache.outputs.cache-hit != 'true'
         working-directory: ./workforce
         run: npm install
 
@@ -275,10 +305,19 @@ jobs:
         run: npm test
 
       - name: Build Workforce
+        if: steps.workforce-cache.outputs.cache-hit != 'true'
         working-directory: ./workforce
         run: npm run build
 
+      - name: Restore Scheduler build output
+        id: scheduler-cache
+        uses: actions/cache@v4
+        with:
+          path: scheduler/dist
+          key: scheduler-dist-v1-${{ hashFiles('scheduler/**') }}
+
       - name: Install Scheduler dependencies
+        if: steps.scheduler-cache.outputs.cache-hit != 'true'
         working-directory: ./scheduler
         run: npm install
 
@@ -288,10 +327,19 @@ jobs:
         run: npm test
 
       - name: Build Scheduler
+        if: steps.scheduler-cache.outputs.cache-hit != 'true'
         working-directory: ./scheduler
         run: npm run build
 
+      - name: Restore MES build output
+        id: mes-cache
+        uses: actions/cache@v4
+        with:
+          path: mes/dist
+          key: mes-dist-v1-${{ hashFiles('mes/**') }}
+
       - name: Install MES dependencies
+        if: steps.mes-cache.outputs.cache-hit != 'true'
         working-directory: ./mes
         run: npm install
 
@@ -301,6 +349,7 @@ jobs:
         run: npm test
 
       - name: Build MES
+        if: steps.mes-cache.outputs.cache-hit != 'true'
         working-directory: ./mes
         env:
           VITE_SUPABASE_URL: ${{ env.MES_SUPABASE_URL }}
