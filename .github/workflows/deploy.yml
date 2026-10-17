@@ -61,10 +61,10 @@ jobs:
           node <<'NODE'
           const fs = require('node:fs');
           const html = fs.readFileSync('bender-3d.html', 'utf8');
-          const scripts = /<script\\b([^>]*)>([\\s\\S]*?)<\\/script>/gi;
+          const scripts = /<script\b([^>]*)>([\s\S]*?)<\/script>/gi;
           let count = 0;
           for (const match of html.matchAll(scripts)) {
-            if (/\\bsrc\\s*=/.test(match[1])) continue;
+            if (/\bsrc\s*=/.test(match[1])) continue;
             new Function(match[2]);
             count++;
           }
