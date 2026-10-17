@@ -266,6 +266,7 @@
             animation: fadeIn 0.25s ease-out;
         }
         .collision-badge.show { display: flex; }
+        .collision-badge.withdrawal { background: rgba(180, 83, 9, 0.92); border-color: rgba(251, 191, 36, 0.8); box-shadow: 0 4px 15px rgba(180, 83, 9, 0.35); }
         .collision-badge svg { flex-shrink: 0; }
 
         .punch-hint {
@@ -855,11 +856,11 @@
                     <span>Пуансон</span>
                 </button>
 
-                <button class="view-btn-3d punch-flip-btn" id="viewPunchFlipBtn" title="Развернуть пуансон на 180° (F)" style="display:none;">
+                <button class="view-btn-3d punch-flip-btn" id="viewPunchFlipBtn" title="Повернуть деталь на 180° вокруг вертикальной оси (F)" style="display:none;">
                     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
                     </svg>
-                    <span>Разворот</span>
+                    <span>Поворот детали</span>
                 </button>
 
                 <button class="view-btn-3d" id="viewLabelsBtn" title="Показать подсказки на 3D">
@@ -913,7 +914,7 @@
 
         let punchMesh = null;
         let punchEnabled = false;
-        let punchFlipped = false;
+        let partTurned = false;
         let currentPunchLength = 0;
         let currentPunchKey = '';
         let hasCollision = false;
@@ -933,6 +934,7 @@
         let simSequence = [];    // рассчитанная последовательность шагов
         let simAnimFrame = null;
         let simSolverResult = null;
+        window.simPhaseType = 'finished';
 
         // Материал для подсветки коллизий
         const collisionMaterial = new THREE.MeshStandardMaterial({
@@ -1724,7 +1726,7 @@
             return dieMesh;
         }
 
-        function updatePunchAndDie(activeBendOverride, punchYOffset = 0, forcePunchFlipped = null) {
+        function updatePunchAndDie(activeBendOverride, punchYOffset = 0, forcePartTurned = null) {
             const punchHint = document.getElementById('punchHint');
             const punchFlipBtn = document.getElementById('viewPunchFlipBtn');
 
@@ -1744,7 +1746,7 @@
 
             if (punchFlipBtn) {
                 punchFlipBtn.style.display = 'flex';
-                punchFlipBtn.classList.toggle('active', (forcePunchFlipped !== null ? forcePunchFlipped : punchFlipped));
+                punchFlipBtn.classList.toggle('active', (forcePartTurned !== null ? forcePartTurned : partTurned));
             }
 
             let bIdx = (activeBendOverride !== undefined) ? activeBendOverride : selectedBendIdx;
@@ -1787,11 +1789,11 @@
             scene.add(pMesh);
             scene.add(dMesh);
 
-            const isFlipped = (forcePunchFlipped !== null) ? forcePunchFlipped : punchFlipped;
             const dPen = window.currentDPen || 0.0;
 
+            // Оснастка всегда остаётся в одной ориентации. Поворачивается заготовка.
             pMesh.position.set(0, punchYOffset - dPen, 0);
-            pMesh.rotation.set(0, isFlipped ? Math.PI : 0, 0);
+            pMesh.rotation.set(0, 0, 0);
 
             dMesh.position.set(0, -S, 0);
             dMesh.rotation.set(0, 0, 0);
@@ -1833,6 +1835,18 @@
 
         function checkPunchCollision() {
             hasCollision = false;
+            const isWithdrawalPhase = simCurrentStep >= 0 && window.simPhaseType === 'withdraw';
+            collisionMaterial.color.setHex(isWithdrawalPhase ? 0xf59e0b : 0xff2222);
+            collisionMaterial.emissive.setHex(isWithdrawalPhase ? 0xb45309 : 0xff0000);
+
+            // Сначала синхронизируем статус с решателем; текущая коллизия
+            // на рабочем положении уточнит его ниже.
+            const statusDot = document.getElementById('simDot');
+            const statusTextEl = document.getElementById('simStatusText');
+            if (statusDot && statusTextEl && simSolverResult) {
+                statusDot.className = 'status-dot ' + (simSolverResult.isFeasible ? 'status-ok' : 'status-error');
+                statusTextEl.textContent = simSolverResult.message;
+            }
             const badge = document.getElementById('collisionBadge');
             const punchBtn = document.getElementById('viewPunchBtn');
 
@@ -1846,7 +1860,7 @@
 
             const showTools = punchEnabled || (simCurrentStep >= 0);
             if (!showTools || !punchMesh || !punchMesh.parent || !sheetGroup) {
-                if (badge) badge.classList.remove('show');
+                if (badge) badge.classList.remove('show', 'withdrawal');
                 if (punchBtn) punchBtn.classList.remove('collision');
                 return false;
             }
@@ -2095,6 +2109,7 @@
 
             if (collisions.length > 0) {
                 hasCollision = true;
+                const withdrawalAdvisory = isWithdrawalPhase && (hasPunchColl || hasRamColl) && !hasDieColl && !hasBedColl && !hasSupportError;
                 collisions.forEach(mesh => {
                     if (!mesh.userData._origMaterial) {
                         mesh.userData._origMaterial = mesh.material;
@@ -2107,7 +2122,8 @@
                     if (text) {
                         const listStr = Array.from(collidingLabels).join(', ');
                         let toolLabel = 'Коллизия инструмента';
-                        if (hasSupportError) toolLabel = 'Край материала висит в воздухе (нет опоры на матрицу V' + V + ')';
+                        if (withdrawalAdvisory) toolLabel = 'Контакт при отводе — не блокирует выполнимость';
+                        else if (hasSupportError) toolLabel = 'Край материала висит в воздухе (нет опоры на матрицу V' + V + ')';
                         else if (hasRamColl) toolLabel = 'Коллизия: Верхняя балка пресса';
                         else if (hasBedColl) toolLabel = 'Коллизия: Стол станка';
                         else if (hasPunchColl && hasDieColl) toolLabel = 'Коллизия: Пуансон и матрица';
@@ -2115,11 +2131,16 @@
                         else if (hasPunchColl) toolLabel = 'Коллизия: Пуансон';
                         text.textContent = `${toolLabel}: ${listStr}`;
                     }
+                    badge.classList.toggle('withdrawal', withdrawalAdvisory);
                     badge.classList.add('show');
                 }
-                if (punchBtn) punchBtn.classList.add('collision');
+                if (punchBtn) punchBtn.classList.toggle('collision', !withdrawalAdvisory);
+                if (simCurrentStep >= 0 && !withdrawalAdvisory && statusDot && statusTextEl) {
+                    statusDot.className = 'status-dot status-error';
+                    statusTextEl.textContent = `Коллизия в текущем положении: ${document.getElementById('collisionText')?.textContent || 'проверьте траекторию'}`;
+                }
             } else {
-                if (badge) badge.classList.remove('show');
+                if (badge) badge.classList.remove('show', 'withdrawal');
                 if (punchBtn) punchBtn.classList.remove('collision');
             }
             return hasCollision;
@@ -2297,7 +2318,7 @@
             renderLoopRunning = false;
         }
 
-        function build3DSheet(geom, dims, customAnglesMap = null, alignBendIdx = -1) {
+        function build3DSheet(geom, dims, customAnglesMap = null, alignBendIdx = -1, turnPart = false) {
             if (punchMesh && punchMesh.parent) punchMesh.parent.remove(punchMesh);
             if (dieMesh && dieMesh.parent) dieMesh.parent.remove(dieMesh);
             disposeGroup(sheetGroup);
@@ -2493,6 +2514,17 @@
                     sheetGroup.position.y += (-dPen - anchorWorldPos.y);
                     sheetGroup.position.z -= anchorWorldPos.z;
                     sheetGroup.updateMatrixWorld(true);
+
+                    if (turnPart) {
+                        // Поворот заготовки на 180° вокруг вертикальной оси Y,
+                        // проходящей через активный гиб. Пуансон и матрица не вращаются.
+                        const turnQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
+                        const pivot = new THREE.Vector3(0, -dPen, 0);
+                        const groupOffset = sheetGroup.position.clone().sub(pivot).applyQuaternion(turnQ);
+                        sheetGroup.position.copy(pivot).add(groupOffset);
+                        sheetGroup.quaternion.premultiply(turnQ);
+                        sheetGroup.updateMatrixWorld(true);
+                    }
                 }
             } else {
                 // Единая ориентация готовой детали в плоскости XY (опорная полка горизонтальна, длина гиба L по оси Z)
@@ -2550,7 +2582,7 @@
             svg.style.display = 'block';
             stopRenderLoop();
 
-            document.getElementById('collisionBadge').classList.remove('show');
+            document.getElementById('collisionBadge').classList.remove('show', 'withdrawal');
             document.getElementById('punchHint').classList.remove('show');
 
             svg.innerHTML = '';
@@ -2668,7 +2700,7 @@
                 simController.renderStep();
             } else {
                 const alignBend = punchEnabled ? ((selectedBendIdx >= 0 && selectedBendIdx < dims.bends.length) ? selectedBendIdx : 0) : -1;
-                build3DSheet(geom, dims, null, alignBend);
+                build3DSheet(geom, dims, null, alignBend, partTurned);
                 updatePunch();
                 checkPunchCollision();
             }
@@ -2677,6 +2709,29 @@
         // ========================================================
         // МОДУЛЬ ТЕХНОЛОГИЧЕСКОГО РАСЧЕТА И СИМУЛЯЦИИ ГИБКИ (DURMA)
         // ========================================================
+
+        function getSegmentNetLengthAtAngles(geom, dims, formedAngles, segIdx) {
+            const seg = dims.segments[segIdx];
+            let leftOSSB = 0, rightOSSB = 0, prevDeltaL = 0, nextDeltaL = 0;
+            if (segIdx < geom.bends.length) leftOSSB = geom.bends[segIdx].OSSB;
+            if (segIdx > 0 && segIdx - 1 < geom.bends.length) rightOSSB = geom.bends[segIdx - 1].OSSB;
+
+            if (segIdx > 0 && segIdx - 1 < geom.bends.length) {
+                const bend = geom.bends[segIdx - 1];
+                const target = bend.bendAngleDeg;
+                const current = formedAngles[segIdx - 1] || 0;
+                const ratio = target > 0 ? Math.min(1, Math.max(0, current / target)) : 0;
+                prevDeltaL = 0.5 * (1 - ratio) * (bend.BA || (bend.OSSB * 2) || 0.1);
+            }
+            if (segIdx < geom.bends.length) {
+                const bend = geom.bends[segIdx];
+                const target = bend.bendAngleDeg;
+                const current = formedAngles[segIdx] || 0;
+                const ratio = target > 0 ? Math.min(1, Math.max(0, current / target)) : 0;
+                nextDeltaL = 0.5 * (1 - ratio) * (bend.BA || (bend.OSSB * 2) || 0.1);
+            }
+            return Math.max(0, seg.length - leftOSSB - rightOSSB + prevDeltaL + nextDeltaL);
+        }
 
         function getKinematicProfile2D(geom, dims, formedAngles, activeBendIdx, progress) {
             const S = geom.S;
@@ -2743,7 +2798,7 @@
                     y: -Math.cos(halfAngle)
                 };
 
-                const arcSteps = Math.max(4, Math.ceil(curBendDeg / 15));
+                const arcSteps = Math.max(8, Math.ceil(curBendDeg / 5));
                 for (let k = 0; k <= arcSteps; k++) {
                     const phi = -Math.PI / 2 - halfAngle + (k / arcSteps) * curBendRad;
                     const px = Rc * Math.cos(phi);
@@ -2761,14 +2816,14 @@
             for (let k = B; k >= 0; k--) {
                 let leftOSSB = (k < numBends) ? bendGeom[k].OSSB : 0;
                 let rightOSSB = (k > 0) ? bendGeom[k - 1].OSSB : 0;
-                let netLen = Math.max(0, segs[k].length - leftOSSB - rightOSSB);
+                let netLen = getSegmentNetLengthAtAngles(geom, dims, formedAngles, k);
                 const isAdj = (k === B);
 
                 const pStart = { ...curP };
                 const pEnd = { x: curP.x + curTan.x * netLen, y: curP.y + curTan.y * netLen };
                 outlineSegments.push({ p1: pStart, p2: pEnd, isWorkZone: isAdj, label: `Полка ${k + 1}` });
 
-                const steps = Math.max(2, Math.ceil(netLen / 5));
+                const steps = Math.max(2, Math.ceil(netLen / 3));
                 for (let s = 0; s <= steps; s++) {
                     const t = s / steps;
                     const midX = pStart.x + curTan.x * netLen * t;
@@ -2828,14 +2883,14 @@
             for (let k = B + 1; k < segs.length; k++) {
                 let leftOSSB = (k < numBends) ? bendGeom[k].OSSB : 0;
                 let rightOSSB = (k > 0) ? bendGeom[k - 1].OSSB : 0;
-                let netLen = Math.max(0, segs[k].length - leftOSSB - rightOSSB);
+                let netLen = getSegmentNetLengthAtAngles(geom, dims, formedAngles, k);
                 const isAdj = (k === B + 1);
 
                 const pStart = { ...curP };
                 const pEnd = { x: curP.x + curTan.x * netLen, y: curP.y + curTan.y * netLen };
                 outlineSegments.push({ p1: pStart, p2: pEnd, isWorkZone: isAdj, label: `Полка ${k + 1}` });
 
-                const steps = Math.max(2, Math.ceil(netLen / 5));
+                const steps = Math.max(2, Math.ceil(netLen / 3));
                 for (let s = 0; s <= steps; s++) {
                     const t = s / steps;
                     const midX = pStart.x + curTan.x * netLen * t;
@@ -2891,7 +2946,7 @@
             return { testPoints, outlineSegments, contactSafeDist };
         }
 
-        function checkKinematicCollision(geom, dims, formedAngles, activeBendIdx, progress, punchFlipped, punchTypeOverride = null) {
+        function checkKinematicCollision(geom, dims, formedAngles, activeBendIdx, progress, partTurned, punchTypeOverride = null, punchYOffset = 0) {
             const { testPoints, outlineSegments, contactSafeDist } = getKinematicProfile2D(geom, dims, formedAngles, activeBendIdx, progress);
             const S = geom.S;
             const V = geom.V;
@@ -2935,8 +2990,8 @@
             }
 
             for (const pt of testPoints) {
-                const px = punchFlipped ? -pt.x : pt.x;
-                const py = pt.y;
+                const px = partTurned ? -pt.x : pt.x;
+                const py = pt.y - punchYOffset;
 
                 if (py >= 144 && Math.abs(px) <= 35) {
                     return { collides: true, tool: 'ram', label: pt.label };
@@ -2948,7 +3003,7 @@
                     }
                 }
 
-                const dx = pt.x;
+                const dx = partTurned ? -pt.x : pt.x;
                 const dy = pt.y + S;
                 if (dy <= dieBaseY && Math.abs(dx) <= 35) {
                     return { collides: true, tool: 'bed', label: pt.label };
@@ -2965,15 +3020,15 @@
 
             for (const seg of outlineSegments) {
                 if (seg.isWorkZone) continue;
-                const p1 = { x: punchFlipped ? -seg.p1.x : seg.p1.x, y: seg.p1.y };
-                const p2 = { x: punchFlipped ? -seg.p2.x : seg.p2.x, y: seg.p2.y };
+                const p1 = { x: partTurned ? -seg.p1.x : seg.p1.x, y: seg.p1.y - punchYOffset };
+                const p2 = { x: partTurned ? -seg.p2.x : seg.p2.x, y: seg.p2.y - punchYOffset };
 
                 if ((p1.y >= 144 || p2.y >= 144) && checkSegmentBoxIntersect(p1, p2, -35, 35, 144, 400)) {
                     return { collides: true, tool: 'ram', label: seg.label };
                 }
 
-                const d1 = { x: seg.p1.x, y: seg.p1.y + S };
-                const d2 = { x: seg.p2.x, y: seg.p2.y + S };
+                const d1 = { x: partTurned ? -seg.p1.x : seg.p1.x, y: seg.p1.y + S };
+                const d2 = { x: partTurned ? -seg.p2.x : seg.p2.x, y: seg.p2.y + S };
                 if ((d1.y <= dieBaseY || d2.y <= dieBaseY) && checkSegmentBoxIntersect(d1, d2, -35, 35, -400, dieBaseY)) {
                     return { collides: true, tool: 'bed', label: seg.label };
                 }
@@ -3047,19 +3102,16 @@
 
             function testPermutation(perm, mode) {
                 const formedAngles = new Array(numBends).fill(0);
-                let seq = [];
+                const seq = [];
                 let failReason = '';
 
                 for (let step = 0; step < perm.length; step++) {
                     const bIdx = perm[step];
-                    let stepFeasible = false;
-                    let chosenFlip = false;
-                    let chosenPunchType = '';
-
                     const bAngle = dims.bends[bIdx].angle;
+                    const targetBendDeg = geom.bends[bIdx].bendAngleDeg;
                     let pTypes = [];
                     if (mode === 'gooseneck') {
-                        if (bAngle < 85) return { feasible: false, score: step, seq: seq, failReason: `Гиб ${bIdx + 1}: угол ${bAngle}° требует острый пуансон` };
+                        if (bAngle < 85) return { feasible: false, score: step, seq, failReason: `Гиб ${bIdx + 1}: угол ${bAngle}° требует острый пуансон` };
                         pTypes = ['gooseneck'];
                     } else if (mode === 'acute') {
                         pTypes = ['acute'];
@@ -3068,47 +3120,92 @@
                         pTypes = (defP === 'gooseneck') ? ['gooseneck', 'acute'] : ['acute'];
                     }
 
+                    let bestCandidate = null;
+                    let cleanCandidateFound = false;
+                    const rememberFailure = (res) => {
+                        if (res.tool === 'die_support') {
+                            failReason = `Гиб ${bIdx + 1}: ${res.label}`;
+                        } else {
+                            const tName = (res.tool === 'ram') ? 'с верхней балкой' : (res.tool === 'bed' ? 'со столом пресса' : (res.tool === 'die' ? 'с матрицей' : 'с пуансоном'));
+                            failReason = `Гиб ${bIdx + 1}: коллизия ${tName} (${res.label})`;
+                        }
+                    };
+
+                    // Подвод проверяем отдельно: пуансон перемещается сверху к положению контакта.
                     for (const pType of pTypes) {
-                        for (const flip of [false, true]) {
-                            let flipOk = true;
-                            for (const prog of [0.0, 0.5, 1.0]) {
-                                const res = checkKinematicCollision(geom, dims, formedAngles, bIdx, prog, flip, pType);
+                        for (const turn of [false, true]) {
+                            let stepOk = true;
+                            const approachOffsets = [35, 26.25, 17.5, 8.75, 0];
+                            for (const offset of approachOffsets) {
+                                const res = checkKinematicCollision(geom, dims, formedAngles, bIdx, 0, turn, pType, offset);
                                 if (res.collides) {
-                                    flipOk = false;
-                                    if (res.tool === 'die_support') {
-                                        failReason = `Гиб ${bIdx + 1}: ${res.label}`;
-                                    } else {
-                                        const tName = (res.tool === 'ram') ? 'с верхней балкой' : (res.tool === 'bed' ? 'со столом пресса' : (res.tool === 'die' ? 'с матрицей' : 'с пуансоном'));
-                                        failReason = `Гиб ${bIdx + 1}: коллизия ${tName} (${res.label})`;
-                                    }
+                                    stepOk = false;
+                                    rememberFailure(res);
                                     break;
                                 }
                             }
-                            if (flipOk) {
-                                stepFeasible = true;
-                                chosenFlip = flip;
-                                chosenPunchType = pType;
+
+                            // Проверяем весь рабочий ход с шагом не более 2°,
+                            // а не только начало, середину и конец гиба.
+                            if (stepOk) {
+                                const sampleCount = Math.max(12, Math.ceil(targetBendDeg / 2));
+                                for (let sample = 0; sample <= sampleCount; sample++) {
+                                    const progress = sample / sampleCount;
+                                    const res = checkKinematicCollision(geom, dims, formedAngles, bIdx, progress, turn, pType, 0);
+                                    if (res.collides) {
+                                        stepOk = false;
+                                        rememberFailure(res);
+                                        break;
+                                    }
+                                }
+                            }
+                            if (!stepOk) continue;
+
+                            // Контакт только во время отвода — предупреждение, не запрет
+                            // последовательности. Среди допустимых вариантов предпочитаем
+                            // ориентацию детали без контакта при отводе.
+                            let withdrawalCollision = false;
+                            for (let sample = 1; sample <= 7; sample++) {
+                                const offset = 35 * sample / 7;
+                                const res = checkKinematicCollision(geom, dims, formedAngles, bIdx, 1, turn, pType, offset);
+                                if (res.collides && (res.tool === 'punch' || res.tool === 'ram')) {
+                                    withdrawalCollision = true;
+                                } else if (res.collides) {
+                                    stepOk = false;
+                                    rememberFailure(res);
+                                    break;
+                                }
+                            }
+                            if (!stepOk) continue;
+
+                            const candidate = { partTurned: turn, punchType: pType, withdrawalCollision };
+                            if (!bestCandidate || (bestCandidate.withdrawalCollision && !withdrawalCollision)) {
+                                bestCandidate = candidate;
+                            }
+                            if (!withdrawalCollision) {
+                                cleanCandidateFound = true;
                                 break;
                             }
                         }
-                        if (stepFeasible) break;
+                        if (cleanCandidateFound) break;
                     }
 
-                    if (!stepFeasible) {
-                        return { feasible: false, score: step, seq: seq, failReason: failReason };
+                    if (!bestCandidate) {
+                        return { feasible: false, score: step, seq, failReason: failReason || `Гиб ${bIdx + 1}: не найдено безопасное положение детали` };
                     }
 
                     seq.push({
                         bendIdx: bIdx,
-                        punchFlipped: chosenFlip,
-                        punchType: chosenPunchType,
-                        isAcute: (chosenPunchType === 'acute'),
-                        angleDeg: geom.bends[bIdx].bendAngleDeg
+                        partTurned: bestCandidate.partTurned,
+                        punchType: bestCandidate.punchType,
+                        withdrawalCollision: bestCandidate.withdrawalCollision,
+                        isAcute: (bestCandidate.punchType === 'acute'),
+                        angleDeg: targetBendDeg
                     });
-                    formedAngles[bIdx] = geom.bends[bIdx].bendAngleDeg;
+                    formedAngles[bIdx] = targetBendDeg;
                 }
 
-                return { feasible: true, score: perm.length, seq: seq, failReason: '' };
+                return { feasible: true, score: perm.length, seq, failReason: '' };
             }
 
             let bestSeq = null;
@@ -3121,7 +3218,7 @@
             } else if (manualPunch === 'acute') {
                 modesToTry = ['acute'];
             } else {
-                modesToTry = ['gooseneck', 'acute', 'auto_mixed'];
+                modesToTry = ['gooseneck', 'acute'];
             }
 
             for (const mode of modesToTry) {
@@ -3129,16 +3226,20 @@
                     const res = testPermutation(perm, mode);
                     if (res.feasible) {
                         const seqStr = res.seq.map(s => {
-                            let str = (s.bendIdx + 1) + (s.punchFlipped ? '↷' : '');
+                            let str = (s.bendIdx + 1) + (s.partTurned ? ' ↻дет.' : '');
                             if (s.punchType === 'acute' && dims.bends[s.bendIdx].angle >= 85) {
                                 str += ' [Прямой]';
                             }
                             return str;
                         }).join(' → ');
+                        const retractBends = res.seq.filter(s => s.withdrawalCollision).map(s => s.bendIdx + 1);
+                        const retractNote = retractBends.length
+                            ? ` · Контакт при отводе на гибах ${retractBends.join(', ')} (не блокирует)`
+                            : '';
                         return {
                             isFeasible: true,
                             sequence: res.seq,
-                            message: `Выполнима: ${seqStr}`
+                            message: `Выполнима: ${seqStr}${retractNote}`
                         };
                     } else {
                         if (res.score > bestScore) {
@@ -3399,8 +3500,9 @@
                 // Режим просмотра готовой детали
                 if (this.currentStepIdx === -1) {
                     window.simBendFrac = 1.0;
+                    window.simPhaseType = 'finished';
                     const alignBend = punchEnabled ? ((selectedBendIdx >= 0 && selectedBendIdx < dims.bends.length) ? selectedBendIdx : 0) : -1;
-                    build3DSheet(geom, dims, null, alignBend);
+                    build3DSheet(geom, dims, null, alignBend, partTurned);
                     updatePunch();
                     checkPunchCollision();
                     return;
@@ -3443,6 +3545,8 @@
 
                 window.simBendFrac = bendFrac;
                 this.currentPhaseText = phaseText;
+                window.simPhaseType = p < 0.25 ? 'approach' : (p < 0.75 ? 'bend' : 'withdraw');
+                partTurned = !!currentStepInfo.partTurned;
 
                 const customAngles = {};
                 for (let s = 0; s < this.currentStepIdx; s++) {
@@ -3456,8 +3560,8 @@
                     }
                 }
 
-                build3DSheet(geom, dims, customAngles, curBIdx);
-                updatePunchAndDie(curBIdx, punchOffset, currentStepInfo.punchFlipped);
+                build3DSheet(geom, dims, customAngles, curBIdx, currentStepInfo.partTurned);
+                updatePunchAndDie(curBIdx, punchOffset, currentStepInfo.partTurned);
                 checkPunchCollision();
             },
 
@@ -3482,7 +3586,7 @@
                         const cur = seq[this.currentStepIdx];
                         if (cur) {
                             const bIdx = cur.bendIdx;
-                            const flipIcon = cur.punchFlipped ? ' ↷' : '';
+                            const flipIcon = cur.partTurned ? ' ↻дет.' : '';
                             const punchLabel = (cur.punchType === 'acute' && dims && dims.bends[bIdx] && dims.bends[bIdx].angle >= 85) ? ' [Прямой]' : '';
                             stepText.textContent = `Шаг ${this.currentStepIdx + 1}/${seq.length} (Гиб ${bIdx + 1}${flipIcon}${punchLabel})`;
                         }
@@ -4003,14 +4107,12 @@
 
         // Разворот пуансона на 180°
         document.getElementById('viewPunchFlipBtn').addEventListener('click', () => {
-            punchFlipped = !punchFlipped;
-            const flipBtn = document.getElementById('viewPunchFlipBtn');
-            flipBtn.classList.toggle('active', punchFlipped);
-            
-            if (currentView === 'bent') {
-                updatePunch();
-                checkPunchCollision();
-            }
+            // В пошаговой симуляции ориентацию задаёт решатель.
+            if (simCurrentStep >= 0) return;
+            partTurned = !partTurned;
+            const turnBtn = document.getElementById('viewPunchFlipBtn');
+            turnBtn.classList.toggle('active', partTurned);
+            if (currentView === 'bent') redraw();
         });
 
         document.getElementById('viewLabelsBtn').addEventListener('click', () => {
