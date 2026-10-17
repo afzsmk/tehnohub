@@ -298,7 +298,7 @@
             display: inline-block; flex-shrink: 0;
         }
         .status-dot.status-ok { background: #10b981; box-shadow: 0 0 8px #10b981; }
-        .status-dot.status-fail { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
+        .status-dot.status-fail, .status-dot.status-error { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
         .status-dot.status-calc { background: #f59e0b; box-shadow: 0 0 8px #f59e0b; }
         .sim-divider { width: 1px; height: 18px; background: rgba(255, 255, 255, 0.12); }
         .sim-controls { display: flex; align-items: center; gap: 4px; }
@@ -760,9 +760,9 @@
                         <span id="simPlayLabel">Симуляция</span>
                     </button>
                     <button class="sim-btn sim-step-btn" id="simPrevBtn" title="Предыдущий шаг">◀</button>
-                    <span class="sim-step-text" id="simStepText">Заготовка</span>
+                    <span class="sim-step-text" id="simStepText">Готовая</span>
                     <button class="sim-btn sim-step-btn" id="simNextBtn" title="Следующий шаг">▶</button>
-                    <button class="sim-btn" id="simDoneBtn" title="Показать готовую согнутую деталь">Готовая</button>
+                    <button class="sim-btn active" id="simDoneBtn" title="Показать готовую согнутую деталь">Готовая</button>
                     <button class="sim-btn" id="simResetBtn" title="Сбросить к плоской заготовке (развёртке)">
                         <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
                     </button>
@@ -770,8 +770,8 @@
                 <div class="sim-divider"></div>
                 <!-- Ползунок хода и индикатор фазы -->
                 <div class="sim-scrubber-wrap">
-                    <input type="range" id="simScrubber" min="0" max="100" value="0" title="Шкала хода гибки (скраббер)">
-                    <span id="simPhaseText" class="sim-phase-text">Лист в матрице</span>
+                    <input type="range" id="simScrubber" min="0" max="100" value="100" title="Шкала хода гибки (скраббер)">
+                    <span id="simPhaseText" class="sim-phase-text">Готовая деталь</span>
                 </div>
                 <div class="sim-divider"></div>
                 <!-- Выбор скорости воспроизведения -->
@@ -824,7 +824,7 @@
             </div>
 
             <div class="view-controls">
-                <button class="view-btn-3d" id="viewReset" title="Изо (Изометрия 45°)">
+                <button class="view-btn-3d active" id="viewReset" title="Изометрия (45°)">
                     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
                         <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
@@ -832,7 +832,14 @@
                     </svg>
                     <span>Изо</span>
                 </button>
-                <button class="view-btn-3d active" id="viewTop" title="Вид сверху (по умолчанию)">
+                <button class="view-btn-3d" id="viewSide" title="Вид с торца (профиль сечения)">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="6 4 6 18 18 18"></polyline>
+                        <circle cx="6" cy="18" r="2.5"></circle>
+                    </svg>
+                    <span>Торец</span>
+                </button>
+                <button class="view-btn-3d" id="viewTop" title="Вид сверху">
                     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
                         <line x1="4" y1="12" x2="20" y2="12"></line>
@@ -908,12 +915,15 @@
         let punchEnabled = false;
         let punchFlipped = false;
         let currentPunchLength = 0;
-        let currentPunchType = '';
+        let currentPunchKey = '';
         let hasCollision = false;
 
         let dieMesh = null;
         let currentDieLength = 0;
         let currentDieKey = '';
+
+        let gridHelper = null;
+        let floorMesh = null;
 
         // Переменные симуляции
         let simRunning = false;
@@ -976,7 +986,6 @@
         }
 
         function getMinFlange(V, S, externalAngleDeg, R = null, K = 0.42) {
-            // Опора листа: минимум 3 мм после раскрытия V-паза матрицы (V/2 + 3 мм от оси гиба)
             const r = (R !== null) ? R : S;
             const bendDeg = 180 - Math.min(175, Math.max(5, externalAngleDeg));
             const rad = bendDeg * Math.PI / 180;
@@ -1213,7 +1222,6 @@
                 btn.addEventListener('click', e => {
                     const idx = parseInt(e.currentTarget.dataset.delBend);
                     if (!isNaN(idx) && bends.length > 0) {
-                        if (typeof simController !== 'undefined') simController.reset();
                         bends.splice(idx, 1);
                         const segIdx = idx + 1;
                         if (segIdx < segments.length && idx < segments.length - 1) {
@@ -1223,6 +1231,7 @@
                             segments.splice(segIdx, 1);
                         }
                         if (selectedBendIdx >= bends.length) selectedBendIdx = bends.length - 1;
+                        if (typeof simController !== 'undefined') simController.showFinishedPart(true);
                         updateBendEditor();
                         redraw();
                     }
@@ -1231,12 +1240,12 @@
 
             const addBend = document.getElementById('addBendBtn');
             if (addBend) addBend.addEventListener('click', () => {
-                if (typeof simController !== 'undefined') simController.reset();
                 const lastDir = bends.length > 0 ? bends[bends.length - 1].direction : 1;
                 bends.push({ angle: 90, direction: -lastDir });
                 if (segments.length <= bends.length) {
                     segments.splice(segments.length - 1, 0, { length: 80 });
                 }
+                if (typeof simController !== 'undefined') simController.showFinishedPart(true);
                 updateBendEditor();
                 redraw();
             });
@@ -1252,7 +1261,6 @@
         }
 
         function applyPreset(name) {
-            if (typeof simController !== 'undefined') simController.reset();
             document.querySelectorAll('#profilePresets .preset-btn').forEach(b => b.classList.remove('active-preset'));
             const btn = document.querySelector(`[data-preset="${name}"]`);
             if (btn) btn.classList.add('active-preset');
@@ -1279,6 +1287,7 @@
             selectedBendIdx = -1;
             window.segments = segments;
             window.bends = bends;
+            if (typeof simController !== 'undefined') simController.showFinishedPart(true);
             updateBendEditor();
             redraw();
         }
@@ -1346,7 +1355,6 @@
         function disposeGroup(group) {
             while (group.children.length > 0) {
                 const child = group.children[0];
-                // Защищаем пуансон, матрицу и балки от удаления и уничтожения геометрии
                 if (child === punchMesh || child === dieMesh) {
                     group.remove(child);
                     continue;
@@ -1367,12 +1375,12 @@
                 group.remove(child);
             }
         }
+
         // ==========================================
         //  ОСНАСТКА DURMA AD-R 40175
         // ==========================================
 
-        // 1. Пуансон "Гусиная шейка" 86° (для углов >= 85°)
-        const PUNCH_GOOSENECK_Y_OFFSET = 1.18402631 - 0.8; // 0.38402631
+        const PUNCH_GOOSENECK_Y_OFFSET = 1.18402631 - 0.8;
         let punchGooseneckPoly = null;
         let punchAcutePoly = null;
 
@@ -1414,11 +1422,10 @@
             return shape;
         }
 
-        // 2. Остроносый пуансон 26° (для острых углов < 85°) по заводскому чертежу Durma
         function createAcutePunchShape() {
             const shape = new THREE.Shape();
             const r = 0.8;
-            const halfAngle = (13 * Math.PI) / 180; // 13° в каждую сторону (26° суммарно)
+            const halfAngle = (13 * Math.PI) / 180;
             const tanHalf = Math.tan(halfAngle);
             const noseCy = r;
             
@@ -1426,7 +1433,7 @@
             const yTangent = noseCy - r * Math.cos(halfAngle);
             
             const xRight = 7.0;
-            const yRight = yTangent + (xRight - xTangent) / tanHalf; // ~29.6 мм
+            const yRight = yTangent + (xRight - xTangent) / tanHalf;
             
             shape.moveTo(xTangent, yTangent);
             shape.lineTo(xRight, yRight);
@@ -1469,7 +1476,6 @@
             }
         }
 
-        // 3. Т-образная высокая матрица V10 (чертеж 1)
         function createDieV10Shape() {
             const shape = new THREE.Shape();
             const V = 10.0;
@@ -1499,7 +1505,6 @@
             return shape;
         }
 
-        // 4. 4-ручьевые матрицы 60x60 мм (чертежи 2 и 3)
         function create4WayDieShape(dieAngleDeg, vTop, vBottom, vLeft, vRight) {
             const shape = new THREE.Shape();
             const halfAngle = (dieAngleDeg / 2 * Math.PI) / 180;
@@ -1569,7 +1574,6 @@
             return diePolyPointsMap[key];
         }
 
-        // ГЕНЕРАТОР ГЕОМЕТРИИ ПУАНСОНА
         function getPunchMesh(length, punchType) {
             const key = `${punchType}_${length}`;
             if (punchMesh && currentPunchKey !== key) {
@@ -1597,7 +1601,6 @@
                     punchMesh.geometry = geometry;
                 }
 
-                // Верхняя балка / Траверса пресса над креплением пуансона
                 const oldRam = punchMesh.getObjectByName('upperRamMesh');
                 if (oldRam) {
                     if (oldRam.geometry) oldRam.geometry.dispose();
@@ -1645,7 +1648,6 @@
             return punchMesh;
         }
 
-        // ГЕНЕРАТОР ГЕОМЕТРИИ МАТРИЦЫ
         function getDieMesh(length, V, isAcute) {
             const key = `die_${isAcute ? 60 : 85}_V${V}_${length}`;
             if (dieMesh && currentDieKey !== key) {
@@ -1673,7 +1675,6 @@
                     dieMesh.geometry = geometry;
                 }
 
-                // Нижний стол пресса под матрицей
                 const oldBed = dieMesh.getObjectByName('lowerBedMesh');
                 if (oldBed) {
                     if (oldBed.geometry) oldBed.geometry.dispose();
@@ -1726,9 +1727,12 @@
         function updatePunchAndDie(activeBendOverride, punchYOffset = 0, forcePunchFlipped = null) {
             const punchHint = document.getElementById('punchHint');
             const punchFlipBtn = document.getElementById('viewPunchFlipBtn');
-            const punchBtn = document.getElementById('viewPunchBtn');
 
             const showTools = punchEnabled || (simCurrentStep >= 0);
+
+            // Автоматически скрываем сетку и пол при отображении инструмента/симуляции, чтобы они не перекрывали матрицу и деталь
+            if (gridHelper) gridHelper.visible = !showTools;
+            if (floorMesh) floorMesh.visible = !showTools;
 
             if (!showTools) {
                 if (punchMesh && punchMesh.parent) punchMesh.parent.remove(punchMesh);
@@ -1786,11 +1790,9 @@
             const isFlipped = (forcePunchFlipped !== null) ? forcePunchFlipped : punchFlipped;
             const dPen = window.currentDPen || 0.0;
 
-            // Пуансон (строго вертикален, опускается при гибке в V-паз)
             pMesh.position.set(0, punchYOffset - dPen, 0);
             pMesh.rotation.set(0, isFlipped ? Math.PI : 0, 0);
 
-            // Матрица (строго зафиксирована на столе станка)
             dMesh.position.set(0, -S, 0);
             dMesh.rotation.set(0, 0, 0);
         }
@@ -1829,13 +1831,11 @@
             return false;
         }
 
-        // === ВЫСОКОТОЧНАЯ ДЕТЕКЦИЯ КОЛЛИЗИЙ ПУАНСОНА, МАТРИЦЫ И РАМЫ С ДЕТАЛЬЮ ===
         function checkPunchCollision() {
             hasCollision = false;
             const badge = document.getElementById('collisionBadge');
             const punchBtn = document.getElementById('viewPunchBtn');
 
-            // Сброс цвета у всех мешей детали
             if (sheetGroup) {
                 sheetGroup.traverse(child => {
                     if (child.isMesh && child.userData && child.userData._origMaterial) {
@@ -1854,13 +1854,18 @@
             const L = getBendLength();
             const curBIdx = (simCurrentStep >= 0 && simSequence[simCurrentStep])
                 ? simSequence[simCurrentStep].bendIdx
-                : selectedBendIdx;
+                : (selectedBendIdx >= 0 ? selectedBendIdx : 0);
             const bendAngle = (curBIdx >= 0 && bends[curBIdx]) ? bends[curBIdx].angle : 90;
             const isAcute = bendAngle < 85;
-            let punchType = isAcute ? 'acute' : 'gooseneck';
-            if (simCurrentStep >= 0 && simSolverResult && simSolverResult.sequence && simSolverResult.sequence[simCurrentStep]) {
-                if (simSolverResult.sequence[simCurrentStep].punchType) {
-                    punchType = simSolverResult.sequence[simCurrentStep].punchType;
+            let punchType = (manualPunch && manualPunch !== 'auto') ? manualPunch : (isAcute ? 'acute' : 'gooseneck');
+            if (manualPunch === 'auto') {
+                if (simCurrentStep >= 0 && simSolverResult && simSolverResult.sequence && simSolverResult.sequence[simCurrentStep]) {
+                    if (simSolverResult.sequence[simCurrentStep].punchType) {
+                        punchType = simSolverResult.sequence[simCurrentStep].punchType;
+                    }
+                } else if (simSolverResult && simSolverResult.sequence && simSolverResult.sequence.length > 0) {
+                    const stepItem = simSolverResult.sequence.find(s => s.bendIdx === curBIdx);
+                    if (stepItem && stepItem.punchType) punchType = stepItem.punchType;
                 }
             }
             const punchPoly = getPunchPolygon(punchType);
@@ -1878,7 +1883,6 @@
             const geom = calculateGeometry();
             const Ri = geom ? geom.R : 2.0;
             const S = geom ? geom.S : 2.0;
-            // Радиус безопасной контактной зоны у кончика пуансона для текущего гиба и смежных полок
             const contactSafeDist = Math.max(2.8, Ri + S * 0.2 + 0.8);
             const halfV = V / 2;
             const dieBaseY = (V <= 10 && !isAcute) ? -120 : -60;
@@ -1923,7 +1927,6 @@
                     outlineCorners.push(new THREE.Vector3( netLen / 2,  segS / 2, 0));
                     outlineCorners.push(new THREE.Vector3(-netLen / 2,  segS / 2, 0));
                 } else if (uType === 'bendArc') {
-                    // Сам текущий гиб облегает кончик пуансона штатно
                     if (isCurrentBend) return;
 
                     const bDir = child.userData.dir;
@@ -1950,14 +1953,11 @@
                     }
                 }
 
-                // 1. Проверка попадания точек внутрь пуансона, траверсы, матрицы и стола
                 for (let pt of testPoints) {
                     const worldP = child.localToWorld(pt.clone());
                     
-                    // ПУАНСОН И ВЕРХНЯЯ БАЛКА
                     const localPunchP = punchMesh.worldToLocal(worldP.clone());
                     if (Math.abs(localPunchP.z) <= L / 2 + 0.5) {
-                        // Верхняя траверса (рама над пуансоном)
                         if (localPunchP.y >= 144 && Math.abs(localPunchP.x) <= 35) {
                             meshCollided = true;
                             hasRamColl = true;
@@ -1974,11 +1974,9 @@
                         }
                     }
 
-                    // МАТРИЦА И СТОЛ СТАНКА
                     if (!meshCollided && hasDie && diePoly) {
                         const localDieP = dieMesh.worldToLocal(worldP.clone());
                         if (Math.abs(localDieP.z) <= L / 2 + 0.5) {
-                            // Нижний стол станка (под подошвой матрицы)
                             if (localDieP.y <= dieBaseY && Math.abs(localDieP.x) <= 35) {
                                 meshCollided = true;
                                 hasBedColl = true;
@@ -1998,7 +1996,6 @@
                     }
                 }
 
-                // 2. Проверка пересечения ребер сечения с пуансоном и балками
                 if (!meshCollided && outlineCorners.length === 4) {
                     const localCorners = outlineCorners.map(c => {
                         const wp = child.localToWorld(c.clone());
@@ -2011,14 +2008,12 @@
 
                         if (Math.abs(ca.z) > L / 2 + 0.5 && Math.abs(cb.z) > L / 2 + 0.5) continue;
 
-                        // Пересечение с верхней балкой
                         if ((ca.y >= 144 || cb.y >= 144) && checkSegmentBoxIntersect(ca, cb, -35, 35, 144, 400)) {
                             meshCollided = true;
                             hasRamColl = true;
                             break;
                         }
 
-                        // Пересечение со столом пресса
                         if (hasDie && diePoly) {
                             const da = dieMesh.worldToLocal(child.localToWorld(outlineCorners[ci].clone()));
                             const db = dieMesh.worldToLocal(child.localToWorld(outlineCorners[(ci + 1) % 4].clone()));
@@ -2055,11 +2050,6 @@
                 }
             });
 
-            // 3. Проверка надежной опоры листа на плечи матрицы в 3D
-            // ВАЖНО: Проверка опоры листа на матрицу выполняется ТОЛЬКО когда лист лежит на матрице
-            // перед началом деформации (в фазе подвода пуансона: simBendFrac === 0.0, пока пуансон не приподнял край).
-            // Когда пуансон начинает рабочий ход и деформирует лист (simBendFrac > 0), края листа физически 
-            // поднимаются вверх — это естественный процесс гибки, а не ошибка опоры!
             let hasSupportError = false;
             const isSheetRestingOnDie = (simCurrentStep >= 0 && (typeof window.simBendFrac !== 'undefined' ? window.simBendFrac === 0.0 : simProgress < 0.25));
             if (hasDie && isSheetRestingOnDie) {
@@ -2070,7 +2060,6 @@
                     if (!child.isMesh) return;
                     if (child === punchMesh || child === dieMesh) return;
                     if (!child.userData || !child.userData.type) return;
-                    // Проверяем только полки/сегменты детали, исключая сами гибы
                     if (child.userData.type !== 'segment') return;
 
                     const g = child.geometry;
@@ -2085,7 +2074,7 @@
                     }
                 });
 
-                const minSupport = halfV + 3.0; // минимум 3 мм после раскрытия V-паза матрицы
+                const minSupport = halfV + 3.0;
                 if (isFinite(sheetMinX) && sheetMinX > -minSupport) {
                     hasSupportError = true;
                     if (minChild) {
@@ -2140,22 +2129,23 @@
             const wrapper = document.getElementById('drawingArea');
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x1a2639);
-            scene.fog = new THREE.FogExp2(0x1a2639, 0.0008);
+            scene.fog = new THREE.FogExp2(0x1a2639, 0.00012);
             
-            const gridHelper = new THREE.GridHelper(600, 30, 0x3b4c6b, 0x223047);
-            gridHelper.material.opacity = 0.5;
+            gridHelper = new THREE.GridHelper(1000, 40, 0x3b4c6b, 0x223047);
+            gridHelper.material.opacity = 0.35;
             gridHelper.material.transparent = true;
+            gridHelper.position.y = -0.5;
             scene.add(gridHelper);
             
-            const floorGeo = new THREE.PlaneGeometry(800, 800);
+            const floorGeo = new THREE.PlaneGeometry(1200, 1200);
             const floorMat = new THREE.MeshStandardMaterial({
-                color: 0x111928, roughness: 0.8, metalness: 0.1, transparent: true, opacity: 0.7
+                color: 0x111928, roughness: 0.85, metalness: 0.1, transparent: true, opacity: 0.55
             });
-            const floor = new THREE.Mesh(floorGeo, floorMat);
-            floor.rotation.x = -Math.PI / 2;
-            floor.position.y = -0.5;
-            floor.receiveShadow = true;
-            scene.add(floor);
+            floorMesh = new THREE.Mesh(floorGeo, floorMat);
+            floorMesh.rotation.x = -Math.PI / 2;
+            floorMesh.position.y = -0.6;
+            floorMesh.receiveShadow = true;
+            scene.add(floorMesh);
 
             const ambient = new THREE.AmbientLight(0xffffff, 0.7);
             scene.add(ambient);
@@ -2167,8 +2157,8 @@
             dirLight.castShadow = true;
             dirLight.shadow.mapSize.width = 2048;
             dirLight.shadow.mapSize.height = 2048;
-            dirLight.shadow.camera.left = -300; dirLight.shadow.camera.right = 300;
-            dirLight.shadow.camera.top = 300; dirLight.shadow.camera.bottom = -300;
+            dirLight.shadow.camera.left = -400; dirLight.shadow.camera.right = 400;
+            dirLight.shadow.camera.top = 400; dirLight.shadow.camera.bottom = -400;
             dirLight.shadow.bias = -0.001;
             scene.add(dirLight);
             
@@ -2176,8 +2166,8 @@
             fillLight.position.set(-200, 150, -150);
             scene.add(fillLight);
 
-            camera = new THREE.PerspectiveCamera(40, wrapper.clientWidth / wrapper.clientHeight, 1, 5000);
-            camera.position.set(0.001, 260, 0.001);
+            camera = new THREE.PerspectiveCamera(40, wrapper.clientWidth / wrapper.clientHeight, 1, 25000);
+            camera.position.set(160, 140, 220);
 
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(wrapper.clientWidth, wrapper.clientHeight);
@@ -2196,14 +2186,13 @@
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.dampingFactor = 0.08;
-            controls.minDistance = 30;
-            controls.maxDistance = 600;
-            controls.maxPolarAngle = Math.PI * 0.85;
+            controls.minDistance = 15;
+            controls.maxDistance = 12000;
+            controls.maxPolarAngle = Math.PI * 0.96;
 
             sheetGroup = new THREE.Group();
             scene.add(sheetGroup);
 
-            // Клик по полке или гибу прямо в 3D для фокусировки ввода или переноса пуансона
             let pointerDownX = 0, pointerDownY = 0;
             const raycaster = new THREE.Raycaster();
             const mouseVec = new THREE.Vector2();
@@ -2227,7 +2216,6 @@
                     if (!hit.object || !hit.object.userData) continue;
                     const ud = hit.object.userData;
 
-                    // 1. Клик по полке / сегменту в 3D или по ее текстовой метке
                     let targetSeg = undefined;
                     if (ud.type === 'segment' && ud.segIdx !== undefined) {
                         targetSeg = ud.segIdx;
@@ -2247,7 +2235,6 @@
                         break;
                     }
 
-                    // 2. Клик по гибу (дуге) в 3D или по ее текстовой метке
                     let targetBend = undefined;
                     if (ud.type === 'bendArc' && ud.bendIdx !== undefined) {
                         targetBend = ud.bendIdx;
@@ -2259,7 +2246,7 @@
                         selectedBendIdx = targetBend;
                         updateBendEditor();
                         redraw();
-                        const bInp = document.getElementById('bend_' + targetBend);
+                        const bInp = document.getElementById('bendAngle_' + targetBend);
                         if (bInp) {
                             bInp.scrollIntoView({ behavior: 'smooth', block: 'center' });
                             bInp.focus();
@@ -2282,7 +2269,6 @@
             }).observe(wrapper);
         }
 
-        // Управление рендер-циклом — останавливаем когда 3D не виден
         let lastRenderTime = performance.now();
         function startRenderLoop() {
             if (renderLoopRunning) return;
@@ -2312,7 +2298,6 @@
         }
 
         function build3DSheet(geom, dims, customAnglesMap = null, alignBendIdx = -1) {
-            // Безопасно отсоединяем пуансон и матрицу перед очисткой геометрии листа
             if (punchMesh && punchMesh.parent) punchMesh.parent.remove(punchMesh);
             if (dieMesh && dieMesh.parent) dieMesh.parent.remove(dieMesh);
             disposeGroup(sheetGroup);
@@ -2346,7 +2331,6 @@
             const anchorIdx = Math.floor((segs.length - 1) / 2);
             const sheetFlip = (alignBendIdx >= 0 && bds[alignBendIdx] && bds[alignBendIdx].direction < 0) ? -1 : 1;
 
-            // Расчет заглубления активного гиба в раскрытие матрицы V-паза (dPen)
             let dPen = 0.0;
             if (alignBendIdx >= 0 && bds[alignBendIdx]) {
                 const targetBendDeg = bendGeom[alignBendIdx].bendAngleDeg;
@@ -2364,7 +2348,6 @@
                 if (i < bendGeom.length) leftOSSB = bendGeom[i].OSSB;
                 if (i > 0 && i - 1 < bendGeom.length) rightOSSB = bendGeom[i - 1].OSSB;
                 
-                // Добавочная длина от неразвернутых зон примыкающих гибов для постоянства длины листа
                 let prevDeltaL = 0;
                 if (i > 0 && i - 1 < bendGeom.length) {
                     const prevBg = bendGeom[i - 1];
@@ -2418,7 +2401,6 @@
                     const bendAngleRad = bendAngleDeg * Math.PI / 180;
                     
                     if (bendAngleRad < 0.005) {
-                        // Несогнутый (плоский) гиб
                         const punchAnchor = new THREE.Group();
                         punchAnchor.position.set(curLen, dir * (S / 2), 0);
                         punchAnchor.userData = { isPunchAnchor: true, bendIdx: i, dir: dir };
@@ -2429,7 +2411,6 @@
                         currentParent.add(nextParent);
                         currentParent = nextParent;
                     } else {
-                        // Согнутая дуга гиба
                         const punchAnchor = new THREE.Group();
                         const halfAngle = bendAngleRad / 2;
                         const punchPosX = curLen + Ri * Math.sin(halfAngle);
@@ -2492,7 +2473,7 @@
             sheetGroup.updateMatrixWorld(true);
             
             if (alignBendIdx >= 0) {
-                // Точное совмещение активного гиба с осью инструмента через инверсию кватерниона
+                // Точное совмещение активного гиба с осью инструмента в плоскости XY
                 let targetAnchor = null;
                 sheetGroup.traverse(child => {
                     if (child.userData && child.userData.isPunchAnchor && child.userData.bendIdx === alignBendIdx) {
@@ -2514,6 +2495,7 @@
                     sheetGroup.updateMatrixWorld(true);
                 }
             } else {
+                // Единая ориентация готовой детали в плоскости XY (опорная полка горизонтальна, длина гиба L по оси Z)
                 let accumAngle = 0;
                 for(let i = 0; i < anchorIdx; i++) {
                     accumAngle += bds[i].direction * (bendGeom[i].bendAngleDeg * Math.PI / 180);
@@ -2521,23 +2503,13 @@
                 sheetGroup.rotation.z = -accumAngle;
                 sheetGroup.updateMatrixWorld(true);
                 
-                sheetGroup.rotation.x = -Math.PI / 2;
-                sheetGroup.updateMatrixWorld(true);
-                
-                let anchorCenter = new THREE.Vector3();
-                sheetGroup.traverse(child => {
-                    if (child.userData.isAnchor) {
-                        child.getWorldPosition(anchorCenter);
-                    }
-                });
-                
                 const bbox = new THREE.Box3().setFromObject(sheetGroup);
                 const center = new THREE.Vector3();
                 bbox.getCenter(center);
                 
-                sheetGroup.position.x -= anchorCenter.x;
-                sheetGroup.position.y += (S/2 - anchorCenter.y); 
-                sheetGroup.position.z -= center.z;               
+                sheetGroup.position.x -= center.x;
+                sheetGroup.position.y -= bbox.min.y;
+                sheetGroup.position.z -= center.z;
                 sheetGroup.updateMatrixWorld(true);
             }
         }
@@ -2578,7 +2550,6 @@
             svg.style.display = 'block';
             stopRenderLoop();
 
-            // Скрыть индикаторы 3D-режима
             document.getElementById('collisionBadge').classList.remove('show');
             document.getElementById('punchHint').classList.remove('show');
 
@@ -2660,7 +2631,6 @@
             }
 
             const flatSegs = [];
-            const bd = dims.bends;
             const segLen = dims.segments.length;
             const bendGeom = geom.bends;
 
@@ -2708,7 +2678,6 @@
         // МОДУЛЬ ТЕХНОЛОГИЧЕСКОГО РАСЧЕТА И СИМУЛЯЦИИ ГИБКИ (DURMA)
         // ========================================================
 
-        // 1. Быстрая 2D кинематическая модель профиля листа в координатах инструмента
         function getKinematicProfile2D(geom, dims, formedAngles, activeBendIdx, progress) {
             const S = geom.S;
             const Ri = geom.R;
@@ -2727,14 +2696,12 @@
             const testPoints = [];
             const outlineSegments = [];
 
-            // Безопасное контактное расстояние у кончика пуансона
             const contactSafeDist = Math.max(3.0, Ri + S * 0.2 + 1.2);
 
             let leftStart, leftTan, leftNorm;
             let rightStart, rightTan, rightNorm;
 
             if (curBendRad < 0.005) {
-                // Плоский активный гиб (исходное состояние листа в матрице)
                 const flatLen = bendGeom[B].BA || (bendGeom[B].OSSB * 2) || 0.1;
                 leftStart = { x: -flatLen / 2, y: -S / 2 };
                 leftTan = { x: -1, y: 0 };
@@ -2749,8 +2716,6 @@
                     testPoints.push({ x: t * flatLen, y: -S, isWorkZone: true, label: `Гиб ${B + 1}` });
                 }
             } else {
-                // Согнутая вершина активного гиба
-                // Кончик пуансона в (0, 0), центр дуги по нейтральному слою в (0, Ri + S/2)
                 const cY = Ri + S / 2;
                 leftStart = {
                     x: -Rc * Math.sin(halfAngle),
@@ -2778,7 +2743,6 @@
                     y: -Math.cos(halfAngle)
                 };
 
-                // Дискретизация дуги активного гиба
                 const arcSteps = Math.max(4, Math.ceil(curBendDeg / 15));
                 for (let k = 0; k <= arcSteps; k++) {
                     const phi = -Math.PI / 2 - halfAngle + (k / arcSteps) * curBendRad;
@@ -2790,7 +2754,6 @@
                 }
             }
 
-            // Трассировка левой ветви (сегмент B, гиб B-1, сегмент B-1 ... полка 1)
             let curP = { ...leftStart };
             let curTan = { ...leftTan };
             let curNorm = { ...leftNorm };
@@ -2858,7 +2821,6 @@
                 }
             }
 
-            // Трассировка правой ветви (сегмент B+1, гиб B+1 ... полка N)
             curP = { ...rightStart };
             curTan = { ...rightTan };
             curNorm = { ...rightNorm };
@@ -2929,7 +2891,6 @@
             return { testPoints, outlineSegments, contactSafeDist };
         }
 
-        // 2. Проверка коллизий 2D профиля с пуансоном, матрицей и рамой станка
         function checkKinematicCollision(geom, dims, formedAngles, activeBendIdx, progress, punchFlipped, punchTypeOverride = null) {
             const { testPoints, outlineSegments, contactSafeDist } = getKinematicProfile2D(geom, dims, formedAngles, activeBendIdx, progress);
             const S = geom.S;
@@ -2941,25 +2902,22 @@
             const halfV = V / 2;
             const dieBaseY = (V <= 10 && !isAcute) ? -120 : -60;
 
-            // 0. Проверка надежной опоры листа на плечи матрицы (исходное положение листа progress = 0)
             if (progress === 0.0) {
                 let minX = Infinity, maxX = -Infinity;
                 let minXLabel = '', maxXLabel = '';
-                // Сначала ищем среди точек полок листа
                 for (const pt of testPoints) {
                     if (pt.label && pt.label.startsWith('Полка')) {
                         if (pt.x < minX) { minX = pt.x; minXLabel = pt.label; }
                         if (pt.x > maxX) { maxX = pt.x; maxXLabel = pt.label; }
                     }
                 }
-                // Резервный поиск по всем точкам если полок нет
                 if (!minXLabel) {
                     for (const pt of testPoints) {
                         if (pt.x < minX) { minX = pt.x; minXLabel = pt.label; }
                         if (pt.x > maxX) { maxX = pt.x; maxXLabel = pt.label; }
                     }
                 }
-                const minSupport = halfV + 3.0; // минимум 3 мм после раскрытия V-паза матрицы
+                const minSupport = halfV + 3.0;
                 if (minX > -minSupport) {
                     return { 
                         collides: true, 
@@ -2976,31 +2934,26 @@
                 }
             }
 
-            // Проверка точек листа
             for (const pt of testPoints) {
                 const px = punchFlipped ? -pt.x : pt.x;
                 const py = pt.y;
 
-                // 1. Верхняя балка / Траверса (рама над пуансоном)
                 if (py >= 144 && Math.abs(px) <= 35) {
                     return { collides: true, tool: 'ram', label: pt.label };
                 }
 
-                // 2. Пуансон
                 if (!pt.isWorkZone || Math.hypot(pt.x, pt.y) > contactSafeDist) {
                     if (pointInPolygon(px, py, punchPoly)) {
                         return { collides: true, tool: 'punch', label: pt.label };
                     }
                 }
 
-                // 3. Нижний стол пресса (рама под подошвой матрицы)
                 const dx = pt.x;
                 const dy = pt.y + S;
                 if (dy <= dieBaseY && Math.abs(dx) <= 35) {
                     return { collides: true, tool: 'bed', label: pt.label };
                 }
 
-                // 4. Матрица (координата y = -S соответствует верху матрицы)
                 const inDieGroove = pt.isWorkZone && (Math.abs(dx) <= halfV + 1.5) && (dy >= -20 && dy <= 1.5);
                 const isRestingOnDieTop = (dy >= -0.8 && dy <= 1.0 && Math.abs(dx) <= 30.5);
                 if (!inDieGroove && !isRestingOnDieTop) {
@@ -3010,18 +2963,15 @@
                 }
             }
 
-            // Проверка пересечения ребер сечения с полигоном пуансона и зонами рамы
             for (const seg of outlineSegments) {
                 if (seg.isWorkZone) continue;
                 const p1 = { x: punchFlipped ? -seg.p1.x : seg.p1.x, y: seg.p1.y };
                 const p2 = { x: punchFlipped ? -seg.p2.x : seg.p2.x, y: seg.p2.y };
 
-                // Пересечение с верхней балкой
                 if ((p1.y >= 144 || p2.y >= 144) && checkSegmentBoxIntersect(p1, p2, -35, 35, 144, 400)) {
                     return { collides: true, tool: 'ram', label: seg.label };
                 }
 
-                // Пересечение со столом пресса
                 const d1 = { x: seg.p1.x, y: seg.p1.y + S };
                 const d2 = { x: seg.p2.x, y: seg.p2.y + S };
                 if ((d1.y <= dieBaseY || d2.y <= dieBaseY) && checkSegmentBoxIntersect(d1, d2, -35, 35, -400, dieBaseY)) {
@@ -3038,7 +2988,6 @@
             return { collides: false };
         }
 
-        // 3. Автоматический расчет технологической последовательности гибки
         function solveBendSequence(geom, dims) {
             if (!geom || !dims || dims.bends.length === 0) {
                 return { isFeasible: true, sequence: [], message: 'Нет гибов' };
@@ -3048,10 +2997,8 @@
             const indices = [];
             for (let i = 0; i < numBends; i++) indices.push(i);
 
-            // Генерация перестановок с приоритетом стандартных производственных стратегий
             const permutations = [];
 
-            // Стратегия 1: Снаружи внутрь (0, N-1, 1, N-2...)
             const outsideIn = [];
             let l = 0, r = numBends - 1;
             while (l <= r) {
@@ -3061,9 +3008,8 @@
             }
             permutations.push(outsideIn);
 
-            // Стратегия 2: Снаружи внутрь с правого края (N-1, 0, N-2, 1...)
             const outsideInR = [];
-            l = 0; r = numBends - 1;
+            l = 0, r = numBends - 1;
             while (l <= r) {
                 if (l === r) outsideInR.push(r);
                 else { outsideInR.push(r); outsideInR.push(l); }
@@ -3071,13 +3017,9 @@
             }
             permutations.push(outsideInR);
 
-            // Стратегия 3: Последовательно слева направо [0, 1, ... N-1]
             permutations.push([...indices]);
-
-            // Стратегия 4: Последовательно справа налево [N-1, ... 0]
             permutations.push([...indices].reverse());
 
-            // Полный перебор оставшихся вариантов для N <= 6
             function permute(arr, m = []) {
                 if (arr.length === 0) {
                     permutations.push(m);
@@ -3103,12 +3045,9 @@
                 }
             }
 
-            // Функция проверки одной перестановки под заданный режим пуансона
             function testPermutation(perm, mode) {
-                // mode: 'gooseneck', 'acute', or 'auto_mixed'
                 const formedAngles = new Array(numBends).fill(0);
                 let seq = [];
-                let permFeasible = true;
                 let failReason = '';
 
                 for (let step = 0; step < perm.length; step++) {
@@ -3124,7 +3063,7 @@
                         pTypes = ['gooseneck'];
                     } else if (mode === 'acute') {
                         pTypes = ['acute'];
-                    } else { // auto_mixed
+                    } else {
                         const defP = (bAngle < 85) ? 'acute' : 'gooseneck';
                         pTypes = (defP === 'gooseneck') ? ['gooseneck', 'acute'] : ['acute'];
                     }
@@ -3132,7 +3071,6 @@
                     for (const pType of pTypes) {
                         for (const flip of [false, true]) {
                             let flipOk = true;
-                            // Проверка 3 контрольных положений хода: 0% (укладка), 50% (деформация), 100% (дожим)
                             for (const prog of [0.0, 0.5, 1.0]) {
                                 const res = checkKinematicCollision(geom, dims, formedAngles, bIdx, prog, flip, pType);
                                 if (res.collides) {
@@ -3177,12 +3115,6 @@
             let bestScore = -1;
             let worstFailReason = '';
 
-            // Приоритеты инструмента:
-            // Если выбран ручной пуансон (manualPunch != 'auto') - проверяем только его
-            // Если 'auto':
-            //   1. Проверяем, можно ли все гибы сделать единым пуансоном "Гусёк" (85°)
-            //   2. Если нет (или нужен острый), проверяем, можно ли ВСЕ гибы сделать единым пуансоном "Прямой острый" (26°)
-            //   3. Если ни одним одиночным пуансоном сделать все нельзя - допускаем смешанный вариант
             let modesToTry = [];
             if (manualPunch === 'gooseneck') {
                 modesToTry = ['gooseneck'];
@@ -3225,7 +3157,6 @@
             };
         }
 
-        // Обновление индикатора выполнимости в статус-панели
         function updateBendSequenceSolver(geom, dims) {
             if (!geom || !dims) return;
             simSolverResult = solveBendSequence(geom, dims);
@@ -3245,7 +3176,6 @@
                 }
             }
 
-            // Обновляем текст и значение в селекторе пуансона
             const pSel = document.getElementById('resPunchSelect');
             if (pSel) {
                 if (manualPunch && manualPunch !== 'auto') {
@@ -3264,14 +3194,14 @@
             }
         }
 
-        // 4. Интерактивный плеер симуляции процесса гибки
+        // Интерактивный плеер симуляции процесса гибки
         const simController = {
             isPlaying: false,
             currentStepIdx: -1, // -1 = режим готовой детали, 0..N-1 = активный шаг
             progress: 1.0,      // 0.0..1.0 внутри активного шага
             pauseTimer: 0,
-            stepDuration: 2.4,  // секунд на шаг при 1x
-            pauseDuration: 0.7, // секунды паузы между шагами для осмотра детали
+            stepDuration: 2.4,
+            pauseDuration: 0.7,
             speedMultiplier: 1.0,
             isUserScrubbing: false,
 
@@ -3340,7 +3270,6 @@
 
             play() {
                 if (!simSolverResult || !simSolverResult.sequence || simSolverResult.sequence.length === 0) return;
-                // Если находились в режиме готовой детали — начинаем с плоского листа (Шаг 1, progress 0)
                 if (this.currentStepIdx === -1 || this.currentStepIdx >= simSolverResult.sequence.length) {
                     this.currentStepIdx = 0;
                     this.progress = 0.0;
@@ -3358,7 +3287,6 @@
             reset() {
                 this.pause();
                 this.pauseTimer = 0;
-                // Сброс к плоской заготовке перед первым гибом
                 this.currentStepIdx = 0;
                 this.progress = 0.0;
                 simCurrentStep = 0;
@@ -3367,14 +3295,16 @@
                 this.updateUI();
             },
 
-            showFinishedPart() {
+            showFinishedPart(skipRender = false) {
                 this.pause();
                 this.pauseTimer = 0;
                 this.currentStepIdx = -1;
                 this.progress = 1.0;
                 simCurrentStep = -1;
                 simProgress = 1.0;
-                this.renderStep();
+                if (!skipRender) {
+                    this.renderStep();
+                }
                 this.updateUI();
             },
 
@@ -3434,7 +3364,6 @@
                             this.renderStep();
                             this.updateUI();
                         } else {
-                            // Все гибы выполнены — переход к готовой детали
                             this.pause();
                             this.currentStepIdx = -1;
                             this.progress = 1.0;
@@ -3452,8 +3381,6 @@
                     this.progress = 1.0;
                     this.renderStep();
                     this.updateUI();
-
-                    // Пауза между шагами для осмотра выполненного гиба (~0.7 сек при 1x)
                     this.pauseTimer = this.pauseDuration;
                 } else {
                     this.renderStep();
@@ -3472,7 +3399,8 @@
                 // Режим просмотра готовой детали
                 if (this.currentStepIdx === -1) {
                     window.simBendFrac = 1.0;
-                    build3DSheet(geom, dims);
+                    const alignBend = punchEnabled ? ((selectedBendIdx >= 0 && selectedBendIdx < dims.bends.length) ? selectedBendIdx : 0) : -1;
+                    build3DSheet(geom, dims, null, alignBend);
                     updatePunch();
                     checkPunchCollision();
                     return;
@@ -3491,26 +3419,22 @@
                 const targetAngleDeg = geom.bends[curBIdx].bendAngleDeg;
                 const p = Math.max(0, Math.min(1, this.progress));
 
-                // === 3 ФАЗЫ ДВИЖЕНИЯ В КАЖДОМ ШАГЕ ===
                 let punchOffset = 0;
                 let bendFrac = 0.0;
                 let phaseText = '';
 
                 if (p < 0.25) {
-                    // Фаза 1: Подвод пуансона (опускание с 35 мм до 0 мм)
                     const frac = p / 0.25;
                     punchOffset = (1.0 - frac) * 35.0;
                     bendFrac = 0.0;
                     phaseText = 'Подвод пуансона';
                 } else if (p < 0.75) {
-                    // Фаза 2: Рабочий ход (деформация листа 0° -> targetAngle)
                     const frac = (p - 0.25) / 0.50;
                     punchOffset = 0.0;
                     bendFrac = frac;
                     const formedDeg = Math.round(frac * targetAngleDeg);
                     phaseText = `Гибка: ${formedDeg}° / ${Math.round(targetAngleDeg)}°`;
                 } else {
-                    // Фаза 3: Отвод пуансона (подъем с 0 мм до 35 мм)
                     const frac = (p - 0.75) / 0.25;
                     punchOffset = frac * 35.0;
                     bendFrac = 1.0;
@@ -3520,16 +3444,12 @@
                 window.simBendFrac = bendFrac;
                 this.currentPhaseText = phaseText;
 
-                // === КИНЕМАТИКА: СТАРТ С ПЛОСКОГО ЛИСТА, БЕЗ БУДУЩИХ ГИБОВ ===
                 const customAngles = {};
-                // 1. Предыдущие гибы — согнуты на 100%
                 for (let s = 0; s < this.currentStepIdx; s++) {
                     const prevB = seq[s].bendIdx;
                     customAngles[prevB] = geom.bends[prevB].bendAngleDeg;
                 }
-                // 2. Текущий активный гиб
                 customAngles[curBIdx] = targetAngleDeg * bendFrac;
-                // 3. Все будущие гибы — строго ПЛОСКИЕ (0°)
                 for (let b = 0; b < geom.bends.length; b++) {
                     if (customAngles[b] === undefined) {
                         customAngles[b] = 0;
@@ -3652,7 +3572,6 @@
             if (!geom || totalLen <= 0) { alert("Нет данных для экспорта!"); return; }
             const L_mm = getBendLength();
 
-            // Минимальный DXF-заголовок с единицами измерения (мм)
             let dxf = "0\nSECTION\n2\nHEADER\n";
             dxf += "9\n$INSUNITS\n70\n4\n";
             dxf += "9\n$MEASUREMENT\n70\n1\n";
@@ -3749,7 +3668,6 @@
 
             const mat = profile.material || 'steel';
             document.getElementById('material').value = mat;
-            // Синхронизация кнопок-пресетов материала
             document.querySelectorAll('#materialPresets .mat-btn').forEach(b => {
                 b.classList.toggle('active-preset', b.dataset.material === mat);
             });
@@ -3764,6 +3682,7 @@
             selectedBendIdx = -1;
             manualDie = null;
 
+            if (typeof simController !== 'undefined') simController.showFinishedPart(true);
             updateBendEditor(); redraw();
         }
 
@@ -3780,7 +3699,6 @@
             refreshProfilesList();
         }
 
-        // Throttled redraw через requestAnimationFrame
         let redrawScheduled = false;
         function scheduleRedraw() {
             if (redrawScheduled) return;
@@ -3843,13 +3761,14 @@
                 } else if (camera && sheetGroup) {
                     const bbox = new THREE.Box3().setFromObject(sheetGroup);
                     const size = bbox.getSize(new THREE.Vector3());
-                    const maxDim = Math.max(size.x, size.y, size.z, 50);
-                    camera.position.set(0.001, maxDim * 1.8, 0.001);
-                    controls.target.set(0, size.y / 2, 0);
+                    const center = bbox.getCenter(new THREE.Vector3());
+                    const maxDim = Math.max(size.x, size.y, size.z, 80);
+                    camera.position.set(center.x + maxDim * 1.1, center.y + maxDim * 0.9, center.z + maxDim * 1.3);
+                    controls.target.copy(center);
                     controls.update();
-                    document.querySelectorAll('.view-controls .view-btn-3d:not(.punch-btn):not(.help-btn)').forEach(b => b.classList.remove('active'));
-                    const topBtn = document.getElementById('viewTop');
-                    if (topBtn) topBtn.classList.add('active');
+                    document.querySelectorAll('.view-controls .view-btn-3d:not(.punch-btn):not(.punch-flip-btn):not(.help-btn)').forEach(b => b.classList.remove('active'));
+                    const isoBtn = document.getElementById('viewReset');
+                    if (isoBtn) isoBtn.classList.add('active');
                 }
                 firstDrawDone = true; 
                 resetViewOnSwitch = false; 
@@ -3974,12 +3893,10 @@
             if ((e.key === 'd' || e.key === 'D' || e.key === ' ') && selectedBendIdx >= 0 && selectedBendIdx < bends.length) {
                 e.preventDefault(); bends[selectedBendIdx].direction *= -1; updateBendEditor(); redraw();
             }
-            // P — быстрый тогл пуансона
             if (e.key === 'p' || e.key === 'P') {
                 e.preventDefault();
                 document.getElementById('viewPunchBtn').click();
             }
-            // F — быстрый разворот пуансона на 180°
             if ((e.key === 'f' || e.key === 'F' || e.key === 'а' || e.key === 'А') && punchEnabled) {
                 e.preventDefault();
                 document.getElementById('viewPunchFlipBtn').click();
@@ -4030,33 +3947,57 @@
             if (!sheetGroup) return;
             const bbox = new THREE.Box3().setFromObject(sheetGroup);
             const size = bbox.getSize(new THREE.Vector3());
-            const maxDim = Math.max(size.x, size.y, size.z, 50);
-            // Изометрия с наклоном 45 градусов
-            animateCamera(new THREE.Vector3(maxDim * 1.3, maxDim * 1.3, maxDim * 1.3), new THREE.Vector3(0, size.y / 2, 0));
-            document.querySelectorAll('.view-controls .view-btn-3d:not(.punch-btn):not(.help-btn)').forEach(b => b.classList.remove('active'));
+            const center = bbox.getCenter(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z, 80);
+            animateCamera(
+                new THREE.Vector3(center.x + maxDim * 1.1, center.y + maxDim * 0.9, center.z + maxDim * 1.3),
+                center
+            );
+            document.querySelectorAll('.view-controls .view-btn-3d:not(.punch-btn):not(.punch-flip-btn):not(.help-btn)').forEach(b => b.classList.remove('active'));
             document.getElementById('viewReset').classList.add('active');
+        });
+
+        // Кнопка «Торец» — наводится строго на передний торец детали независимо от длины гиба L
+        document.getElementById('viewSide').addEventListener('click', () => {
+            if (!sheetGroup) return;
+            const bbox = new THREE.Box3().setFromObject(sheetGroup);
+            const size = bbox.getSize(new THREE.Vector3());
+            const center = bbox.getCenter(new THREE.Vector3());
+            const L = getBendLength();
+            const showTools = punchEnabled || (simCurrentStep >= 0);
+            const profileSpan = Math.max(size.x, size.y, showTools ? 240 : 90);
+            const distFromEnd = profileSpan * 2.1;
+            const targetEnd = new THREE.Vector3(center.x, center.y, L / 2);
+            animateCamera(
+                new THREE.Vector3(center.x, center.y, L / 2 + distFromEnd),
+                targetEnd
+            );
+            document.querySelectorAll('.view-controls .view-btn-3d:not(.punch-btn):not(.punch-flip-btn):not(.help-btn)').forEach(b => b.classList.remove('active'));
+            document.getElementById('viewSide').classList.add('active');
         });
 
         document.getElementById('viewTop').addEventListener('click', () => {
             if (!sheetGroup) return;
             const bbox = new THREE.Box3().setFromObject(sheetGroup);
             const size = bbox.getSize(new THREE.Vector3());
-            const maxDim = Math.max(size.x, size.y, size.z, 50);
-            // Вид сверху по умолчанию
-            animateCamera(new THREE.Vector3(0.001, maxDim * 1.8, 0.001), new THREE.Vector3(0, size.y / 2, 0));
-            document.querySelectorAll('.view-controls .view-btn-3d:not(.punch-btn):not(.help-btn)').forEach(b => b.classList.remove('active'));
+            const center = bbox.getCenter(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z, 80);
+            animateCamera(
+                new THREE.Vector3(center.x + 0.01, center.y + maxDim * 1.8, center.z + 0.01),
+                center
+            );
+            document.querySelectorAll('.view-controls .view-btn-3d:not(.punch-btn):not(.punch-flip-btn):not(.help-btn)').forEach(b => b.classList.remove('active'));
             document.getElementById('viewTop').classList.add('active');
         });
 
-        // Пуансон — простой тогл ON/OFF, автопозиция по выбранному гибу
+        // Пуансон — тогл ON/OFF с перестроением положения детали в одной плоскости с инструментом
         document.getElementById('viewPunchBtn').addEventListener('click', () => {
             punchEnabled = !punchEnabled;
             const btn = document.getElementById('viewPunchBtn');
             btn.classList.toggle('active', punchEnabled);
             
             if (currentView === 'bent') {
-                updatePunch();
-                checkPunchCollision();
+                redraw();
             }
         });
 
