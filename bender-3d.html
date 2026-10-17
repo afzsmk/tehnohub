@@ -3153,7 +3153,7 @@
 
                     // Подвод проверяем отдельно: пуансон перемещается сверху к положению контакта.
                     for (const pType of pTypes) {
-                        for (const turn of [false, true]) {
+                        for (const turn of [previousTurned, !previousTurned]) {
                             let stepOk = true;
                             const approachOffsets = [35, 26.25, 17.5, 8.75, 0];
                             for (const offset of approachOffsets) {
