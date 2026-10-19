@@ -1456,6 +1456,9 @@
         function updateSpriteScales() {
             if (!sheetGroup || !camera) return;
             const baseDist = 180;
+            sheetGroup.updateMatrixWorld(true);
+            punchMesh.updateMatrixWorld(true);
+            if (hasDie) dieMesh.updateMatrixWorld(true);
             sheetGroup.traverse(child => {
                 if (child.isSprite && child.userData && child.userData.baseScale) {
                     child.getWorldPosition(_spriteWorldPos);
@@ -1570,12 +1573,25 @@
             return shape;
         }
 
+        function attachPolygonBBox(poly) {
+            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+            for (let i = 0; i < poly.length; i++) {
+                const p = poly[i];
+                if (p.x < minX) minX = p.x;
+                if (p.x > maxX) maxX = p.x;
+                if (p.y < minY) minY = p.y;
+                if (p.y > maxY) maxY = p.y;
+            }
+            poly.bbox = { minX, maxX, minY, maxY };
+            return poly;
+        }
+
         function getPunchPolygon(type) {
             if (type === 'acute') {
-                if (!punchAcutePoly) punchAcutePoly = createAcutePunchShape().getPoints(60);
+                if (!punchAcutePoly) punchAcutePoly = attachPolygonBBox(createAcutePunchShape().getPoints(60));
                 return punchAcutePoly;
             }
-            if (!punchGooseneckPoly) punchGooseneckPoly = createGooseneckPunchShape().getPoints(80);
+            if (!punchGooseneckPoly) punchGooseneckPoly = attachPolygonBBox(createGooseneckPunchShape().getPoints(80));
             return punchGooseneckPoly;
         }
 
@@ -1685,7 +1701,7 @@
             const key = `${isAcute ? 60 : 85}_${V}`;
             if (!diePolyPointsMap[key]) {
                 const shape = getDieShape(V, isAcute);
-                diePolyPointsMap[key] = shape.getPoints(50);
+                diePolyPointsMap[key] = attachPolygonBBox(shape.getPoints(50));
             }
             return diePolyPointsMap[key];
         }
@@ -1922,6 +1938,8 @@
         }
 
         function pointInPolygon(x, y, poly) {
+            const b = poly.bbox;
+            if (b && (x < b.minX || x > b.maxX || y < b.minY || y > b.maxY)) return false;
             let inside = false;
             for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
                 const xi = poly[i].x, yi = poly[i].y;
@@ -2036,9 +2054,7 @@
                 const uType = child.userData.type;
                 if (uType !== 'segment' && uType !== 'bendArc' && uType !== 'bendFlat') return;
 
-                child.updateMatrixWorld(true);
-                punchMesh.updateMatrixWorld(true);
-                if (hasDie) dieMesh.updateMatrixWorld(true);
+                
 
                 const isCurrentBend = (uType === 'bendArc' || uType === 'bendFlat') && (child.userData.bendIdx === curBIdx);
                 const isAdjacentSeg = (uType === 'segment') && (child.userData.segIdx === curBIdx || child.userData.segIdx === curBIdx + 1);
@@ -3082,50 +3098,56 @@
             return { testPoints, outlineSegments, contactSafeDist };
         }
 
-        function checkKinematicCollision(geom, dims, formedAngles, activeBendIdx, progress, partTurned, punchTypeOverride = null, punchYOffset = 0) {
-            const { testPoints, outlineSegments, contactSafeDist } = getKinematicProfile2D(geom, dims, formedAngles, activeBendIdx, progress);
+        function checkProfileCollision2D(profile, geom, dims, activeBendIdx, progress, partTurned, punchTypeOverride = null, punchYOffset = 0, skipDieCheck = false) {
+            const { testPoints, outlineSegments, contactSafeDist } = profile;
             const S = geom.S;
             const V = geom.V;
             const isAcute = dims.bends[activeBendIdx].angle < 85;
             const punchType = punchTypeOverride || (isAcute ? 'acute' : 'gooseneck');
             const punchPoly = getPunchPolygon(punchType);
-            const diePoly = getDiePolygon(V, isAcute);
+            const punchBBox = punchPoly.bbox;
+            const diePoly = skipDieCheck ? null : getDiePolygon(V, isAcute);
             const halfV = V / 2;
             const dieBaseY = (V <= 10 && !isAcute) ? -120 : -60;
 
-            if (progress === 0.0) {
+            if (!skipDieCheck && progress === 0.0) {
                 let minX = Infinity, maxX = -Infinity;
                 let minXLabel = '', maxXLabel = '';
-                for (const pt of testPoints) {
+                for (let i = 0; i < testPoints.length; i++) {
+                    const pt = testPoints[i];
                     if (pt.label && pt.label.startsWith('Полка')) {
                         if (pt.x < minX) { minX = pt.x; minXLabel = pt.label; }
                         if (pt.x > maxX) { maxX = pt.x; maxXLabel = pt.label; }
                     }
                 }
                 if (!minXLabel) {
-                    for (const pt of testPoints) {
+                    for (let i = 0; i < testPoints.length; i++) {
+                        const pt = testPoints[i];
                         if (pt.x < minX) { minX = pt.x; minXLabel = pt.label; }
                         if (pt.x > maxX) { maxX = pt.x; maxXLabel = pt.label; }
                     }
                 }
                 const minSupport = halfV + 3.0;
                 if (minX > -minSupport) {
-                    return { 
-                        collides: true, 
-                        tool: 'die_support', 
-                        label: `${minXLabel || 'Полка'} висит в воздухе (нет опоры на матрицу V${V})` 
+                    return {
+                        collides: true,
+                        tool: 'die_support',
+                        label: `${minXLabel || 'Полка'} висит в воздухе (нет опоры на матрицу V${V})`
                     };
                 }
                 if (maxX < minSupport) {
-                    return { 
-                        collides: true, 
-                        tool: 'die_support', 
-                        label: `${maxXLabel || 'Полка'} висит в воздухе (нет опоры на матрицу V${V})` 
+                    return {
+                        collides: true,
+                        tool: 'die_support',
+                        label: `${maxXLabel || 'Полка'} висит в воздухе (нет опоры на матрицу V${V})`
                     };
                 }
             }
 
-            for (const pt of testPoints) {
+            const contactSafeDistSq = contactSafeDist * contactSafeDist;
+
+            for (let i = 0; i < testPoints.length; i++) {
+                const pt = testPoints[i];
                 const px = partTurned ? -pt.x : pt.x;
                 const py = pt.y - punchYOffset;
 
@@ -3133,50 +3155,106 @@
                     return { collides: true, tool: 'ram', label: pt.label };
                 }
 
-                if (!pt.isWorkZone || Math.hypot(pt.x, pt.y) > contactSafeDist) {
+                if (!pt.isWorkZone || (pt.x * pt.x + pt.y * pt.y) > contactSafeDistSq) {
                     if (pointInPolygon(px, py, punchPoly)) {
                         return { collides: true, tool: 'punch', label: pt.label };
                     }
                 }
 
-                const dx = partTurned ? -pt.x : pt.x;
-                const dy = pt.y + S;
-                if (dy <= dieBaseY && Math.abs(dx) <= 35) {
-                    return { collides: true, tool: 'bed', label: pt.label };
-                }
+                if (!skipDieCheck) {
+                    const dx = px;
+                    const dy = pt.y + S;
+                    if (dy <= dieBaseY && Math.abs(dx) <= 35) {
+                        return { collides: true, tool: 'bed', label: pt.label };
+                    }
 
-                const inDieGroove = pt.isWorkZone && (Math.abs(dx) <= halfV + 1.5) && (dy >= -20 && dy <= 1.5);
-                const isRestingOnDieTop = (dy >= -0.8 && dy <= 1.0 && Math.abs(dx) <= 30.5);
-                if (!inDieGroove && !isRestingOnDieTop) {
-                    if (pointInPolygon(dx, dy, diePoly)) {
-                        return { collides: true, tool: 'die', label: pt.label };
+                    const inDieGroove = pt.isWorkZone && (Math.abs(dx) <= halfV + 1.5) && (dy >= -20 && dy <= 1.5);
+                    const isRestingOnDieTop = (dy >= -0.8 && dy <= 1.0 && Math.abs(dx) <= 30.5);
+                    if (!inDieGroove && !isRestingOnDieTop) {
+                        if (pointInPolygon(dx, dy, diePoly)) {
+                            return { collides: true, tool: 'die', label: pt.label };
+                        }
                     }
                 }
             }
 
-            for (const seg of outlineSegments) {
+            for (let s = 0; s < outlineSegments.length; s++) {
+                const seg = outlineSegments[s];
                 if (seg.isWorkZone) continue;
-                const p1 = { x: partTurned ? -seg.p1.x : seg.p1.x, y: seg.p1.y - punchYOffset };
-                const p2 = { x: partTurned ? -seg.p2.x : seg.p2.x, y: seg.p2.y - punchYOffset };
 
-                if ((p1.y >= 144 || p2.y >= 144) && checkSegmentBoxIntersect(p1, p2, -35, 35, 144, 400)) {
+                const p1x = partTurned ? -seg.p1.x : seg.p1.x;
+                const p1y = seg.p1.y - punchYOffset;
+                const p2x = partTurned ? -seg.p2.x : seg.p2.x;
+                const p2y = seg.p2.y - punchYOffset;
+                const p1 = { x: p1x, y: p1y };
+                const p2 = { x: p2x, y: p2y };
+
+                if ((p1y >= 144 || p2y >= 144) && checkSegmentBoxIntersect(p1, p2, -35, 35, 144, 400)) {
                     return { collides: true, tool: 'ram', label: seg.label };
                 }
 
-                const d1 = { x: partTurned ? -seg.p1.x : seg.p1.x, y: seg.p1.y + S };
-                const d2 = { x: partTurned ? -seg.p2.x : seg.p2.x, y: seg.p2.y + S };
-                if ((d1.y <= dieBaseY || d2.y <= dieBaseY) && checkSegmentBoxIntersect(d1, d2, -35, 35, -400, dieBaseY)) {
-                    return { collides: true, tool: 'bed', label: seg.label };
+                if (!skipDieCheck) {
+                    const d1 = { x: p1x, y: seg.p1.y + S };
+                    const d2 = { x: p2x, y: seg.p2.y + S };
+                    if ((d1.y <= dieBaseY || d2.y <= dieBaseY) && checkSegmentBoxIntersect(d1, d2, -35, 35, -400, dieBaseY)) {
+                        return { collides: true, tool: 'bed', label: seg.label };
+                    }
                 }
 
-                for (let i = 0, j = punchPoly.length - 1; i < punchPoly.length; j = i++) {
-                    if (checkSegmentsIntersect(p1, p2, punchPoly[i], punchPoly[j])) {
-                        return { collides: true, tool: 'punch', label: seg.label };
+                if (!punchBBox || (
+                    Math.max(p1x, p2x) >= punchBBox.minX &&
+                    Math.min(p1x, p2x) <= punchBBox.maxX &&
+                    Math.max(p1y, p2y) >= punchBBox.minY &&
+                    Math.min(p1y, p2y) <= punchBBox.maxY
+                )) {
+                    for (let i = 0, j = punchPoly.length - 1; i < punchPoly.length; j = i++) {
+                        if (checkSegmentsIntersect(p1, p2, punchPoly[i], punchPoly[j])) {
+                            return { collides: true, tool: 'punch', label: seg.label };
+                        }
                     }
                 }
             }
 
             return { collides: false };
+        }
+
+        function checkKinematicCollision(geom, dims, formedAngles, activeBendIdx, progress, partTurned, punchTypeOverride = null, punchYOffset = 0) {
+            const profile = getKinematicProfile2D(geom, dims, formedAngles, activeBendIdx, progress);
+            return checkProfileCollision2D(profile, geom, dims, activeBendIdx, progress, partTurned, punchTypeOverride, punchYOffset, false);
+        }
+
+        function getFailFastSampleOrder(sampleCount) {
+            const order = [];
+            const used = new Uint8Array(sampleCount + 1);
+            const priority = [
+                sampleCount,
+                sampleCount >> 1,
+                sampleCount >> 2,
+                (sampleCount * 3) >> 2
+            ];
+            for (const s of priority) {
+                if (s >= 1 && s <= sampleCount && !used[s]) {
+                    used[s] = 1;
+                    order.push(s);
+                }
+            }
+            for (let s = sampleCount - 1; s >= 1; s--) {
+                if (!used[s]) {
+                    used[s] = 1;
+                    order.push(s);
+                }
+            }
+            return order;
+        }
+
+        function formatFailReason(bIdx, res) {
+            if (res.tool === 'die_support') {
+                return `Гиб ${bIdx + 1}: ${res.label}`;
+            }
+            const tName = (res.tool === 'ram') ? 'с верхней балкой'
+                : (res.tool === 'bed' ? 'со столом пресса'
+                : (res.tool === 'die' ? 'с матрицей' : 'с пуансоном'));
+            return `Гиб ${bIdx + 1}: коллизия ${tName} (${res.label})`;
         }
 
         function solveBendSequence(geom, dims) {
@@ -3185,207 +3263,264 @@
             }
 
             const numBends = dims.bends.length;
-            const indices = [];
-            for (let i = 0; i < numBends; i++) indices.push(i);
+            const formedAngles = new Array(numBends).fill(0);
 
-            const permutations = [];
+            const profileCache = new Map();
+            const candidateCache = new Map();
 
-            const outsideIn = [];
-            let l = 0, r = numBends - 1;
-            while (l <= r) {
-                if (l === r) outsideIn.push(l);
-                else { outsideIn.push(l); outsideIn.push(r); }
-                l++; r--;
+            function fillFormedAnglesFromMask(mask) {
+                for (let i = 0; i < numBends; i++) {
+                    formedAngles[i] = (mask & (1 << i)) ? geom.bends[i].bendAngleDeg : 0;
+                }
             }
-            permutations.push(outsideIn);
 
-            const outsideInR = [];
-            l = 0, r = numBends - 1;
-            while (l <= r) {
-                if (l === r) outsideInR.push(r);
-                else { outsideInR.push(r); outsideInR.push(l); }
-                l++; r--;
+            function getCachedProfile(mask, bIdx, sampleIdx, sampleCount) {
+                const key = `${mask}_${bIdx}_${sampleIdx}`;
+                let prof = profileCache.get(key);
+                if (!prof) {
+                    fillFormedAnglesFromMask(mask);
+                    const progress = sampleIdx / sampleCount;
+                    prof = getKinematicProfile2D(geom, dims, formedAngles, bIdx, progress);
+                    profileCache.set(key, prof);
+                }
+                return prof;
             }
-            permutations.push(outsideInR);
 
-            permutations.push([...indices]);
-            permutations.push([...indices].reverse());
+            function evaluateCandidate(mask, bIdx, pType, turn) {
+                const key = `${mask}_${bIdx}_${pType}_${turn ? 1 : 0}`;
+                const cached = candidateCache.get(key);
+                if (cached) return cached;
 
-            function permute(arr, m = []) {
-                if (arr.length === 0) {
-                    permutations.push(m);
-                } else {
-                    for (let i = 0; i < arr.length; i++) {
-                        const curr = arr.slice();
-                        const next = curr.splice(i, 1);
-                        permute(curr.slice(), m.concat(next));
+                const targetBendDeg = geom.bends[bIdx].bendAngleDeg;
+                const sampleCount = Math.max(12, Math.ceil(targetBendDeg / 2));
+
+                const prof0 = getCachedProfile(mask, bIdx, 0, sampleCount);
+                const res0 = checkProfileCollision2D(prof0, geom, dims, bIdx, 0, turn, pType, 0, false);
+                if (res0.collides) {
+                    const out = { ok: false, failReason: formatFailReason(bIdx, res0) };
+                    candidateCache.set(key, out);
+                    return out;
+                }
+                const approachOffsets = [35, 26.25, 17.5, 8.75];
+                for (let i = 0; i < approachOffsets.length; i++) {
+                    const res = checkProfileCollision2D(prof0, geom, dims, bIdx, 0, turn, pType, approachOffsets[i], true);
+                    if (res.collides) {
+                        const out = { ok: false, failReason: formatFailReason(bIdx, res) };
+                        candidateCache.set(key, out);
+                        return out;
                     }
                 }
-            }
-            if (numBends <= 6) {
-                permute(indices);
-            }
 
-            const seen = new Set();
-            const uniquePerms = [];
-            for (const p of permutations) {
-                const key = p.join(',');
-                if (!seen.has(key)) {
-                    seen.add(key);
-                    uniquePerms.push(p);
+                const sampleOrder = getFailFastSampleOrder(sampleCount);
+                for (let i = 0; i < sampleOrder.length; i++) {
+                    const sample = sampleOrder[i];
+                    const progress = sample / sampleCount;
+                    const prof = getCachedProfile(mask, bIdx, sample, sampleCount);
+                    const res = checkProfileCollision2D(prof, geom, dims, bIdx, progress, turn, pType, 0, false);
+                    if (res.collides) {
+                        const out = { ok: false, failReason: formatFailReason(bIdx, res) };
+                        candidateCache.set(key, out);
+                        return out;
+                    }
                 }
+
+                const prof1 = getCachedProfile(mask, bIdx, sampleCount, sampleCount);
+                let withdrawalCollision = false;
+                for (let sample = 1; sample <= 7; sample++) {
+                    const offset = 35 * sample / 7;
+                    const res = checkProfileCollision2D(prof1, geom, dims, bIdx, 1, turn, pType, offset, true);
+                    if (res.collides && (res.tool === 'punch' || res.tool === 'ram')) {
+                        withdrawalCollision = true;
+                        break;
+                    }
+                }
+
+                const out = { ok: true, withdrawalCollision, failReason: '' };
+                candidateCache.set(key, out);
+                return out;
             }
 
-            function testPermutation(perm, mode) {
-                const formedAngles = new Array(numBends).fill(0);
-                const seq = [];
-                let previousTurned = false;
+            function evaluateStep(mode, mask, bIdx, previousTurned) {
+                const bAngle = dims.bends[bIdx].angle;
+                let pTypes;
+                if (mode === 'gooseneck') {
+                    if (bAngle < 85) {
+                        return { ok: false, failReason: `Гиб ${bIdx + 1}: угол ${bAngle}° требует острый пуансон` };
+                    }
+                    pTypes = ['gooseneck'];
+                } else if (mode === 'acute') {
+                    pTypes = ['acute'];
+                } else {
+                    pTypes = (bAngle < 85) ? ['acute'] : ['gooseneck', 'acute'];
+                }
+
+                let bestCandidate = null;
                 let failReason = '';
 
-                for (let step = 0; step < perm.length; step++) {
-                    const bIdx = perm[step];
-                    const bAngle = dims.bends[bIdx].angle;
-                    const targetBendDeg = geom.bends[bIdx].bendAngleDeg;
-                    let pTypes = [];
-                    if (mode === 'gooseneck') {
-                        if (bAngle < 85) return { feasible: false, score: step, seq, failReason: `Гиб ${bIdx + 1}: угол ${bAngle}° требует острый пуансон` };
-                        pTypes = ['gooseneck'];
-                    } else if (mode === 'acute') {
-                        pTypes = ['acute'];
-                    } else {
-                        const defP = (bAngle < 85) ? 'acute' : 'gooseneck';
-                        pTypes = (defP === 'gooseneck') ? ['gooseneck', 'acute'] : ['acute'];
-                    }
+                for (let p = 0; p < pTypes.length; p++) {
+                    const pType = pTypes[p];
+                    const turns = [previousTurned, !previousTurned];
+                    let cleanFound = false;
 
-                    let bestCandidate = null;
-                    let cleanCandidateFound = false;
-                    const rememberFailure = (res) => {
-                        if (res.tool === 'die_support') {
-                            failReason = `Гиб ${bIdx + 1}: ${res.label}`;
-                        } else {
-                            const tName = (res.tool === 'ram') ? 'с верхней балкой' : (res.tool === 'bed' ? 'со столом пресса' : (res.tool === 'die' ? 'с матрицей' : 'с пуансоном'));
-                            failReason = `Гиб ${bIdx + 1}: коллизия ${tName} (${res.label})`;
+                    for (let t = 0; t < 2; t++) {
+                        const turn = turns[t];
+                        const evalRes = evaluateCandidate(mask, bIdx, pType, turn);
+                        if (!evalRes.ok) {
+                            failReason = evalRes.failReason;
+                            continue;
                         }
-                    };
-
-                    // Подвод проверяем отдельно: пуансон перемещается сверху к положению контакта.
-                    for (const pType of pTypes) {
-                        for (const turn of [previousTurned, !previousTurned]) {
-                            let stepOk = true;
-                            const approachOffsets = [35, 26.25, 17.5, 8.75, 0];
-                            for (const offset of approachOffsets) {
-                                const res = checkKinematicCollision(geom, dims, formedAngles, bIdx, 0, turn, pType, offset);
-                                if (res.collides) {
-                                    stepOk = false;
-                                    rememberFailure(res);
-                                    break;
-                                }
-                            }
-
-                            // Проверяем весь рабочий ход с шагом не более 2°,
-                            // а не только начало, середину и конец гиба.
-                            if (stepOk) {
-                                const sampleCount = Math.max(12, Math.ceil(targetBendDeg / 2));
-                                for (let sample = 0; sample <= sampleCount; sample++) {
-                                    const progress = sample / sampleCount;
-                                    const res = checkKinematicCollision(geom, dims, formedAngles, bIdx, progress, turn, pType, 0);
-                                    if (res.collides) {
-                                        stepOk = false;
-                                        rememberFailure(res);
-                                        break;
-                                    }
-                                }
-                            }
-                            if (!stepOk) continue;
-
-                            // Контакт только во время отвода — предупреждение, не запрет
-                            // последовательности. Среди допустимых вариантов предпочитаем
-                            // ориентацию детали без контакта при отводе.
-                            let withdrawalCollision = false;
-                            for (let sample = 1; sample <= 7; sample++) {
-                                const offset = 35 * sample / 7;
-                                const res = checkKinematicCollision(geom, dims, formedAngles, bIdx, 1, turn, pType, offset);
-                                if (res.collides && (res.tool === 'punch' || res.tool === 'ram')) {
-                                    withdrawalCollision = true;
-                                } else if (res.collides) {
-                                    stepOk = false;
-                                    rememberFailure(res);
-                                    break;
-                                }
-                            }
-                            if (!stepOk) continue;
-
-                            const candidate = { partTurned: turn, turnBeforeStep: turn !== previousTurned, punchType: pType, withdrawalCollision };
-                            if (!bestCandidate || (bestCandidate.withdrawalCollision && !withdrawalCollision)) {
-                                bestCandidate = candidate;
-                            }
-                            if (!withdrawalCollision) {
-                                cleanCandidateFound = true;
-                                break;
-                            }
+                        const candidate = {
+                            partTurned: turn,
+                            turnBeforeStep: turn !== previousTurned,
+                            punchType: pType,
+                            withdrawalCollision: evalRes.withdrawalCollision
+                        };
+                        if (!bestCandidate || (bestCandidate.withdrawalCollision && !candidate.withdrawalCollision)) {
+                            bestCandidate = candidate;
                         }
-                        if (cleanCandidateFound) break;
+                        if (!candidate.withdrawalCollision) {
+                            cleanFound = true;
+                            break;
+                        }
                     }
-
-                    if (!bestCandidate) {
-                        return { feasible: false, score: step, seq, failReason: failReason || `Гиб ${bIdx + 1}: не найдено безопасное положение детали` };
-                    }
-
-                    seq.push({
-                        bendIdx: bIdx,
-                        partTurned: bestCandidate.partTurned,
-                        turnBeforeStep: bestCandidate.turnBeforeStep,
-                        punchType: bestCandidate.punchType,
-                        withdrawalCollision: bestCandidate.withdrawalCollision,
-                        isAcute: (bestCandidate.punchType === 'acute'),
-                        angleDeg: targetBendDeg
-                    });
-                    formedAngles[bIdx] = targetBendDeg;
-                    previousTurned = bestCandidate.partTurned;
+                    if (cleanFound) break;
                 }
 
-                return { feasible: true, score: perm.length, seq, failReason: '' };
+                if (!bestCandidate) {
+                    return { ok: false, failReason: failReason || `Гиб ${bIdx + 1}: не найдено безопасное положение детали` };
+                }
+                return { ok: true, candidate: bestCandidate };
+            }
+
+            const priorityPerms = [];
+            const outsideIn = [], outsideInR = [], forward = [], backward = [];
+            let l = 0, r = numBends - 1;
+            while (l <= r) {
+                if (l === r) { outsideIn.push(l); outsideInR.push(r); }
+                else { outsideIn.push(l, r); outsideInR.push(r, l); }
+                l++; r--;
+            }
+            for (let i = 0; i < numBends; i++) {
+                forward.push(i);
+                backward.push(numBends - 1 - i);
+            }
+            const seenPerms = new Set();
+            for (const p of [outsideIn, outsideInR, forward, backward]) {
+                const k = p.join(',');
+                if (!seenPerms.has(k)) { seenPerms.add(k); priorityPerms.push(p); }
             }
 
             let bestSeq = null;
             let bestScore = -1;
             let worstFailReason = '';
 
-            let modesToTry = [];
-            if (manualPunch === 'gooseneck') {
-                modesToTry = ['gooseneck'];
-            } else if (manualPunch === 'acute') {
-                modesToTry = ['acute'];
-            } else {
-                modesToTry = ['gooseneck', 'acute'];
+            function buildSuccessResponse(seq) {
+                const seqStr = seq.map(s => {
+                    let str = (s.bendIdx + 1) + (s.turnBeforeStep ? ' ↻дет.' : '');
+                    if (s.punchType === 'acute' && dims.bends[s.bendIdx].angle >= 85) {
+                        str += ' [Прямой]';
+                    }
+                    return str;
+                }).join(' → ');
+                const retractBends = seq.filter(s => s.withdrawalCollision).map(s => s.bendIdx + 1);
+                const retractNote = retractBends.length
+                    ? ` · Контакт при отводе на гибах ${retractBends.join(', ')} (не блокирует)`
+                    : '';
+                return {
+                    isFeasible: true,
+                    sequence: seq,
+                    message: `Выполнима: ${seqStr}${retractNote}`
+                };
             }
 
-            for (const mode of modesToTry) {
-                for (const perm of uniquePerms) {
-                    const res = testPermutation(perm, mode);
-                    if (res.feasible) {
-                        const seqStr = res.seq.map(s => {
-                            let str = (s.bendIdx + 1) + (s.turnBeforeStep ? ' ↻дет.' : '');
-                            if (s.punchType === 'acute' && dims.bends[s.bendIdx].angle >= 85) {
-                                str += ' [Прямой]';
-                            }
-                            return str;
-                        }).join(' → ');
-                        const retractBends = res.seq.filter(s => s.withdrawalCollision).map(s => s.bendIdx + 1);
-                        const retractNote = retractBends.length
-                            ? ` · Контакт при отводе на гибах ${retractBends.join(', ')} (не блокирует)`
-                            : '';
-                        return {
-                            isFeasible: true,
-                            sequence: res.seq,
-                            message: `Выполнима: ${seqStr}${retractNote}`
-                        };
-                    } else {
-                        if (res.score > bestScore) {
-                            bestScore = res.score;
-                            bestSeq = res.seq;
-                            worstFailReason = res.failReason;
+            function testExactSequence(perm, mode, deadMasks) {
+                let mask = 0;
+                let previousTurned = false;
+                const seq = [];
+
+                for (let step = 0; step < perm.length; step++) {
+                    if (deadMasks.has(mask)) return null;
+                    const bIdx = perm[step];
+                    const stepRes = evaluateStep(mode, mask, bIdx, previousTurned);
+                    if (!stepRes.ok) {
+                        if (step > bestScore) {
+                            bestScore = step;
+                            bestSeq = seq.slice();
+                            worstFailReason = stepRes.failReason;
                         }
+                        return null;
+                    }
+                    const cand = stepRes.candidate;
+                    seq.push({
+                        bendIdx: bIdx,
+                        partTurned: cand.partTurned,
+                        turnBeforeStep: cand.turnBeforeStep,
+                        punchType: cand.punchType,
+                        withdrawalCollision: cand.withdrawalCollision,
+                        isAcute: (cand.punchType === 'acute'),
+                        angleDeg: geom.bends[bIdx].bendAngleDeg
+                    });
+                    mask |= (1 << bIdx);
+                    previousTurned = cand.partTurned;
+                }
+                return seq;
+            }
+
+            const modesToTry = (manualPunch === 'gooseneck') ? ['gooseneck']
+                : (manualPunch === 'acute' ? ['acute'] : ['gooseneck', 'acute']);
+            const fullMask = (1 << numBends) - 1;
+
+            for (const mode of modesToTry) {
+                const deadMasks = new Set();
+
+                for (const perm of priorityPerms) {
+                    const seq = testExactSequence(perm, mode, deadMasks);
+                    if (seq) return buildSuccessResponse(seq);
+                }
+
+                if (numBends <= 9) {
+                    const currentSeq = [];
+
+                    function dfs(mask, step, previousTurned) {
+                        if (mask === fullMask) return true;
+                        if (deadMasks.has(mask)) return false;
+
+                        for (let bIdx = 0; bIdx < numBends; bIdx++) {
+                            if (mask & (1 << bIdx)) continue;
+
+                            const stepRes = evaluateStep(mode, mask, bIdx, previousTurned);
+                            if (!stepRes.ok) {
+                                if (step > bestScore) {
+                                    bestScore = step;
+                                    bestSeq = currentSeq.slice();
+                                    worstFailReason = stepRes.failReason;
+                                }
+                                continue;
+                            }
+
+                            const cand = stepRes.candidate;
+                            currentSeq.push({
+                                bendIdx: bIdx,
+                                partTurned: cand.partTurned,
+                                turnBeforeStep: cand.turnBeforeStep,
+                                punchType: cand.punchType,
+                                withdrawalCollision: cand.withdrawalCollision,
+                                isAcute: (cand.punchType === 'acute'),
+                                angleDeg: geom.bends[bIdx].bendAngleDeg
+                            });
+
+                            if (dfs(mask | (1 << bIdx), step + 1, cand.partTurned)) {
+                                return true;
+                            }
+                            currentSeq.pop();
+                        }
+
+                        deadMasks.add(mask);
+                        return false;
+                    }
+
+                    if (dfs(0, 0, false)) {
+                        return buildSuccessResponse(currentSeq);
                     }
                 }
             }
@@ -3397,9 +3532,23 @@
             };
         }
 
+        let lastSolverCacheKey = '';
+
+        function getSolverCacheKey(geom, dims) {
+            const segKey = dims.segments.map(s => s.length).join(',');
+            const bendKey = dims.bends.map(b => `${b.angle}:${b.direction}`).join(',');
+            return `${geom.matKey}|${geom.S}|${geom.V}|${manualPunch}|${segKey}|${bendKey}`;
+        }
+
         function updateBendSequenceSolver(geom, dims) {
             if (!geom || !dims) return;
-            simSolverResult = solveBendSequence(geom, dims);
+
+            const cacheKey = getSolverCacheKey(geom, dims);
+            if (cacheKey !== lastSolverCacheKey || !simSolverResult) {
+                lastSolverCacheKey = cacheKey;
+                simSolverResult = solveBendSequence(geom, dims);
+            }
+
             simObservedCollisionStep = simCurrentStep;
             simObservedHardCollision = '';
             simSequence = simSolverResult.sequence;
@@ -3997,7 +4146,7 @@
 
             const totalLen = computeFlatLength(geom, dims);
             const totalBD = geom.bends.reduce((sum, bend) => sum + bend.BD, 0);
-            const solveResult = solveBendSequence(geom, dims);
+            const solveResult = simSolverResult || solveBendSequence(geom, dims);
             const rawSequence = solveResult && Array.isArray(solveResult.sequence) ? solveResult.sequence : [];
             const isFeasible = !!(solveResult && solveResult.isFeasible);
             // Не печатаем частичную последовательность как рабочую инструкцию,
